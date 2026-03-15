@@ -317,6 +317,8 @@
       <div class="sub-item" onclick="filterStage('done',this)"><div class="sub-dot" style="background:var(--s-done-b)"></div>הסתיים</div>
     </div>
     <div style="margin-top:auto;padding:16px 24px;border-top:1px solid var(--border)">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:4px">סנכרון ענן</div>
+      <div id="sync-status" style="font-size:12px;color:var(--text3);margin-bottom:10px">מתחבר...</div>
       <button onclick="exportBackup()" style="width:100%;padding:7px;font-size:12px;font-family:'Heebo',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text2);cursor:pointer;margin-bottom:6px;">💾 ייצוא גיבוי</button>
       <label style="width:100%;display:block;padding:7px;font-size:12px;font-family:'Heebo',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text2);cursor:pointer;text-align:center;margin-bottom:6px;">
         📂 ייבוא גיבוי
@@ -462,7 +464,25 @@ function fmtTime(s) {
   return Math.floor(s/3600)+':'+String(Math.floor((s%3600)/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
 }
 
-function save() { try{localStorage.setItem('karin_pm',JSON.stringify(state));}catch(e){} }
+const API='https://script.google.com/macros/s/AKfycbxMuRMjZvqGARqeB50m1RZydaFH4aK3lWuyv9Q1CuDjSjLAW7rfxJfhxKnTloXVWmHz0w/exec';
+let saveTimer=null;
+
+function setSyncStatus(msg,color){
+  const el=document.getElementById('sync-status');
+  if(el){el.textContent=msg;el.style.color=color||'var(--text3)';}
+}
+
+function save() {
+  try{localStorage.setItem('karin_pm',JSON.stringify(state));}catch(e){}
+  clearTimeout(saveTimer);
+  setSyncStatus('שומר...','var(--text3)');
+  saveTimer=setTimeout(()=>{
+    fetch(API,{method:'POST',body:JSON.stringify({action:'save',state})})
+    .then(r=>r.json())
+    .then(d=>setSyncStatus(d.ok?'✓ נשמר':'שגיאה',d.ok?'var(--accent)':'var(--urgent)'))
+    .catch(()=>setSyncStatus('מקומי בלבד','var(--high)'));
+  },1500);
+}
 
 function load() {
   try {
@@ -474,6 +494,25 @@ function load() {
       state = {projects:p.projects||[],tasks:p.tasks||[]};
     }
   } catch(e) {}
+  setSyncStatus('טוען...','var(--text3)');
+  const controller=new AbortController();
+  setTimeout(()=>controller.abort(),6000);
+  fetch(API+'?t='+Date.now(),{signal:controller.signal})
+  .then(r=>r.json())
+  .then(d=>{
+    if(d.ok&&d.state&&d.state.projects&&d.state.projects.length>0){
+      const p=d.state;
+      p.projects=p.projects.map(x=>({...x,stage:STAGEMAP[x.stage]||x.stage||'send',goalDaily:Number(x.goalDaily)||0,goalDone:Number(x.goalDone)||0,total:Number(x.total)||0,edited:Number(x.edited)||0,seconds:Number(x.seconds)||0,sessions:Number(x.sessions)||0}));
+      p.tasks=(p.tasks||[]).map(x=>({...x,done:Number(x.done)||0}));
+      state={projects:p.projects,tasks:p.tasks||[]};
+      try{localStorage.setItem('karin_pm',JSON.stringify(state));}catch(e){}
+      setSyncStatus('✓ סונכרן','var(--accent)');
+      render();
+    } else {
+      setSyncStatus('עובד מקומית','var(--text3)');
+    }
+  })
+  .catch(e=>setSyncStatus(e.name==='AbortError'?'פג זמן':'עובד מקומית','var(--high)'));
 }
 
 function showPage(p, el) {
