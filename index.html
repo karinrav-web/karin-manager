@@ -246,7 +246,50 @@
   .modal-actions button { padding:8px 20px; font-size:13px; font-family:'Heebo',sans-serif; border-radius:var(--radius-sm); cursor:pointer; font-weight:500; }
   .btn-cancel { background:transparent; border:1px solid var(--border2); color:var(--text2); }
   .btn-delete { background:transparent; border:1px solid var(--urgent); color:var(--urgent); margin-left:auto; }
-  .btn-confirm { background:var(--accent); border:none; color:#fff; }
+  @media (max-width: 768px) {
+    .sidebar { display:none; }
+    .main { margin-right:0; padding:16px; max-width:100%; }
+    .metric-row { gap:8px; }
+    .metric-card { padding:14px; }
+    .metric-val { font-size:26px; }
+    .proj-bottom { grid-template-columns:1fr; }
+    .mini-stats { grid-template-columns:repeat(2,1fr); }
+    .stage-row { gap:4px; }
+    .stage-btn { font-size:10px; padding:4px 8px; }
+    .quick-btns { flex-wrap:wrap; }
+
+    .mobile-nav {
+      display:flex; position:fixed; bottom:0; left:0; right:0;
+      background:var(--surface); border-top:1px solid var(--border);
+      z-index:50; padding:8px 0 20px;
+    }
+    .mobile-nav-item {
+      flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;
+      padding:6px 4px; cursor:pointer; color:var(--text3); font-size:10px;
+      border:none; background:transparent; font-family:'Heebo',sans-serif;
+    }
+    .mobile-nav-item.active { color:var(--accent); }
+    .mobile-nav-icon { font-size:20px; }
+    .main { padding-bottom:80px; }
+
+    .mobile-filter {
+      display:flex; gap:6px; overflow-x:auto; padding:0 0 12px;
+      margin-bottom:8px; scrollbar-width:none;
+    }
+    .mobile-filter::-webkit-scrollbar { display:none; }
+    .mobile-filter-btn {
+      display:flex; align-items:center; gap:4px; white-space:nowrap;
+      padding:5px 12px; font-size:12px; border:1px solid var(--border);
+      border-radius:20px; background:var(--surface2); cursor:pointer;
+      color:var(--text2); font-family:'Heebo',sans-serif; flex-shrink:0;
+    }
+    .mobile-filter-btn.active { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:500; }
+  }
+
+  @media (min-width: 769px) {
+    .mobile-nav { display:none; }
+    .mobile-filter { display:none; }
+  }
 </style>
 </head>
 <body>
@@ -336,6 +379,16 @@
       <div class="page-header">
         <div class="page-title" id="proj-page-title">פרויקטים</div>
       </div>
+      <div class="mobile-filter" id="mobile-filter">
+        <button class="mobile-filter-btn active" onclick="filterStage(null,this,true)"><div class="sub-dot" style="background:var(--text3);width:7px;height:7px;border-radius:50%"></div>הכל</button>
+        <button class="mobile-filter-btn" onclick="filterStage('edit',this,true)"><div class="sub-dot" style="background:var(--s-edit-b);width:7px;height:7px;border-radius:50%"></div>עריכה</button>
+        <button class="mobile-filter-btn" onclick="filterStage('send',this,true)"><div class="sub-dot" style="background:var(--s-send-b);width:7px;height:7px;border-radius:50%"></div>לשלוח לסינון</button>
+        <button class="mobile-filter-btn" onclick="filterStage('wait',this,true)"><div class="sub-dot" style="background:var(--s-wait-b);width:7px;height:7px;border-radius:50%"></div>מחכה לסינון</button>
+        <button class="mobile-filter-btn" onclick="filterStage('deliver',this,true)"><div class="sub-dot" style="background:var(--s-deliver-b);width:7px;height:7px;border-radius:50%"></div>שליחה ללקוח</button>
+        <button class="mobile-filter-btn" onclick="filterStage('notes',this,true)"><div class="sub-dot" style="background:var(--s-notes-b);width:7px;height:7px;border-radius:50%"></div>הערות</button>
+        <button class="mobile-filter-btn" onclick="filterStage('billing',this,true)"><div class="sub-dot" style="background:var(--s-billing-b);width:7px;height:7px;border-radius:50%"></div>גביה</button>
+        <button class="mobile-filter-btn" onclick="filterStage('done',this,true)"><div class="sub-dot" style="background:var(--s-done-b);width:7px;height:7px;border-radius:50%"></div>הסתיים</button>
+      </div>
       <div id="projects-list"></div>
       <button class="add-btn" onclick="toggleEl('add-proj-form')">+ פרויקט חדש</button>
       <div id="add-proj-form" class="hidden" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin-top:10px">
@@ -352,6 +405,19 @@
 
   </main>
 </div>
+
+<!-- MOBILE BOTTOM NAV -->
+<nav class="mobile-nav">
+  <button class="mobile-nav-item active" id="mnav-morning" onclick="showPageMobile('morning',this)">
+    <span class="mobile-nav-icon">☀</span>בוקר טוב
+  </button>
+  <button class="mobile-nav-item" id="mnav-projects" onclick="showPageMobile('projects',this)">
+    <span class="mobile-nav-icon">📁</span>פרויקטים
+  </button>
+  <button class="mobile-nav-item" onclick="exportBackup()">
+    <span class="mobile-nav-icon">💾</span>גיבוי
+  </button>
+</nav>
 
 <!-- EDIT MODAL -->
 <div class="modal-bg" id="edit-modal">
@@ -417,13 +483,27 @@ function showPage(p, el) {
   el.classList.add('active');
 }
 
-function filterStage(stage, el) {
+function showPageMobile(p, el) {
+  document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.mobile-nav-item').forEach(e=>e.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  el.classList.add('active');
+  // sync desktop nav too
+  document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
+  const dn = document.getElementById('nav-'+p);
+  if(dn) dn.classList.add('active');
+}
+
+function filterStage(stage, el, isMobile) {
   stageFilter = stage;
-  document.querySelectorAll('.sub-item').forEach(e=>e.classList.remove('active'));
+  if (isMobile) {
+    document.querySelectorAll('.mobile-filter-btn').forEach(e=>e.classList.remove('active'));
+  } else {
+    document.querySelectorAll('.sub-item').forEach(e=>e.classList.remove('active'));
+  }
   el.classList.add('active');
   showPage('projects', document.getElementById('nav-projects'));
-  const title = stage ? STAGES[stage] : 'פרויקטים';
-  document.getElementById('proj-page-title').textContent = title;
+  document.getElementById('proj-page-title').textContent = stage ? STAGES[stage] : 'פרויקטים';
   renderProjects();
 }
 
