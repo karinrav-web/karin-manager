@@ -144,11 +144,13 @@
   .proj-sub { font-size:12px; color:var(--text3); margin-top:2px; }
   .proj-badges { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
 
-  .mini-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-top:12px; }
+  .mini-stats { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin-top:12px; }
   .mini-stat { background:var(--surface2); border-radius:var(--radius-sm); padding:8px 10px; text-align:center; }
   .mini-stat-label { font-size:11px; color:var(--text3); margin-bottom:3px; }
   .mini-stat-val { font-size:17px; font-weight:600; color:var(--text); }
   .mini-stat-val.reached { color:var(--accent); }
+  .mini-stat-val.today { color:var(--accent); }
+  .mini-stat.today-card { border:1.5px solid var(--accent); background:var(--accent-light); }
 
   .stage-row { display:flex; gap:6px; margin-top:12px; flex-wrap:wrap; }
   .stage-btn {
@@ -246,6 +248,7 @@
   .modal-actions button { padding:8px 20px; font-size:13px; font-family:'Heebo',sans-serif; border-radius:var(--radius-sm); cursor:pointer; font-weight:500; }
   .btn-cancel { background:transparent; border:1px solid var(--border2); color:var(--text2); }
   .btn-delete { background:transparent; border:1px solid var(--urgent); color:var(--urgent); margin-left:auto; }
+
   @media (max-width: 768px) {
     .sidebar { display:none; }
     .main { margin-right:0; padding:16px; max-width:100%; }
@@ -253,7 +256,7 @@
     .metric-card { padding:14px; }
     .metric-val { font-size:26px; }
     .proj-bottom { grid-template-columns:1fr; }
-    .mini-stats { grid-template-columns:repeat(2,1fr); }
+    .mini-stats { grid-template-columns:repeat(3,1fr); }
     .stage-row { gap:4px; }
     .stage-btn { font-size:10px; padding:4px 8px; }
     .quick-btns { flex-wrap:wrap; }
@@ -347,7 +350,7 @@
       <div class="metric-row">
         <div class="metric-card"><div class="metric-val" id="m-projects">0</div><div class="metric-label">פרויקטים פעילים</div></div>
         <div class="metric-card"><div class="metric-val" id="m-remaining">0</div><div class="metric-label">תמונות לעריכה</div></div>
-        <div class="metric-card"><div class="metric-val green" id="m-finished">0</div><div class="metric-label">פרויקטים הסתיימו</div></div>
+        <div class="metric-card"><div class="metric-val green" id="m-edited-today">0</div><div class="metric-label">נערכו היום (סה"כ)</div></div>
       </div>
       <div class="legend">
         <div class="legend-item"><div class="legend-dot" style="background:var(--urgent)"></div>דחוף</div>
@@ -472,6 +475,20 @@ function setSyncStatus(msg,color){
   if(el){el.textContent=msg;el.style.color=color||'var(--text3)';}
 }
 
+function normalizeProject(x) {
+  return {
+    ...x,
+    stage: STAGEMAP[x.stage]||x.stage||'send',
+    goalDaily: Number(x.goalDaily)||0,
+    goalDone: Number(x.goalDone)||0,
+    total: Number(x.total)||0,
+    edited: Number(x.edited)||0,
+    editedToday: Number(x.editedToday)||0,
+    seconds: Number(x.seconds)||0,
+    sessions: Number(x.sessions)||0
+  };
+}
+
 function save() {
   try{localStorage.setItem('karin_pm',JSON.stringify(state));}catch(e){}
   clearTimeout(saveTimer);
@@ -489,7 +506,7 @@ function load() {
     const s = localStorage.getItem('karin_pm');
     if (s) {
       const p = JSON.parse(s);
-      if (p.projects) p.projects = p.projects.map(x=>({...x,stage:STAGEMAP[x.stage]||x.stage||'send',goalDaily:Number(x.goalDaily)||0,goalDone:Number(x.goalDone)||0,total:Number(x.total)||0,edited:Number(x.edited)||0,seconds:Number(x.seconds)||0,sessions:Number(x.sessions)||0}));
+      if (p.projects) p.projects = p.projects.map(normalizeProject);
       if (p.tasks) p.tasks = p.tasks.map(x=>({...x,done:Number(x.done)||0}));
       state = {projects:p.projects||[],tasks:p.tasks||[]};
     }
@@ -502,7 +519,7 @@ function load() {
   .then(d=>{
     if(d.ok&&d.state&&d.state.projects&&d.state.projects.length>0){
       const p=d.state;
-      p.projects=p.projects.map(x=>({...x,stage:STAGEMAP[x.stage]||x.stage||'send',goalDaily:Number(x.goalDaily)||0,goalDone:Number(x.goalDone)||0,total:Number(x.total)||0,edited:Number(x.edited)||0,seconds:Number(x.seconds)||0,sessions:Number(x.sessions)||0}));
+      p.projects=p.projects.map(normalizeProject);
       p.tasks=(p.tasks||[]).map(x=>({...x,done:Number(x.done)||0}));
       state={projects:p.projects,tasks:p.tasks||[]};
       try{localStorage.setItem('karin_pm',JSON.stringify(state));}catch(e){}
@@ -527,7 +544,6 @@ function showPageMobile(p, el) {
   document.querySelectorAll('.mobile-nav-item').forEach(e=>e.classList.remove('active'));
   document.getElementById('page-'+p).classList.add('active');
   el.classList.add('active');
-  // sync desktop nav too
   document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
   const dn = document.getElementById('nav-'+p);
   if(dn) dn.classList.add('active');
@@ -564,7 +580,9 @@ function renderTasks() {
   document.getElementById('m-done').textContent = sorted.filter(t=>t.done).length;
   document.getElementById('m-projects').textContent = state.projects.filter(p=>p.stage!=='done').length;
   document.getElementById('m-remaining').textContent = state.projects.reduce((s,p)=>s+Math.max(0,(p.total||0)-(p.edited||0)),0);
-  document.getElementById('m-finished').textContent = state.projects.filter(p=>p.stage==='done').length;
+  // סה"כ נערכו היום מכל הפרויקטים
+  document.getElementById('m-edited-today').textContent = state.projects.reduce((s,p)=>s+(p.editedToday||0),0);
+
   document.getElementById('tasks-list').innerHTML = sorted.map(t=>`
     <div class="task-row">
       <div class="priority-strip ${PSTRIP[t.priority]}"></div>
@@ -629,6 +647,7 @@ function renderProjects() {
     const gd=p.goalDone||0, gt=p.goalDaily||0;
     const gpct=gt?Math.min(100,Math.round(gd/gt*100)):0;
     const rem=Math.max(0,(p.total||0)-(p.edited||0));
+    const et=p.editedToday||0;
     const urgCnt=state.tasks.filter(t=>t.client===p.client&&t.priority==='urgent'&&!t.done).length;
     const isRunning=activeTimer.projId===p.id;
     const secs=(p.seconds||0)+(isRunning?Math.floor((Date.now()-activeTimer.startTs)/1000):0);
@@ -649,7 +668,8 @@ function renderProjects() {
         <div class="mini-stat"><div class="mini-stat-label">סה"כ</div><div class="mini-stat-val">${p.total}</div></div>
         <div class="mini-stat"><div class="mini-stat-label">נערכו</div><div class="mini-stat-val">${p.edited}</div></div>
         <div class="mini-stat"><div class="mini-stat-label">נשאר</div><div class="mini-stat-val">${rem}</div></div>
-        <div class="mini-stat"><div class="mini-stat-label">היום</div><div class="mini-stat-val ${gt&&gd>=gt?'reached':''}">${gd}/${gt}</div></div>
+        <div class="mini-stat today-card"><div class="mini-stat-label">ערכתי היום</div><div class="mini-stat-val today">${et}</div></div>
+        <div class="mini-stat"><div class="mini-stat-label">יעד היום</div><div class="mini-stat-val ${gt&&gd>=gt?'reached':''}">${gd}/${gt}</div></div>
       </div>
       <div class="stage-row">${stages}</div>
       <div class="proj-bottom">
@@ -701,19 +721,49 @@ function renderProjects() {
 }
 
 function setStage(id,s){const p=state.projects.find(p=>p.id===id);if(p){p.stage=s;save();renderProjects();}}
-function updateEdited(id,v){const p=state.projects.find(p=>p.id===id);if(p){p.edited=Math.max(0,parseInt(v)||0);save();renderProjects();}}
+
+function updateEdited(id,v){
+  const p=state.projects.find(p=>p.id===id);
+  if(p){
+    const newVal=Math.max(0,parseInt(v)||0);
+    const diff=newVal-(p.edited||0);
+    if(diff>0) p.editedToday=(p.editedToday||0)+diff;
+    p.edited=newVal;
+    save();renderProjects();
+  }
+}
+
 function updateGoalDone(id,v){const p=state.projects.find(p=>p.id===id);if(p){p.goalDone=Math.max(0,parseInt(v)||0);save();renderProjects();}}
 function updateGoalTarget(id,v){const p=state.projects.find(p=>p.id===id);if(p){p.goalDaily=Math.max(0,parseInt(v)||0);save();renderProjects();}}
 function updateNotes(id,v){const p=state.projects.find(p=>p.id===id);if(p){p.notes=v;save();}}
 
-function bumpEdited(id,d){const p=state.projects.find(p=>p.id===id);if(!p)return;p.edited=Math.max(0,Math.min(p.total||9999,(p.edited||0)+d));const i=document.getElementById('edited-'+id);if(i)i.value=p.edited;save();renderProjects();}
+function bumpEdited(id,d){
+  const p=state.projects.find(p=>p.id===id);
+  if(!p) return;
+  p.edited=Math.max(0,Math.min(p.total||9999,(p.edited||0)+d));
+  if(d>0) p.editedToday=(p.editedToday||0)+d;
+  const i=document.getElementById('edited-'+id);
+  if(i) i.value=p.edited;
+  save();renderProjects();
+}
+
 function bumpGoal(id,d){const p=state.projects.find(p=>p.id===id);if(!p)return;p.goalDone=Math.max(0,(p.goalDone||0)+d);const i=document.getElementById('gdone-'+id);if(i)i.value=p.goalDone;save();renderProjects();}
 
 function addProject() {
   const client=document.getElementById('np-client').value.trim();
   const title=document.getElementById('np-title').value.trim();
   if(!client||!title) return;
-  state.projects.push({id:Date.now(),client,title,date:document.getElementById('np-date').value,stage:'send',total:parseInt(document.getElementById('np-total').value)||0,edited:0,goalDaily:parseInt(document.getElementById('np-goal').value)||0,goalDone:0,notes:'',seconds:0,sessions:0});
+  state.projects.push({
+    id:Date.now(),client,title,
+    date:document.getElementById('np-date').value,
+    stage:'send',
+    total:parseInt(document.getElementById('np-total').value)||0,
+    edited:0,
+    editedToday:0,
+    goalDaily:parseInt(document.getElementById('np-goal').value)||0,
+    goalDone:0,
+    notes:'',seconds:0,sessions:0
+  });
   ['np-client','np-title','np-date','np-total','np-goal'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('add-proj-form').classList.add('hidden');
   save(); renderProjects(); refreshSelects();
@@ -748,7 +798,12 @@ function refreshSelects(){
   if(cl) cl.innerHTML='<option value="">לקוח</option>'+[...new Set(state.projects.map(p=>p.client))].map(c=>`<option>${c}</option>`).join('');
 }
 
-function newDay(){if(!confirm('לאפס את היעדים היומיים?\nשאר המידע נשמר.'))return;state.projects.forEach(p=>{p.goalDone=0;});save();renderProjects();}
+function newDay(){
+  if(!confirm('לאפס את היעדים היומיים ואת ספירת "ערכתי היום"?\nשאר המידע נשמר.'))return;
+  state.projects.forEach(p=>{ p.goalDone=0; p.editedToday=0; });
+  save();renderProjects();renderTasks();
+}
+
 function resetAll(){if(!confirm('למחוק את כל הנתונים?'))return;state={projects:[],tasks:[]};try{localStorage.removeItem('karin_pm');}catch(e){}render();}
 
 function exportBackup(){
