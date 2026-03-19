@@ -455,7 +455,7 @@ const PORDER = {urgent:0,high:1,normal:2,low:3};
 const PLABEL = {urgent:'דחוף',high:'גבוה',normal:'רגיל',low:'נמוך'};
 const PBADGE = {urgent:'b-urgent',high:'b-high',normal:'b-normal',low:'b-low'};
 const PSTRIP = {urgent:'ps-urgent',high:'ps-high',normal:'ps-normal',low:'ps-low'};
-const STAGEMAP = {culling:'edit',retouch:'edit',approval:'wait',delivery:'deliver'};
+const STAGEMAP = {culling:'edit',retouch:'edit',approval:'wait',delivery:'deliver','s-send':'send','s-wait':'wait','s-edit':'edit','s-deliver':'deliver','s-notes':'notes','s-billing':'billing','s-done':'done'};
 
 let state = {projects:[],tasks:[]};
 let editingId = null;
@@ -578,7 +578,7 @@ function renderTasks() {
   document.getElementById('m-urgent').textContent = sorted.filter(t=>t.priority==='urgent'&&!t.done).length;
   document.getElementById('m-todo').textContent = sorted.filter(t=>!t.done).length;
   document.getElementById('m-done').textContent = sorted.filter(t=>t.done).length;
-  document.getElementById('m-projects').textContent = state.projects.filter(p=>p.stage!=='done').length;
+  document.getElementById('m-projects').textContent = state.projects.filter(p=>p.stage!=='done'&&p.stage!=='s-done').length;
   document.getElementById('m-remaining').textContent = state.projects.reduce((s,p)=>s+Math.max(0,(p.total||0)-(p.edited||0)),0);
   // סה"כ נערכו היום מכל הפרויקטים
   document.getElementById('m-edited-today').textContent = state.projects.reduce((s,p)=>s+(p.editedToday||0),0);
