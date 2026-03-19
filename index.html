@@ -651,7 +651,7 @@ function renderProjects() {
     const urgCnt=state.tasks.filter(t=>t.client===p.client&&t.priority==='urgent'&&!t.done).length;
     const isRunning=activeTimer.projId===p.id;
     const secs=(p.seconds||0)+(isRunning?Math.floor((Date.now()-activeTimer.startTs)/1000):0);
-    const stages=Object.keys(STAGES).map(s=>`<button class="stage-btn ${p.stage===s?'active s-'+s:''}" onclick="setStage(${p.id},'${s}')">${STAGES[s]}</button>`).join('');
+    const stages=Object.keys(STAGES).map(s=>`<button class="stage-btn ${p.stage===s?'active s-'+s:''}" data-pid="${p.id}" data-stage="${s}" onclick="setStageBtn(this)">${STAGES[s]}</button>`).join('');
     return `<div class="proj-card s-${p.stage||'send'}">
       <div class="proj-header">
         <div>
@@ -720,6 +720,7 @@ function renderProjects() {
   }).join('');
 }
 
+function setStageBtn(btn){const id=Number(btn.dataset.pid);const s=btn.dataset.stage;setStage(id,s);}
 function setStage(id,s){const p=state.projects.find(p=>p.id===id);if(p){p.stage=s;save();renderProjects();}}
 
 function updateEdited(id,v){
