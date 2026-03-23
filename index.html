@@ -502,13 +502,18 @@ function save() {
   },1500);
 }
 
+function dedup(arr) {
+  const seen = new Set();
+  return arr.filter(x => { if (seen.has(x.id)) return false; seen.add(x.id); return true; });
+}
+
 function load() {
   try {
     const s = localStorage.getItem('karin_pm');
     if (s) {
       const p = JSON.parse(s);
-      if (p.projects) p.projects = p.projects.map(normalizeProject);
-      if (p.tasks) p.tasks = p.tasks.map(x=>({...x,done:Number(x.done)||0}));
+      if (p.projects) p.projects = dedup(p.projects.map(normalizeProject));
+      if (p.tasks) p.tasks = dedup(p.tasks.map(x=>({...x,done:Number(x.done)||0})));
       state = {projects:p.projects||[],tasks:p.tasks||[]};
     }
   } catch(e) {}
@@ -520,8 +525,8 @@ function load() {
   .then(d=>{
     if(d.ok&&d.state&&d.state.projects&&d.state.projects.length>0){
       const p=d.state;
-      p.projects=p.projects.map(normalizeProject);
-      p.tasks=(p.tasks||[]).map(x=>({...x,done:Number(x.done)||0}));
+      p.projects=dedup(p.projects.map(normalizeProject));
+      p.tasks=dedup((p.tasks||[]).map(x=>({...x,done:Number(x.done)||0})));
       state={projects:p.projects,tasks:p.tasks||[]};
       try{localStorage.setItem('karin_pm',JSON.stringify(state));}catch(e){}
       setSyncStatus('✓ סונכרן','var(--accent)');
