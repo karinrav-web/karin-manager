@@ -716,7 +716,7 @@ function renderProjects() {
           <div class="num-row">
             <input type="number" value="${gd}" min="0" id="gdone-${p.id}" onchange="updateGoalDone(${p.id},this.value)" />
             <span>/</span>
-            <input type="number" value="${gt||''}" min="0" placeholder="יעד" style="width:55px" onchange="updateGoalTarget(${p.id},this.value)" />
+            <input type="number" value="${gt||''}" min="0" placeholder="יעד" style="width:55px" oninput="updateGoalTarget(${p.id},this.value)" />
             <span style="font-size:12px;color:var(--text3)">תמונות</span>
           </div>
           <div class="quick-btns">
@@ -760,7 +760,7 @@ function updateEdited(id,v){
 }
 
 function updateGoalDone(id,v){const p=state.projects.find(p=>p.id===id);if(p){p.goalDone=Math.max(0,parseInt(v)||0);save();renderProjects();renderTasks();}}
-function updateGoalTarget(id,v){const p=state.projects.find(p=>p.id===id);if(p){p.goalDaily=Math.max(0,parseInt(v)||0);save();renderProjects();renderTasks();}}
+function updateGoalTarget(id,v){const p=state.projects.find(p=>p.id===id);if(p){p.goalDaily=Math.max(0,parseInt(v)||0);console.log('goalDaily updated',id,p.goalDaily);renderTasks();save();renderProjects();}}
 function updateNotes(id,v){const p=state.projects.find(p=>p.id===id);if(p){p.notes=v;save();}}
 
 function bumpEdited(id,d){
