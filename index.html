@@ -586,11 +586,12 @@ function renderTasks() {
   document.getElementById('m-remaining').textContent = state.projects.filter(p=>p.stage==='edit').reduce((s,p)=>s+Math.max(0,(p.total||0)-(p.edited||0)),0);
   // סה"כ נערכו היום מכל הפרויקטים
   const totalGoal = state.projects.filter(p=>p.goalDaily>0).reduce((s,p)=>s+(p.goalDaily||0),0);
-  const totalDoneToday = state.projects.reduce((s,p)=>s+(p.editedToday||0),0);
-  document.getElementById('m-edited-today').textContent = totalDoneToday;
+  const totalEditedToday = state.projects.reduce((s,p)=>s+(p.editedToday||0),0);
+  const totalGoalDone = state.projects.reduce((s,p)=>s+(p.goalDone||0),0);
+  document.getElementById('m-edited-today').textContent = totalEditedToday;
   document.getElementById('m-goal-total').textContent = totalGoal;
-  document.getElementById('m-goal-done').textContent = totalDoneToday;
-  document.getElementById('m-goal-left').textContent = Math.max(0, totalGoal - totalDoneToday);
+  document.getElementById('m-goal-done').textContent = totalGoalDone;
+  document.getElementById('m-goal-left').textContent = Math.max(0, totalGoal - totalGoalDone);
 
   document.getElementById('tasks-list').innerHTML = sorted.map(t=>`
     <div class="task-row">
