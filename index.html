@@ -344,7 +344,7 @@
       </div>
       <div class="metric-row">
         <div class="metric-card"><div class="metric-val red" id="m-urgent">0</div><div class="metric-label">משימות דחופות</div></div>
-        <div class="metric-card"><div class="metric-val" id="m-todo">0</div><div class="metric-label">נשארו להיום</div></div>
+        <div class="metric-card"><div class="metric-val" id="m-todo">0</div><div class="metric-label">נשארו להיום (תמונות)</div></div>
         <div class="metric-card"><div class="metric-val green" id="m-done">0</div><div class="metric-label">הושלמו</div></div>
       </div>
       <div class="metric-row">
@@ -576,9 +576,11 @@ function render() { setGreeting(); renderTasks(); renderProjects(); refreshSelec
 function renderTasks() {
   const sorted = [...state.tasks].sort((a,b)=>PORDER[a.priority]-PORDER[b.priority]);
   document.getElementById('m-urgent').textContent = sorted.filter(t=>t.priority==='urgent'&&!t.done).length;
-  document.getElementById('m-todo').textContent = sorted.filter(t=>!t.done).length;
+  // נשארו להיום = סכום יעד יומי פחות מה שנערך היום
+  const todayRemaining = state.projects.filter(p=>p.goalDaily>0).reduce((s,p)=>s+Math.max(0,(p.goalDaily||0)-(p.editedToday||0)),0);
+  document.getElementById('m-todo').textContent = todayRemaining;
   document.getElementById('m-done').textContent = sorted.filter(t=>t.done).length;
-  document.getElementById('m-projects').textContent = state.projects.filter(p=>p.stage!=='done'&&p.stage!=='s-done').length;
+  document.getElementById('m-projects').textContent = state.projects.filter(p=>p.stage!=='done'&&p.stage!=='s-done'&&p.stage!=='billing'&&p.stage!=='s-billing').length;
   document.getElementById('m-remaining').textContent = state.projects.reduce((s,p)=>s+Math.max(0,(p.total||0)-(p.edited||0)),0);
   // סה"כ נערכו היום מכל הפרויקטים
   document.getElementById('m-edited-today').textContent = state.projects.reduce((s,p)=>s+(p.editedToday||0),0);
