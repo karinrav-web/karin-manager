@@ -346,7 +346,7 @@
       <div class="metric-row">
         <div class="metric-card"><div class="metric-val" id="m-projects">0</div><div class="metric-label">פרויקטים פעילים</div></div>
         <div class="metric-card"><div class="metric-val" id="m-remaining">0</div><div class="metric-label">תמונות לעריכה</div></div>
-        <div class="metric-card"><div class="metric-val green" id="m-edited-today">0</div><div class="metric-label">נערכו היום (סה"כ)</div></div>
+        <div class="metric-card"><div class="metric-val" id="m-edited-today">0</div><div class="metric-label">נערכו היום</div></div>
       </div>
       <div class="metric-row">
         <div class="metric-card"><div class="metric-val" id="m-goal-total">0</div><div class="metric-label">יעד יומי (סה"כ)</div></div>
@@ -485,6 +485,7 @@ function normalizeProject(x) {
     total: Number(x.total)||0,
     edited: Number(x.edited)||0,
     editedToday: Number(x.editedToday)||0,
+    goalDone: 0,
     seconds: Number(x.seconds)||0,
     sessions: Number(x.sessions)||0
   };
@@ -587,11 +588,10 @@ function renderTasks() {
   // סה"כ נערכו היום מכל הפרויקטים
   const totalGoal = state.projects.filter(p=>p.goalDaily>0).reduce((s,p)=>s+(p.goalDaily||0),0);
   const totalEditedToday = state.projects.reduce((s,p)=>s+(p.editedToday||0),0);
-  const totalGoalDone = state.projects.reduce((s,p)=>s+(p.goalDone||0),0);
   document.getElementById('m-edited-today').textContent = totalEditedToday;
   document.getElementById('m-goal-total').textContent = totalGoal;
-  document.getElementById('m-goal-done').textContent = totalGoalDone;
-  document.getElementById('m-goal-left').textContent = Math.max(0, totalGoal - totalGoalDone);
+  document.getElementById('m-goal-done').textContent = totalEditedToday;
+  document.getElementById('m-goal-left').textContent = Math.max(0, totalGoal - totalEditedToday);
 
   document.getElementById('tasks-list').innerHTML = sorted.map(t=>`
     <div class="task-row">
