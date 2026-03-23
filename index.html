@@ -642,6 +642,14 @@ function stopTimer() {
   save(); renderProjects();
 }
 
+let expandedProjects = new Set();
+
+function toggleExpand(id) {
+  if (expandedProjects.has(id)) expandedProjects.delete(id);
+  else expandedProjects.add(id);
+  renderProjects();
+}
+
 function renderProjects() {
   const el=document.getElementById('projects-list');
   if(!el) return;
@@ -661,26 +669,33 @@ function renderProjects() {
     const isRunning=activeTimer.projId===p.id;
     const secs=(p.seconds||0)+(isRunning?Math.floor((Date.now()-activeTimer.startTs)/1000):0);
     const stages=Object.keys(STAGES).map(s=>`<button class="stage-btn ${p.stage===s?'active s-'+s:''}" data-pid="${p.id}" data-stage="${s}" onclick="setStageBtn(this)">${STAGES[s]}</button>`).join('');
+    const isExpanded = expandedProjects.has(p.id);
     return `<div class="proj-card s-${p.stage||'send'}">
-      <div class="proj-header">
-        <div>
-          <div class="proj-name">${p.client} — ${p.title}</div>
-          <div class="proj-sub">מועד: ${p.date||'—'} · ${pct}% הושלם</div>
+      <!-- COMPACT ROW -->
+      <div class="proj-compact" onclick="toggleExpand(${p.id})" style="cursor:pointer;display:flex;align-items:center;gap:10px;">
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <span class="proj-name" style="font-size:14px;">${p.client} — ${p.title}</span>
+            ${urgCnt?`<span class="badge b-urgent">${urgCnt} דחוף</span>`:''}
+          </div>
+          <div style="display:flex;gap:12px;margin-top:4px;font-size:12px;color:var(--text3);align-items:center;">
+            <span style="background:var(--s-${p.stage}-b,var(--border));color:#fff;padding:1px 8px;border-radius:20px;font-size:11px;background-color:var(--s-${p.stage}-b)">${STAGES[p.stage]||p.stage}</span>
+            <span>נערכו ${p.edited}/${p.total}</span>
+            <span style="color:var(--accent)">היום: ${et}</span>
+            ${gt?`<span style="color:${gd>=gt?'var(--accent)':'var(--text3)'}">יעד: ${gd}/${gt}</span>`:''}
+            <span>${pct}%</span>
+          </div>
         </div>
-        <div class="proj-badges">
-          ${urgCnt?`<span class="badge b-urgent">${urgCnt} דחוף</span>`:''}
-          <button class="edit-btn" onclick="openEdit(${p.id})">✏ עריכה</button>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;" onclick="event.stopPropagation()">
+          <button class="edit-btn" onclick="openEdit(${p.id})">✏</button>
+          <span style="font-size:11px;color:var(--text3);padding:4px 8px;">${isExpanded?'▲':'▼'}</span>
         </div>
       </div>
-      <div class="prog-bar"><div class="prog-fill ${fillCls}" style="width:${pct}%"></div></div>
-      <div class="mini-stats">
-        <div class="mini-stat"><div class="mini-stat-label">סה"כ</div><div class="mini-stat-val">${p.total}</div></div>
-        <div class="mini-stat"><div class="mini-stat-label">נערכו</div><div class="mini-stat-val">${p.edited}</div></div>
-        <div class="mini-stat"><div class="mini-stat-label">נשאר</div><div class="mini-stat-val">${rem}</div></div>
-        <div class="mini-stat today-card"><div class="mini-stat-label">ערכתי היום</div><div class="mini-stat-val today">${et}</div></div>
-        <div class="mini-stat"><div class="mini-stat-label">יעד היום</div><div class="mini-stat-val ${gt&&gd>=gt?'reached':''}">${gd}/${gt}</div></div>
-      </div>
-      <div class="stage-row">${stages}</div>
+      <div class="prog-bar" style="margin-top:6px;"><div class="prog-fill ${fillCls}" style="width:${pct}%"></div></div>
+
+      <!-- EXPANDED CONTENT -->
+      ${isExpanded ? `
+      <div class="stage-row" style="margin-top:10px;">${stages}</div>
       <div class="proj-bottom">
         <div>
           <div class="proj-section-label">תמונות שנערכו</div>
@@ -725,6 +740,7 @@ function renderProjects() {
         </div>
         <button class="timer-btn ${isRunning?'running':''}" id="ptb-${p.id}" onclick="toggleTimer(${p.id})">${isRunning?'⏹ עצור':'▶ התחל'}</button>
       </div>
+      ` : ''}
     </div>`;
   }).join('');
 }
@@ -743,8 +759,8 @@ function updateEdited(id,v){
   }
 }
 
-function updateGoalDone(id,v){const p=state.projects.find(p=>p.id===id);if(p){p.goalDone=Math.max(0,parseInt(v)||0);save();renderProjects();}}
-function updateGoalTarget(id,v){const p=state.projects.find(p=>p.id===id);if(p){p.goalDaily=Math.max(0,parseInt(v)||0);save();renderProjects();}}
+function updateGoalDone(id,v){const p=state.projects.find(p=>p.id===id);if(p){p.goalDone=Math.max(0,parseInt(v)||0);save();renderProjects();renderTasks();}}
+function updateGoalTarget(id,v){const p=state.projects.find(p=>p.id===id);if(p){p.goalDaily=Math.max(0,parseInt(v)||0);save();renderProjects();renderTasks();}}
 function updateNotes(id,v){const p=state.projects.find(p=>p.id===id);if(p){p.notes=v;save();}}
 
 function bumpEdited(id,d){
@@ -754,10 +770,10 @@ function bumpEdited(id,d){
   if(d>0) p.editedToday=(p.editedToday||0)+d;
   const i=document.getElementById('edited-'+id);
   if(i) i.value=p.edited;
-  save();renderProjects();
+  save();renderProjects();renderTasks();
 }
 
-function bumpGoal(id,d){const p=state.projects.find(p=>p.id===id);if(!p)return;p.goalDone=Math.max(0,(p.goalDone||0)+d);const i=document.getElementById('gdone-'+id);if(i)i.value=p.goalDone;save();renderProjects();}
+function bumpGoal(id,d){const p=state.projects.find(p=>p.id===id);if(!p)return;p.goalDone=Math.max(0,(p.goalDone||0)+d);const i=document.getElementById('gdone-'+id);if(i)i.value=p.goalDone;save();renderProjects();renderTasks();}
 
 function addProject() {
   const client=document.getElementById('np-client').value.trim();
