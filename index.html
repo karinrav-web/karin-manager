@@ -130,7 +130,7 @@
   .prog-fill.amber { background:var(--high); }
   .prog-fill.red { background:var(--urgent); }
 
-  .proj-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px 22px; margin-bottom:14px; border-top:4px solid var(--border); }
+  .proj-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:12px 16px; margin-bottom:10px; border-top:4px solid var(--border); }
   .proj-card.s-send    { border-top-color:var(--s-send-b);    background:linear-gradient(to bottom,var(--s-send) 0%,var(--surface) 70px); }
   .proj-card.s-wait    { border-top-color:var(--s-wait-b);    background:linear-gradient(to bottom,var(--s-wait) 0%,var(--surface) 70px); }
   .proj-card.s-edit    { border-top-color:var(--s-edit-b);    background:linear-gradient(to bottom,var(--s-edit) 0%,var(--surface) 70px); }
@@ -145,14 +145,14 @@
   .proj-badges { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
 
   .mini-stats { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin-top:12px; }
-  .mini-stat { background:var(--surface2); border-radius:var(--radius-sm); padding:8px 10px; text-align:center; }
+  .mini-stat { background:var(--surface2); border-radius:var(--radius-sm); padding:5px 8px; text-align:center; }
   .mini-stat-label { font-size:11px; color:var(--text3); margin-bottom:3px; }
-  .mini-stat-val { font-size:17px; font-weight:600; color:var(--text); }
+  .mini-stat-val { font-size:15px; font-weight:600; color:var(--text); }
   .mini-stat-val.reached { color:var(--accent); }
   .mini-stat-val.today { color:var(--accent); }
   .mini-stat.today-card { border:1.5px solid var(--accent); background:var(--accent-light); }
 
-  .stage-row { display:flex; gap:6px; margin-top:12px; flex-wrap:wrap; }
+  .stage-row { display:flex; gap:4px; margin-top:8px; flex-wrap:wrap; }
   .stage-btn {
     font-size:11px; padding:5px 12px; border:1px solid var(--border); border-radius:20px;
     background:var(--surface2); cursor:pointer; color:var(--text2); font-family:'Heebo',sans-serif; transition:all 0.15s;
@@ -167,7 +167,7 @@
   .stage-btn.active.s-billing { background:var(--s-billing-b); border-color:var(--s-billing-b); }
   .stage-btn.active.s-done    { background:var(--s-done-b);    border-color:var(--s-done-b); }
 
-  .proj-bottom { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:14px; padding-top:14px; border-top:1px solid var(--border); }
+  .proj-bottom { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:10px; padding-top:10px; border-top:1px solid var(--border); }
   .proj-section-label { font-size:11px; color:var(--text3); margin-bottom:8px; font-weight:500; text-transform:uppercase; letter-spacing:0.04em; }
 
   .num-row { display:flex; align-items:center; gap:8px; }
@@ -189,18 +189,18 @@
   .qbtn:hover { background:var(--accent-light); border-color:var(--accent); color:var(--accent); }
   .qbtn.minus:hover { background:var(--urgent-light); border-color:var(--urgent); color:var(--urgent); }
 
-  .notes-area { margin-top:14px; padding-top:14px; border-top:1px solid var(--border); }
+  .notes-area { margin-top:8px; padding-top:8px; border-top:1px solid var(--border); }
   .notes-area textarea {
     width:100%; padding:8px 12px; font-size:13px; line-height:1.5;
     border:1px solid var(--border); border-radius:var(--radius-sm);
     background:var(--surface2); color:var(--text); font-family:'Heebo',sans-serif;
-    resize:none; outline:none; min-height:60px;
+    resize:none; outline:none; min-height:44px;
   }
   .notes-area textarea:focus { border-color:var(--accent); background:var(--surface); }
 
   .timer-row {
     display:flex; align-items:center; justify-content:space-between;
-    margin-top:14px; padding-top:14px; border-top:1px solid var(--border);
+    margin-top:8px; padding-top:8px; border-top:1px solid var(--border);
   }
   .timer-info { }
   .timer-val { font-size:22px; font-weight:600; font-variant-numeric:tabular-nums; color:var(--text); }
@@ -800,9 +800,10 @@ function refreshSelects(){
 }
 
 function newDay(){
-  if(!confirm('לאפס את היעדים היומיים ואת ספירת "ערכתי היום"?\nשאר המידע נשמר.'))return;
+  if(!confirm('יום חדש:\n• יעדים יומיים ו"ערכתי היום" יאופסו\n• סימוני ✓ על משימות יאופסו\nשאר המידע נשמר.'))return;
   state.projects.forEach(p=>{ p.goalDone=0; p.editedToday=0; });
-  save();renderProjects();renderTasks();
+  state.tasks.forEach(t=>{ t.done=0; });
+  save();render();
 }
 
 function resetAll(){if(!confirm('למחוק את כל הנתונים?'))return;state={projects:[],tasks:[]};try{localStorage.removeItem('karin_pm');}catch(e){}render();}
