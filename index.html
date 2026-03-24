@@ -657,23 +657,27 @@ function renderUrgency(){
   }).sort((a,b)=>a.diff-b.diff);
 
   el.innerHTML=rows.map(({p,wdaysLeft,editDaysLeft,rem,recToday,diff,canFinish})=>{
-    const cls=diff<0?'danger':diff<=1?'warn':'ok';
-    const status=diff<0?`חסרים ${Math.abs(diff)} ימי עריכה!`:diff===0?'בדיוק בזמן':`${diff} ימי עריכה פנויים`;
-    const feasibility=rem===0?'':canFinish
-      ?`<span style="color:var(--accent);font-size:11px;">✓ ניתן לסיים (${wdaysLeft} ימי עבודה)</span>`
-      :`<span style="color:var(--urgent);font-size:11px;">⚠ קשה לסיים (${wdaysLeft} ימי עבודה)</span>`;
+    const daysNeeded=Math.ceil(rem/photosPerDay)||0;
+    const cls=rem===0?'ok':diff<0?'danger':diff<=1?'warn':'ok';
     const deadlineStr=new Date(p.deadline).toLocaleDateString('he-IL');
+    // תווית ראשית: כמה ימים צריך
+    let mainLabel, mainCls;
+    if(rem===0){ mainLabel='הסתיים'; mainCls='ok'; }
+    else if(daysNeeded<=1){ mainLabel='יום 1'; mainCls='ok'; }
+    else { mainLabel=`${daysNeeded} ימים`; mainCls=diff<0?'danger':diff<=1?'warn':'ok'; }
+    // סטטוס
+    const status=rem===0?'✓ הסתיים':diff<0?`⚠ חסרים ${Math.abs(diff)} ימי עריכה!`:diff===0?'בדיוק בזמן':`יש ${diff} ימי חיץ`;
     return `<div class="urgency-row">
-      <div class="urgency-days ${cls}" title="ימי עריכה מסומנים עד הדדליין">
-        <div style="font-size:11px;color:inherit;opacity:0.7;">ימים</div>
-        ${editDaysLeft}
+      <div class="urgency-days ${mainCls}" style="min-width:52px;text-align:center;">
+        <div style="font-size:18px;font-weight:700;">${daysNeeded}</div>
+        <div style="font-size:10px;opacity:0.75;">ימים לסיום</div>
       </div>
       <div class="urgency-info">
         <div class="urgency-name">${p.client} — ${p.title}</div>
         <div class="urgency-sub">דדליין: ${deadlineStr} · נשאר ${rem} תמונות · ${status}</div>
-        ${rem>0?`<div style="margin-top:2px;">${feasibility}</div>`:''}
+        <div style="margin-top:2px;font-size:11px;color:var(--text3)">${editDaysLeft} ימי עריכה פנויים · ${wdaysLeft} ימי עבודה</div>
       </div>
-      ${rem>0?`<div class="urgency-rec">+${recToday} היום</div>`:'<div class="urgency-rec" style="background:var(--normal-light)">✓ הסתיים</div>'}
+      ${rem>0?`<div class="urgency-rec">+${recToday} היום</div>`:'<div class="urgency-rec" style="background:var(--normal-light)">✓</div>'}
     </div>`;
   }).join('');
 }
