@@ -1042,7 +1042,7 @@ function updateGoalDone(id,v){
     p.edited=Math.min(p.total||9999,(p.edited||0)+diff);
     p.editedToday=(p.editedToday||0)+diff;
   }
-  save();renderProjects();renderTasks();
+  save();renderProjects();renderTasks();renderUrgency();
 }
 function updateGoalTarget(id,v){const p=state.projects.find(p=>p.id===id);if(p){p.goalDaily=Math.max(0,parseInt(v)||0);console.log('goalDaily updated',id,p.goalDaily);renderTasks();save();renderProjects();}}
 function updateNotes(id,v){const p=state.projects.find(p=>p.id===id);if(p){p.notes=v;save();}}
@@ -1054,7 +1054,7 @@ function bumpEdited(id,d){
   if(d>0) p.editedToday=(p.editedToday||0)+d;
   const i=document.getElementById('edited-'+id);
   if(i) i.value=p.edited;
-  save();renderProjects();renderTasks();
+  save();renderProjects();renderTasks();renderUrgency();
 }
 
 function bumpGoal(id,d){
@@ -1067,7 +1067,7 @@ function bumpGoal(id,d){
   }
   const i=document.getElementById('gdone-'+id);if(i)i.value=p.goalDone;
   const e=document.getElementById('edited-'+id);if(e)e.value=p.edited;
-  save();renderProjects();renderTasks();
+  save();renderProjects();renderTasks();renderUrgency();
 }
 
 function addProject() {
