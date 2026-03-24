@@ -1019,7 +1019,17 @@ function updateEdited(id,v){
   }
 }
 
-function updateGoalDone(id,v){const p=state.projects.find(p=>p.id===id);if(p){p.goalDone=Math.max(0,parseInt(v)||0);save();renderProjects();renderTasks();}}
+function updateGoalDone(id,v){
+  const p=state.projects.find(p=>p.id===id);if(!p)return;
+  const newVal=Math.max(0,parseInt(v)||0);
+  const diff=newVal-(p.goalDone||0);
+  p.goalDone=newVal;
+  if(diff>0){
+    p.edited=Math.min(p.total||9999,(p.edited||0)+diff);
+    p.editedToday=(p.editedToday||0)+diff;
+  }
+  save();renderProjects();renderTasks();
+}
 function updateGoalTarget(id,v){const p=state.projects.find(p=>p.id===id);if(p){p.goalDaily=Math.max(0,parseInt(v)||0);console.log('goalDaily updated',id,p.goalDaily);renderTasks();save();renderProjects();}}
 function updateNotes(id,v){const p=state.projects.find(p=>p.id===id);if(p){p.notes=v;save();}}
 
@@ -1033,7 +1043,18 @@ function bumpEdited(id,d){
   save();renderProjects();renderTasks();
 }
 
-function bumpGoal(id,d){const p=state.projects.find(p=>p.id===id);if(!p)return;p.goalDone=Math.max(0,(p.goalDone||0)+d);const i=document.getElementById('gdone-'+id);if(i)i.value=p.goalDone;save();renderProjects();renderTasks();}
+function bumpGoal(id,d){
+  const p=state.projects.find(p=>p.id===id);if(!p)return;
+  p.goalDone=Math.max(0,(p.goalDone||0)+d);
+  // עדכון גם בספירה הכוללת ובערכתי היום
+  if(d>0){
+    p.edited=Math.min(p.total||9999,(p.edited||0)+d);
+    p.editedToday=(p.editedToday||0)+d;
+  }
+  const i=document.getElementById('gdone-'+id);if(i)i.value=p.goalDone;
+  const e=document.getElementById('edited-'+id);if(e)e.value=p.edited;
+  save();renderProjects();renderTasks();
+}
 
 function addProject() {
   const client=document.getElementById('np-client').value.trim();
