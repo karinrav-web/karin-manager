@@ -583,10 +583,12 @@ function save() {
   clearTimeout(saveTimer);
   setSyncStatus('שומר...','var(--text3)');
   saveTimer=setTimeout(()=>{
-    // שולחים לענן בלי השדות היומיים — הם נשמרים רק מקומית
+    // שולחים לענן בלי השדות היומיים בלבד
     const cloudState = {
       lastReset: state.lastReset,
       tasks: state.tasks,
+      settings: state.settings,
+      editDays: state.editDays||{},
       projects: state.projects.map(p=>({...p, goalDone:0, editedToday:0}))
     };
     fetch(API,{method:'POST',body:JSON.stringify({action:'save',state:cloudState})})
@@ -761,7 +763,7 @@ function load() {
       const p=d.state;
       p.projects=dedup(p.projects.map(normalizeProject));
       p.tasks=dedup((p.tasks||[]).map(x=>({...x,done:Number(x.done)||0})));
-      // שחזור שדות יומיים מה-localStorage
+      // שחזור שדות יומיים מה-localStorage, שאר השדות מהענן
       let localDaily = {};
       try {
         const ls = localStorage.getItem('karin_pm');
@@ -769,7 +771,13 @@ function load() {
       } catch(e){}
       p.projects = p.projects.map(x=>({...x, goalDone:(localDaily[x.id]||{}).goalDone||0, editedToday:(localDaily[x.id]||{}).editedToday||0}));
       const localLastReset = (() => { try{ const ls=localStorage.getItem('karin_pm'); return ls?JSON.parse(ls).lastReset||'':''; }catch(e){return '';} })();
-      state=applyDayReset({projects:p.projects,tasks:p.tasks||[],lastReset:localLastReset||p.lastReset||'',settings:p.settings||{hoursPerDay:6,photosPerDay:20,workDays:[0,1,2,3,4]},editDays:p.editDays||{}});
+      state=applyDayReset({
+        projects:p.projects,
+        tasks:p.tasks||[],
+        lastReset:localLastReset||p.lastReset||'',
+        settings:p.settings||{hoursPerDay:6,photosPerDay:20,workDays:[0,1,2,3,4]},
+        editDays:p.editDays||{}
+      });
       try{localStorage.setItem('karin_pm',JSON.stringify(state));}catch(e){}
       setSyncStatus('✓ סונכרן','var(--accent)');
       render();
