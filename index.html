@@ -249,6 +249,25 @@
   .btn-cancel { background:transparent; border:1px solid var(--border2); color:var(--text2); }
   .btn-delete { background:transparent; border:1px solid var(--urgent); color:var(--urgent); margin-left:auto; }
 
+  .wday-btn {
+    padding:4px 7px; font-size:11px; font-family:'Heebo',sans-serif;
+    border:1px solid var(--border2); border-radius:4px;
+    background:var(--surface2); cursor:pointer; color:var(--text3);
+  }
+  .wday-btn.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+
+  .urgency-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px 20px; margin-bottom:18px; }
+  .urgency-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); }
+  .urgency-row:last-child { border-bottom:none; }
+  .urgency-days { font-size:22px; font-weight:600; min-width:36px; text-align:center; }
+  .urgency-days.ok { color:var(--accent); }
+  .urgency-days.warn { color:var(--high); }
+  .urgency-days.danger { color:var(--urgent); }
+  .urgency-info { flex:1; }
+  .urgency-name { font-size:14px; font-weight:500; }
+  .urgency-sub { font-size:12px; color:var(--text3); margin-top:2px; }
+  .urgency-rec { font-size:12px; font-weight:600; color:var(--accent); background:var(--accent-light); padding:2px 8px; border-radius:20px; white-space:nowrap; }
+
   @media (max-width: 768px) {
     .sidebar { display:none; }
     .main { margin-right:0; padding:16px; max-width:100%; }
@@ -319,6 +338,27 @@
       <div class="sub-item" onclick="filterStage('billing',this)"><div class="sub-dot" style="background:var(--s-billing-b)"></div>גביה</div>
       <div class="sub-item" onclick="filterStage('done',this)"><div class="sub-dot" style="background:var(--s-done-b)"></div>הסתיים</div>
     </div>
+    <div style="padding:16px 24px;border-top:1px solid var(--border)">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:8px;font-weight:500;">⚙ הגדרות עריכה</div>
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+        <label style="font-size:12px;color:var(--text2);width:90px;">שעות/יום</label>
+        <input type="number" id="s-hours" min="1" max="16" value="6" style="width:50px;padding:4px 6px;font-size:13px;border:1px solid var(--border2);border-radius:4px;font-family:'Heebo',sans-serif;" oninput="saveSettings()"/>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
+        <label style="font-size:12px;color:var(--text2);width:90px;">תמונות/שעה</label>
+        <input type="number" id="s-rate" min="1" max="200" value="30" style="width:50px;padding:4px 6px;font-size:13px;border:1px solid var(--border2);border-radius:4px;font-family:'Heebo',sans-serif;" oninput="saveSettings()"/>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">ימי עבודה</div>
+      <div style="display:flex;gap:3px;flex-wrap:wrap;">
+        <button class="wday-btn active" data-day="0" onclick="toggleWorkDay(0,this)">א</button>
+        <button class="wday-btn active" data-day="1" onclick="toggleWorkDay(1,this)">ב</button>
+        <button class="wday-btn active" data-day="2" onclick="toggleWorkDay(2,this)">ג</button>
+        <button class="wday-btn active" data-day="3" onclick="toggleWorkDay(3,this)">ד</button>
+        <button class="wday-btn active" data-day="4" onclick="toggleWorkDay(4,this)">ה</button>
+        <button class="wday-btn" data-day="5" onclick="toggleWorkDay(5,this)">ו</button>
+        <button class="wday-btn" data-day="6" onclick="toggleWorkDay(6,this)">ש</button>
+      </div>
+    </div>
     <div style="margin-top:auto;padding:16px 24px;border-top:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">סנכרון ענן</div>
       <div id="sync-status" style="font-size:12px;color:var(--text3);margin-bottom:10px">מתחבר...</div>
@@ -377,6 +417,10 @@
             <button class="btn-save" onclick="addTask()">שמור</button>
           </div>
         </div>
+      </div>
+      <div class="urgency-card">
+        <div class="card-title">📅 תעדוף לפי דדליין</div>
+        <div id="urgency-list"><p style="font-size:13px;color:var(--text3)">אין פרויקטים עם דדליין</p></div>
       </div>
     </div>
 
@@ -458,7 +502,7 @@ const PBADGE = {urgent:'b-urgent',high:'b-high',normal:'b-normal',low:'b-low'};
 const PSTRIP = {urgent:'ps-urgent',high:'ps-high',normal:'ps-normal',low:'ps-low'};
 const STAGEMAP = {culling:'edit',retouch:'edit',approval:'wait',delivery:'deliver','s-send':'send','s-wait':'wait','s-edit':'edit','s-deliver':'deliver','s-notes':'notes','s-billing':'billing','s-done':'done'};
 
-let state = {projects:[],tasks:[]};
+let state = {projects:[],tasks:[],settings:{hoursPerDay:6,photosPerHour:30,workDays:[0,1,2,3,4]}}; // 0=ראשון 6=שבת
 let editingId = null;
 let stageFilter = null;
 let activeTimer = {projId:null,startTs:null,iv:null};
@@ -508,6 +552,80 @@ function save() {
   },1500);
 }
 
+function saveSettings(){
+  const h=parseInt(document.getElementById('s-hours').value)||6;
+  const r=parseInt(document.getElementById('s-rate').value)||30;
+  state.settings={...state.settings,hoursPerDay:h,photosPerHour:r};
+  save(); renderUrgency();
+}
+
+function toggleWorkDay(day,btn){
+  btn.classList.toggle('active');
+  const wd=state.settings.workDays||[];
+  const idx=wd.indexOf(day);
+  if(idx>=0) wd.splice(idx,1); else wd.push(day);
+  state.settings.workDays=wd;
+  save(); renderUrgency();
+}
+
+function loadSettings(){
+  const s=state.settings||{};
+  const h=document.getElementById('s-hours');
+  const r=document.getElementById('s-rate');
+  if(h) h.value=s.hoursPerDay||6;
+  if(r) r.value=s.photosPerHour||30;
+  const wd=s.workDays||[0,1,2,3,4];
+  document.querySelectorAll('.wday-btn').forEach(btn=>{
+    const d=Number(btn.dataset.day);
+    btn.classList.toggle('active', wd.includes(d));
+  });
+}
+
+function countWorkDays(fromDate, toDate, workDays){
+  let count=0;
+  const d=new Date(fromDate);
+  while(d<=toDate){ if(workDays.includes(d.getDay())) count++; d.setDate(d.getDate()+1); }
+  return count;
+}
+
+function renderUrgency(){
+  const el=document.getElementById('urgency-list');
+  if(!el) return;
+  const s=state.settings||{};
+  const hoursPerDay=s.hoursPerDay||6;
+  const photosPerHour=s.photosPerHour||30;
+  const workDays=s.workDays||[0,1,2,3,4];
+  const photosPerDay=hoursPerDay*photosPerHour;
+  const today=new Date(); today.setHours(0,0,0,0);
+
+  const active=state.projects.filter(p=>p.stage!=='done'&&p.stage!=='billing'&&p.date);
+  if(!active.length){el.innerHTML='<p style="font-size:13px;color:var(--text3)">אין פרויקטים עם דדליין</p>';return;}
+
+  const rows=active.map(p=>{
+    const deadline=new Date(p.date); deadline.setHours(0,0,0,0);
+    const daysLeft=countWorkDays(today,deadline,workDays);
+    const rem=Math.max(0,(p.total||0)-(p.edited||0));
+    const daysNeeded=photosPerDay>0?Math.ceil(rem/photosPerDay):999;
+    const recToday=daysLeft>0?Math.ceil(rem/daysLeft):rem;
+    const diff=daysLeft-daysNeeded;
+    return {p,daysLeft,rem,daysNeeded,recToday,diff,deadline};
+  }).sort((a,b)=>a.diff-b.diff); // הכי דחוף קודם
+
+  el.innerHTML=rows.map(({p,daysLeft,rem,daysNeeded,recToday,diff})=>{
+    const cls=diff<0?'danger':diff<=2?'warn':'ok';
+    const status=diff<0?`מאחר ב-${Math.abs(diff)} ימים!`:diff===0?'בדיוק בזמן':`${diff} ימים לפנים`;
+    const deadlineStr=new Date(p.date).toLocaleDateString('he-IL');
+    return `<div class="urgency-row">
+      <div class="urgency-days ${cls}">${daysLeft}</div>
+      <div class="urgency-info">
+        <div class="urgency-name">${p.client} — ${p.title}</div>
+        <div class="urgency-sub">דדליין: ${deadlineStr} · נשאר ${rem} תמונות · ${status}</div>
+      </div>
+      ${rem>0?`<div class="urgency-rec">+${recToday} היום</div>`:'<div class="urgency-rec" style="background:var(--normal-light)">✓ הסתיים</div>'}
+    </div>`;
+  }).join('');
+}
+
 function dedup(arr) {
   const seen = new Set();
   return arr.filter(x => { if (seen.has(x.id)) return false; seen.add(x.id); return true; });
@@ -520,7 +638,7 @@ function load() {
       const p = JSON.parse(s);
       if (p.projects) p.projects = dedup(p.projects.map(normalizeProject));
       if (p.tasks) p.tasks = dedup(p.tasks.map(x=>({...x,done:Number(x.done)||0})));
-      state = applyDayReset({projects:p.projects||[],tasks:p.tasks||[]});
+      state = applyDayReset({projects:p.projects||[],tasks:p.tasks||[],settings:p.settings||{hoursPerDay:6,photosPerHour:30,workDays:[0,1,2,3,4]}});
     }
   } catch(e) {}
   setSyncStatus('טוען...','var(--text3)');
@@ -542,7 +660,7 @@ function load() {
       } catch(e){}
       p.projects = p.projects.map(x=>({...x, goalDone:(localDaily[x.id]||{}).goalDone||0, editedToday:(localDaily[x.id]||{}).editedToday||0}));
       const localLastReset = (() => { try{ const ls=localStorage.getItem('karin_pm'); return ls?JSON.parse(ls).lastReset||'':''; }catch(e){return '';} })();
-      state=applyDayReset({projects:p.projects,tasks:p.tasks||[],lastReset:localLastReset||p.lastReset||''});
+      state=applyDayReset({projects:p.projects,tasks:p.tasks||[],lastReset:localLastReset||p.lastReset||'',settings:p.settings||{hoursPerDay:6,photosPerHour:30,workDays:[0,1,2,3,4]}});
       try{localStorage.setItem('karin_pm',JSON.stringify(state));}catch(e){}
       setSyncStatus('✓ סונכרן','var(--accent)');
       render();
@@ -592,7 +710,7 @@ function setGreeting() {
   document.getElementById('today-date').textContent = 'יום '+days[d.getDay()]+', '+d.toLocaleDateString('he-IL');
 }
 
-function render() { setGreeting(); renderTasks(); renderProjects(); refreshSelects(); }
+function render() { setGreeting(); renderTasks(); renderProjects(); refreshSelects(); renderUrgency(); loadSettings(); }
 
 function renderTasks() {
   const sorted = [...state.tasks].sort((a,b)=>PORDER[a.priority]-PORDER[b.priority]);
