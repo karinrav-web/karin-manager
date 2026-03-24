@@ -664,7 +664,10 @@ function renderUrgency(){
       :`<span style="color:var(--urgent);font-size:11px;">⚠ קשה לסיים (${wdaysLeft} ימי עבודה)</span>`;
     const deadlineStr=new Date(p.deadline).toLocaleDateString('he-IL');
     return `<div class="urgency-row">
-      <div class="urgency-days ${cls}">${editDaysLeft}</div>
+      <div class="urgency-days ${cls}" title="ימי עריכה מסומנים עד הדדליין">
+        <div style="font-size:11px;color:inherit;opacity:0.7;">ימים</div>
+        ${editDaysLeft}
+      </div>
       <div class="urgency-info">
         <div class="urgency-name">${p.client} — ${p.title}</div>
         <div class="urgency-sub">דדליין: ${deadlineStr} · נשאר ${rem} תמונות · ${status}</div>
@@ -763,20 +766,31 @@ function load() {
       const p=d.state;
       p.projects=dedup(p.projects.map(normalizeProject));
       p.tasks=dedup((p.tasks||[]).map(x=>({...x,done:Number(x.done)||0})));
-      // שחזור שדות יומיים מה-localStorage, שאר השדות מהענן
-      let localDaily = {};
+      // localStorage תמיד גובר על הענן לשדות מקומיים
+      let local = {};
       try {
         const ls = localStorage.getItem('karin_pm');
-        if(ls){ const lp=JSON.parse(ls); (lp.projects||[]).forEach(x=>{ localDaily[x.id]={goalDone:x.goalDone||0,editedToday:x.editedToday||0}; }); }
+        if(ls) local = JSON.parse(ls);
       } catch(e){}
-      p.projects = p.projects.map(x=>({...x, goalDone:(localDaily[x.id]||{}).goalDone||0, editedToday:(localDaily[x.id]||{}).editedToday||0}));
-      const localLastReset = (() => { try{ const ls=localStorage.getItem('karin_pm'); return ls?JSON.parse(ls).lastReset||'':''; }catch(e){return '';} })();
+
+      // מיזוג: נתוני הפרויקט מהענן + deadline + שדות יומיים מlocal
+      const localProjMap = {};
+      (local.projects||[]).forEach(x=>{ localProjMap[x.id]=x; });
+      p.projects = p.projects.map(x=>{
+        const lp = localProjMap[x.id]||{};
+        return {...x,
+          deadline: lp.deadline||x.deadline||'',   // deadline מlocal גובר
+          goalDone: lp.goalDone||0,
+          editedToday: lp.editedToday||0,
+        };
+      });
+
       state=applyDayReset({
         projects:p.projects,
         tasks:p.tasks||[],
-        lastReset:localLastReset||p.lastReset||'',
-        settings:p.settings||{hoursPerDay:6,photosPerDay:20,workDays:[0,1,2,3,4]},
-        editDays:p.editDays||{}
+        lastReset:local.lastReset||p.lastReset||'',
+        settings:local.settings||p.settings||{hoursPerDay:6,photosPerDay:20,workDays:[0,1,2,3,4]},
+        editDays:local.editDays||p.editDays||{}   // editDays מlocal גובר
       });
       try{localStorage.setItem('karin_pm',JSON.stringify(state));}catch(e){}
       setSyncStatus('✓ סונכרן','var(--accent)');
