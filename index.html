@@ -328,6 +328,9 @@
     <div class="nav-item" id="nav-projects" onclick="showPage('projects',this)">
       <span class="nav-icon">📁</span><span>פרויקטים</span>
     </div>
+    <div class="nav-item" id="nav-calendar" onclick="showPage('calendar',this)">
+      <span class="nav-icon">📅</span><span>לוח עריכה</span>
+    </div>
     <div class="sub-nav">
       <div class="sub-item active" onclick="filterStage(null,this)"><div class="sub-dot" style="background:var(--text3)"></div>הכל</div>
       <div class="sub-item" onclick="filterStage('edit',this)"><div class="sub-dot" style="background:var(--s-edit-b)"></div>עריכה</div>
@@ -424,6 +427,39 @@
       </div>
     </div>
 
+    <!-- CALENDAR -->
+    <div id="page-calendar" class="page">
+      <div class="page-header">
+        <div class="page-title">לוח עריכה חודשי</div>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">סמני את ימי העריכה שלך החודש</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <button onclick="calPrevMonth()" style="padding:4px 12px;font-size:13px;font-family:'Heebo',sans-serif;border:1px solid var(--border2);border-radius:6px;background:var(--surface2);cursor:pointer;">→</button>
+          <div id="cal-title" style="font-size:15px;font-weight:600;"></div>
+          <button onclick="calNextMonth()" style="padding:4px 12px;font-size:13px;font-family:'Heebo',sans-serif;border:1px solid var(--border2);border-radius:6px;background:var(--surface2);cursor:pointer;">←</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;margin-bottom:6px;">
+          <div style="font-size:11px;color:var(--text3);padding:4px;">א</div>
+          <div style="font-size:11px;color:var(--text3);padding:4px;">ב</div>
+          <div style="font-size:11px;color:var(--text3);padding:4px;">ג</div>
+          <div style="font-size:11px;color:var(--text3);padding:4px;">ד</div>
+          <div style="font-size:11px;color:var(--text3);padding:4px;">ה</div>
+          <div style="font-size:11px;color:var(--text3);padding:4px;">ו</div>
+          <div style="font-size:11px;color:var(--text3);padding:4px;">ש</div>
+        </div>
+        <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;"></div>
+        <div style="margin-top:12px;font-size:12px;color:var(--text3);">
+          <span style="display:inline-block;width:12px;height:12px;background:var(--accent);border-radius:3px;margin-left:4px;vertical-align:middle;"></span>יום עריכה מסומן
+          <span style="display:inline-block;width:12px;height:12px;background:var(--urgent-light);border:1px solid var(--urgent);border-radius:3px;margin-right:12px;margin-left:4px;vertical-align:middle;"></span>היום
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">סיכום ימי עריכה החודש</div>
+        <div id="cal-summary" style="font-size:13px;color:var(--text2);"></div>
+      </div>
+    </div>
+
     <!-- PROJECTS -->
     <div id="page-projects" class="page">
       <div class="page-header">
@@ -464,6 +500,9 @@
   <button class="mobile-nav-item" id="mnav-projects" onclick="showPageMobile('projects',this)">
     <span class="mobile-nav-icon">📁</span>פרויקטים
   </button>
+  <button class="mobile-nav-item" id="mnav-calendar" onclick="showPageMobile('calendar',this)">
+    <span class="mobile-nav-icon">📅</span>לוח
+  </button>
   <button class="mobile-nav-item" onclick="exportBackup()">
     <span class="mobile-nav-icon">💾</span>גיבוי
   </button>
@@ -484,6 +523,10 @@
     <div class="modal-row">
       <div class="modal-field"><label>יעד יומי</label><input id="e-goal" type="number" min="0" /></div>
       <div class="modal-field"><label>שלב</label><select id="e-stage"></select></div>
+    </div>
+    <div class="modal-row">
+      <div class="modal-field"><label>📅 דדליין שליחה ללקוח</label><input id="e-deadline" type="date" /></div>
+      <div class="modal-field"></div>
     </div>
     <div class="modal-actions">
       <button class="btn-delete" onclick="deleteProject()">🗑 מחק פרויקט</button>
@@ -626,6 +669,68 @@ function renderUrgency(){
   }).join('');
 }
 
+// ===== CALENDAR =====
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+
+function calKey(y,m,d){ return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
+
+function toggleCalDay(key){
+  if(!state.editDays) state.editDays={};
+  if(state.editDays[key]) delete state.editDays[key];
+  else state.editDays[key]=1;
+  save(); renderCalendar(); renderUrgency();
+}
+
+function calPrevMonth(){ calMonth--; if(calMonth<0){calMonth=11;calYear--;} renderCalendar(); }
+function calNextMonth(){ calMonth++; if(calMonth>11){calMonth=0;calYear++;} renderCalendar(); }
+
+function renderCalendar(){
+  const titleEl=document.getElementById('cal-title');
+  const gridEl=document.getElementById('cal-grid');
+  const summaryEl=document.getElementById('cal-summary');
+  if(!titleEl||!gridEl) return;
+  const months=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+  titleEl.textContent=months[calMonth]+' '+calYear;
+  const today=new Date(); today.setHours(0,0,0,0);
+  const firstDay=new Date(calYear,calMonth,1).getDay(); // 0=sun
+  const daysInMonth=new Date(calYear,calMonth+1,0).getDate();
+  const editDays=state.editDays||{};
+  let html='';
+  for(let i=0;i<firstDay;i++) html+=`<div></div>`;
+  let countEdit=0;
+  for(let d=1;d<=daysInMonth;d++){
+    const key=calKey(calYear,calMonth,d);
+    const isEdit=!!editDays[key];
+    const isToday=today.getFullYear()===calYear&&today.getMonth()===calMonth&&today.getDate()===d;
+    if(isEdit) countEdit++;
+    const bg=isEdit?'var(--accent)':(isToday?'var(--urgent-light)':'var(--surface2)');
+    const color=isEdit?'#fff':(isToday?'var(--urgent)':'var(--text2)');
+    const border=isToday&&!isEdit?'1px solid var(--urgent)':'1px solid transparent';
+    html+=`<div onclick="toggleCalDay('${key}')" style="padding:6px 2px;text-align:center;border-radius:6px;cursor:pointer;background:${bg};color:${color};border:${border};font-size:13px;font-weight:${isEdit?600:400};">${d}</div>`;
+  }
+  gridEl.innerHTML=html;
+  if(summaryEl){
+    const totalEdit=Object.keys(editDays).filter(k=>k.startsWith(`${calYear}-${String(calMonth+1).padStart(2,'0')}`)).length;
+    summaryEl.innerHTML=`<strong>${totalEdit}</strong> ימי עריכה מסומנים החודש · <strong>${daysInMonth-totalEdit}</strong> ימים ללא עריכה`;
+  }
+}
+
+function countEditDaysUntil(deadline){
+  const today=new Date(); today.setHours(0,0,0,0);
+  const end=new Date(deadline); end.setHours(0,0,0,0);
+  const editDays=state.editDays||{};
+  let count=0;
+  const d=new Date(today);
+  while(d<=end){
+    const key=calKey(d.getFullYear(),d.getMonth(),d.getDate());
+    if(editDays[key]) count++;
+    d.setDate(d.getDate()+1);
+  }
+  return count;
+}
+// ===== END CALENDAR =====
+
 function dedup(arr) {
   const seen = new Set();
   return arr.filter(x => { if (seen.has(x.id)) return false; seen.add(x.id); return true; });
@@ -638,7 +743,7 @@ function load() {
       const p = JSON.parse(s);
       if (p.projects) p.projects = dedup(p.projects.map(normalizeProject));
       if (p.tasks) p.tasks = dedup(p.tasks.map(x=>({...x,done:Number(x.done)||0})));
-      state = applyDayReset({projects:p.projects||[],tasks:p.tasks||[],settings:p.settings||{hoursPerDay:6,photosPerHour:30,workDays:[0,1,2,3,4]}});
+      state = applyDayReset({projects:p.projects||[],tasks:p.tasks||[],settings:p.settings||{hoursPerDay:6,photosPerHour:30,workDays:[0,1,2,3,4]},editDays:p.editDays||{}});
     }
   } catch(e) {}
   setSyncStatus('טוען...','var(--text3)');
@@ -660,7 +765,7 @@ function load() {
       } catch(e){}
       p.projects = p.projects.map(x=>({...x, goalDone:(localDaily[x.id]||{}).goalDone||0, editedToday:(localDaily[x.id]||{}).editedToday||0}));
       const localLastReset = (() => { try{ const ls=localStorage.getItem('karin_pm'); return ls?JSON.parse(ls).lastReset||'':''; }catch(e){return '';} })();
-      state=applyDayReset({projects:p.projects,tasks:p.tasks||[],lastReset:localLastReset||p.lastReset||'',settings:p.settings||{hoursPerDay:6,photosPerHour:30,workDays:[0,1,2,3,4]}});
+      state=applyDayReset({projects:p.projects,tasks:p.tasks||[],lastReset:localLastReset||p.lastReset||'',settings:p.settings||{hoursPerDay:6,photosPerHour:30,workDays:[0,1,2,3,4]},editDays:p.editDays||{}});
       try{localStorage.setItem('karin_pm',JSON.stringify(state));}catch(e){}
       setSyncStatus('✓ סונכרן','var(--accent)');
       render();
@@ -710,7 +815,7 @@ function setGreeting() {
   document.getElementById('today-date').textContent = 'יום '+days[d.getDay()]+', '+d.toLocaleDateString('he-IL');
 }
 
-function render() { setGreeting(); renderTasks(); renderProjects(); refreshSelects(); renderUrgency(); loadSettings(); }
+function render() { setGreeting(); renderTasks(); renderProjects(); refreshSelects(); renderUrgency(); renderCalendar(); loadSettings(); }
 
 function renderTasks() {
   const sorted = [...state.tasks].sort((a,b)=>PORDER[a.priority]-PORDER[b.priority]);
@@ -945,6 +1050,7 @@ function openEdit(id) {
   document.getElementById('e-date').value=p.date||'';
   document.getElementById('e-total').value=p.total||'';
   document.getElementById('e-goal').value=p.goalDaily||'';
+  document.getElementById('e-deadline').value=p.deadline||'';
   document.getElementById('e-stage').innerHTML=Object.keys(STAGES).map(s=>`<option value="${s}" ${p.stage===s?'selected':''}>${STAGES[s]}</option>`).join('');
   document.getElementById('edit-modal').classList.add('open');
 }
@@ -956,6 +1062,7 @@ function saveEdit(){
   p.date=document.getElementById('e-date').value;
   p.total=parseInt(document.getElementById('e-total').value)||p.total;
   p.goalDaily=parseInt(document.getElementById('e-goal').value)||0;
+  p.deadline=document.getElementById('e-deadline').value||'';
   p.stage=document.getElementById('e-stage').value;
   closeModal(); save(); render();
 }
