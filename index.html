@@ -666,7 +666,7 @@ function renderUrgency(){
     else if(daysNeeded<=1){ mainLabel='יום 1'; mainCls='ok'; }
     else { mainLabel=`${daysNeeded} ימים`; mainCls=diff<0?'danger':diff<=1?'warn':'ok'; }
     // סטטוס
-    const status=rem===0?'✓ הסתיים':diff<0?`⚠ חסרים ${Math.abs(diff)} ימי עריכה!`:diff===0?'בדיוק בזמן':`יש ${diff} ימי חיץ`;
+    const status=rem===0?'✓ הסתיים':diff<0?`⚠ חסרים ${Math.abs(diff)} ימי עריכה!`:diff===0?'בדיוק בזמן':`יש ${diff} ימים פנויים`;
     return `<div class="urgency-row">
       <div class="urgency-days ${mainCls}" style="min-width:52px;text-align:center;">
         <div style="font-size:18px;font-weight:700;">${daysNeeded}</div>
