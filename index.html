@@ -524,6 +524,7 @@ function load() {
   .then(r=>r.json())
   .then(d=>{
     if(d.ok&&d.state&&d.state.projects&&d.state.projects.length>0){
+      if(blockCloudLoad){ setSyncStatus('✓ נשמר','var(--accent)'); return; }
       const p=d.state;
       p.projects=dedup(p.projects.map(normalizeProject));
       p.tasks=dedup((p.tasks||[]).map(x=>({...x,done:Number(x.done)||0})));
@@ -643,6 +644,7 @@ function stopTimer() {
 }
 
 let expandedProjects = new Set();
+let blockCloudLoad = false;
 
 function toggleExpand(id) {
   if (expandedProjects.has(id)) expandedProjects.delete(id);
@@ -713,11 +715,19 @@ function renderProjects() {
         </div>
         <div>
           <div class="proj-section-label">יעד יומי ${gt?`<span class="goal-pct">· ${gpct}%</span>`:''}</div>
-          <div class="num-row">
-            <input type="number" value="${gd}" min="0" id="gdone-${p.id}" onchange="updateGoalDone(${p.id},this.value)" />
-            <span>/</span>
-            <input type="number" value="${gt||''}" min="0" placeholder="יעד" style="width:55px" oninput="updateGoalTarget(${p.id},this.value)" />
-            <span style="font-size:12px;color:var(--text3)">תמונות</span>
+          <div style="margin-bottom:6px;">
+            <div style="font-size:11px;color:var(--text3);margin-bottom:3px;">🎯 יעד (הגדרה)</div>
+            <input type="number" value="${gt||''}" min="0" placeholder="הגדירי יעד..." oninput="updateGoalTarget(${p.id},this.value)"
+              style="width:90px;padding:6px 10px;font-size:14px;font-weight:600;border:2px solid var(--accent);border-radius:var(--radius-sm);background:var(--accent-light);color:var(--accent);font-family:'Heebo',sans-serif;outline:none;text-align:center;" />
+            <span style="font-size:12px;color:var(--text3);margin-right:6px;">תמונות</span>
+          </div>
+          <div style="margin-bottom:6px;">
+            <div style="font-size:11px;color:var(--text3);margin-bottom:3px;">✅ ערכתי היום</div>
+            <div class="num-row" style="margin-bottom:0;">
+              <input type="number" value="${gd}" min="0" id="gdone-${p.id}" onchange="updateGoalDone(${p.id},this.value)"
+                style="width:65px;text-align:center;" />
+              <span style="font-size:12px;color:var(--text3);">מתוך ${gt||'?'}</span>
+            </div>
           </div>
           <div class="quick-btns">
             <button class="qbtn minus" onclick="bumpGoal(${p.id},-1)">−1</button>
@@ -828,6 +838,8 @@ function newDay(){
   if(!confirm('יום חדש:\n• יעדים יומיים ו"ערכתי היום" יאופסו\n• סימוני ✓ על משימות יאופסו\nשאר המידע נשמר.'))return;
   state.projects.forEach(p=>{ p.goalDone=0; p.editedToday=0; });
   state.tasks.forEach(t=>{ t.done=0; });
+  blockCloudLoad = true;
+  setTimeout(()=>{ blockCloudLoad = false; }, 5000);
   save();render();
 }
 
