@@ -641,11 +641,11 @@ function renderUrgency(){
   const photosPerDay=hoursPerDay*photosPerHour;
   const today=new Date(); today.setHours(0,0,0,0);
 
-  const active=state.projects.filter(p=>p.stage!=='done'&&p.stage!=='billing'&&p.date);
+  const active=state.projects.filter(p=>p.stage!=='done'&&p.stage!=='billing'&&p.deadline);
   if(!active.length){el.innerHTML='<p style="font-size:13px;color:var(--text3)">אין פרויקטים עם דדליין</p>';return;}
 
   const rows=active.map(p=>{
-    const deadline=new Date(p.date); deadline.setHours(0,0,0,0);
+    const deadline=new Date(p.deadline); deadline.setHours(0,0,0,0);
     const daysLeft=countWorkDays(today,deadline,workDays);
     const rem=Math.max(0,(p.total||0)-(p.edited||0));
     const daysNeeded=photosPerDay>0?Math.ceil(rem/photosPerDay):999;
@@ -657,7 +657,7 @@ function renderUrgency(){
   el.innerHTML=rows.map(({p,daysLeft,rem,daysNeeded,recToday,diff})=>{
     const cls=diff<0?'danger':diff<=2?'warn':'ok';
     const status=diff<0?`מאחר ב-${Math.abs(diff)} ימים!`:diff===0?'בדיוק בזמן':`${diff} ימים לפנים`;
-    const deadlineStr=new Date(p.date).toLocaleDateString('he-IL');
+    const deadlineStr=new Date(p.deadline).toLocaleDateString('he-IL');
     return `<div class="urgency-row">
       <div class="urgency-days ${cls}">${daysLeft}</div>
       <div class="urgency-info">
@@ -917,12 +917,13 @@ function renderProjects() {
             <span class="proj-name" style="font-size:14px;">${p.client} — ${p.title}</span>
             ${urgCnt?`<span class="badge b-urgent">${urgCnt} דחוף</span>`:''}
           </div>
-          <div style="display:flex;gap:12px;margin-top:4px;font-size:12px;color:var(--text3);align-items:center;">
+          <div style="display:flex;gap:12px;margin-top:4px;font-size:12px;color:var(--text3);align-items:center;flex-wrap:wrap;">
             <span style="background:var(--s-${p.stage}-b,var(--border));color:#fff;padding:1px 8px;border-radius:20px;font-size:11px;background-color:var(--s-${p.stage}-b)">${STAGES[p.stage]||p.stage}</span>
             <span>נערכו ${p.edited}/${p.total}</span>
             <span style="color:var(--accent)">היום: ${et}</span>
             ${gt?`<span style="color:${gd>=gt?'var(--accent)':'var(--text3)'}">יעד: ${gd}/${gt}</span>`:''}
             <span>${pct}%</span>
+            ${p.deadline?`<span style="color:var(--urgent);font-weight:500;">📅 ${new Date(p.deadline).toLocaleDateString('he-IL')}</span>`:''}
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;" onclick="event.stopPropagation()">
