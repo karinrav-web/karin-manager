@@ -130,7 +130,7 @@
   .prog-fill.amber { background:var(--high); }
   .prog-fill.red { background:var(--urgent); }
 
-  .proj-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:12px 16px; margin-bottom:10px; border-top:4px solid var(--border); }
+  .proj-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:12px 16px; margin-bottom:10px; border-top:4px solid var(--border); transition: opacity 0.2s; }
   .proj-card.s-send    { border-top-color:var(--s-send-b);    background:linear-gradient(to bottom,var(--s-send) 0%,var(--surface) 70px); }
   .proj-card.s-wait    { border-top-color:var(--s-wait-b);    background:linear-gradient(to bottom,var(--s-wait) 0%,var(--surface) 70px); }
   .proj-card.s-edit    { border-top-color:var(--s-edit-b);    background:linear-gradient(to bottom,var(--s-edit) 0%,var(--surface) 70px); }
@@ -138,6 +138,18 @@
   .proj-card.s-notes   { border-top-color:var(--s-notes-b);   background:linear-gradient(to bottom,var(--s-notes) 0%,var(--surface) 70px); }
   .proj-card.s-billing { border-top-color:var(--s-billing-b); background:linear-gradient(to bottom,var(--s-billing) 0%,var(--surface) 70px); }
   .proj-card.s-done    { border-top-color:var(--s-done-b);    background:linear-gradient(to bottom,var(--s-done) 0%,var(--surface) 70px); opacity:0.75; }
+
+  /* Drag & Drop */
+  .proj-card[draggable="true"] { cursor: default; }
+  .proj-card.dragging { opacity: 0.4; }
+  .proj-card.drag-over { outline: 2px dashed var(--accent); outline-offset: 2px; }
+  .drag-handle {
+    color: var(--text3); font-size: 16px; padding: 4px 6px;
+    cursor: grab; flex-shrink: 0; line-height: 1;
+    transition: color 0.15s;
+  }
+  .drag-handle:hover { color: var(--accent); }
+  .drag-handle:active { cursor: grabbing; }
 
   .proj-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; }
   .proj-name { font-size:15px; font-weight:600; }
@@ -268,7 +280,6 @@
   .urgency-sub { font-size:12px; color:var(--text3); margin-top:2px; }
   .urgency-rec { font-size:12px; font-weight:600; color:var(--accent); background:var(--accent-light); padding:2px 8px; border-radius:20px; white-space:nowrap; }
 
-  /* ── תג "נשאר לעריכה" ── */
   .rem-badge {
     display:inline-flex; align-items:center; gap:6px;
     border-radius:20px; padding:3px 14px 3px 10px;
@@ -598,7 +609,8 @@ function normalizeProject(x) {
     edited: Number(x.edited)||0,
     editedToday: Number(x.editedToday)||0,
     seconds: Number(x.seconds)||0,
-    sessions: Number(x.sessions)||0
+    sessions: Number(x.sessions)||0,
+    order: x.order !== undefined ? Number(x.order) : 9999
   };
 }
 
@@ -805,6 +817,7 @@ function load() {
           deadline: lp.deadline||x.deadline||'',
           goalDone: lp.goalDone||0,
           editedToday: lp.editedToday||0,
+          order: lp.order !== undefined ? lp.order : (x.order !== undefined ? x.order : 9999)
         };
       });
 
@@ -937,55 +950,129 @@ function toggleExpand(id) {
   renderProjects();
 }
 
+// ===== DRAG & DROP =====
+let dragSrcId = null;
+
+function dragStart(e, id) {
+  dragSrcId = id;
+  e.dataTransfer.effectAllowed = 'move';
+  setTimeout(() => {
+    const el = document.querySelector(`.proj-card[data-id="${id}"]`);
+    if (el) el.classList.add('dragging');
+  }, 0);
+}
+
+function dragEnd(e) {
+  document.querySelectorAll('.proj-card').forEach(el => {
+    el.classList.remove('dragging');
+    el.classList.remove('drag-over');
+  });
+}
+
+function dragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  e.currentTarget.classList.add('drag-over');
+}
+
+function dragLeave(e) {
+  e.currentTarget.classList.remove('drag-over');
+}
+
+function dragDrop(e, targetId) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if (dragSrcId === targetId) return;
+
+  const sorted = [...state.projects]
+    .filter(p => stageFilter === null || p.stage === stageFilter)
+    .sort((a, b) => {
+      const ao = a.order !== undefined ? a.order : 9999;
+      const bo = b.order !== undefined ? b.order : 9999;
+      if (ao !== bo) return ao - bo;
+      return (STAGE_ORDER[a.stage] ?? 5) - (STAGE_ORDER[b.stage] ?? 5);
+    });
+
+  const srcIdx = sorted.findIndex(p => p.id === dragSrcId);
+  const tgtIdx = sorted.findIndex(p => p.id === targetId);
+  if (srcIdx < 0 || tgtIdx < 0) return;
+
+  sorted.splice(tgtIdx, 0, sorted.splice(srcIdx, 1)[0]);
+
+  sorted.forEach((p, i) => {
+    const proj = state.projects.find(x => x.id === p.id);
+    if (proj) proj.order = i;
+  });
+
+  dragSrcId = null;
+  save();
+  renderProjects();
+}
+// ===== END DRAG & DROP =====
+
 function renderProjects() {
-  const el=document.getElementById('projects-list');
-  if(!el) return;
-  const list=[...state.projects].filter(p=>stageFilter===null||p.stage===stageFilter).sort((a,b)=>(STAGE_ORDER[a.stage]??5)-(STAGE_ORDER[b.stage]??5));
-  if(!list.length){
-    el.innerHTML=`<p style="font-size:13px;color:var(--text3);padding:16px 0">${stageFilter?'אין פרויקטים בשלב זה':'עוד אין פרויקטים — הוסיפי את הראשון למטה'}</p>`;
+  const el = document.getElementById('projects-list');
+  if (!el) return;
+
+  const list = [...state.projects]
+    .filter(p => stageFilter === null || p.stage === stageFilter)
+    .sort((a, b) => {
+      const ao = a.order !== undefined ? a.order : 9999;
+      const bo = b.order !== undefined ? b.order : 9999;
+      if (ao !== bo) return ao - bo;
+      return (STAGE_ORDER[a.stage] ?? 5) - (STAGE_ORDER[b.stage] ?? 5);
+    });
+
+  if (!list.length) {
+    el.innerHTML = `<p style="font-size:13px;color:var(--text3);padding:16px 0">${stageFilter ? 'אין פרויקטים בשלב זה' : 'עוד אין פרויקטים — הוסיפי את הראשון למטה'}</p>`;
     return;
   }
-  el.innerHTML=list.map(p=>{
-    const pct=p.total?Math.min(100,Math.round(p.edited/p.total*100)):0;
-    const fillCls=pct>=80?'red':pct>=50?'amber':'';
-    const gd=p.goalDone||0, gt=p.goalDaily||0;
-    const gpct=gt?Math.min(100,Math.round(gd/gt*100)):0;
-    const rem=Math.max(0,(p.total||0)-(p.edited||0));
-    const et=p.editedToday||0;
-    const urgCnt=state.tasks.filter(t=>t.client===p.client&&t.priority==='urgent'&&!t.done).length;
-    const isRunning=activeTimer.projId===p.id;
-    const secs=(p.seconds||0)+(isRunning?Math.floor((Date.now()-activeTimer.startTs)/1000):0);
-    const stages=Object.keys(STAGES).map(s=>`<button class="stage-btn ${p.stage===s?'active s-'+s:''}" data-pid="${p.id}" data-stage="${s}" onclick="setStageBtn(this)">${STAGES[s]}</button>`).join('');
+
+  el.innerHTML = list.map(p => {
+    const pct = p.total ? Math.min(100, Math.round(p.edited / p.total * 100)) : 0;
+    const fillCls = pct >= 80 ? 'red' : pct >= 50 ? 'amber' : '';
+    const gd = p.goalDone || 0, gt = p.goalDaily || 0;
+    const gpct = gt ? Math.min(100, Math.round(gd / gt * 100)) : 0;
+    const rem = Math.max(0, (p.total || 0) - (p.edited || 0));
+    const et = p.editedToday || 0;
+    const urgCnt = state.tasks.filter(t => t.client === p.client && t.priority === 'urgent' && !t.done).length;
+    const isRunning = activeTimer.projId === p.id;
+    const secs = (p.seconds || 0) + (isRunning ? Math.floor((Date.now() - activeTimer.startTs) / 1000) : 0);
+    const stages = Object.keys(STAGES).map(s => `<button class="stage-btn ${p.stage === s ? 'active s-' + s : ''}" data-pid="${p.id}" data-stage="${s}" onclick="setStageBtn(this)">${STAGES[s]}</button>`).join('');
     const isExpanded = expandedProjects.has(p.id);
 
-    return `<div class="proj-card s-${p.stage||'send'}">
-      <!-- COMPACT ROW -->
-      <div class="proj-compact" onclick="toggleExpand(${p.id})" style="cursor:pointer;display:flex;align-items:center;gap:10px;">
-        <div style="flex:1;min-width:0;">
+    return `<div class="proj-card s-${p.stage || 'send'}" draggable="true" data-id="${p.id}"
+        ondragstart="dragStart(event,${p.id})"
+        ondragend="dragEnd(event)"
+        ondragover="dragOver(event)"
+        ondragleave="dragLeave(event)"
+        ondrop="dragDrop(event,${p.id})">
+      <div class="proj-compact" style="display:flex;align-items:center;gap:10px;">
+        <div class="drag-handle" title="גרור לסידור" onclick="event.stopPropagation()">⠿</div>
+        <div style="flex:1;min-width:0;cursor:pointer;" onclick="toggleExpand(${p.id})">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
             <span class="proj-name" style="font-size:14px;">${p.client} — ${p.title}</span>
-            ${urgCnt?`<span class="badge b-urgent">${urgCnt} דחוף</span>`:''}
+            ${urgCnt ? `<span class="badge b-urgent">${urgCnt} דחוף</span>` : ''}
           </div>
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
             ${remBadgeHtml(rem)}
             <div style="display:flex;gap:10px;font-size:12px;color:var(--text3);align-items:center;flex-wrap:wrap;">
-              <span style="background:var(--s-${p.stage}-b,var(--border));color:#fff;padding:1px 8px;border-radius:20px;font-size:11px;">${STAGES[p.stage]||p.stage}</span>
+              <span style="background:var(--s-${p.stage}-b,var(--border));color:#fff;padding:1px 8px;border-radius:20px;font-size:11px;">${STAGES[p.stage] || p.stage}</span>
               <span>נערכו ${p.edited}/${p.total}</span>
               <span style="color:var(--accent)">היום: ${et}</span>
-              ${gt?`<span style="color:${gd>=gt?'var(--accent)':'var(--text3)'}">יעד: ${gd}/${gt}</span>`:''}
+              ${gt ? `<span style="color:${gd >= gt ? 'var(--accent)' : 'var(--text3)'}">יעד: ${gd}/${gt}</span>` : ''}
               <span>${pct}%</span>
-              ${p.deadline?`<span style="color:var(--urgent);font-weight:500;">📅 ${new Date(p.deadline).toLocaleDateString('he-IL')}</span>`:''}
+              ${p.deadline ? `<span style="color:var(--urgent);font-weight:500;">📅 ${new Date(p.deadline).toLocaleDateString('he-IL')}</span>` : ''}
             </div>
           </div>
         </div>
-        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;" onclick="event.stopPropagation()">
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
           <button class="edit-btn" onclick="openEdit(${p.id})">✏</button>
-          <span style="font-size:11px;color:var(--text3);padding:4px 8px;">${isExpanded?'▲':'▼'}</span>
+          <span style="font-size:11px;color:var(--text3);padding:4px 8px;cursor:pointer;" onclick="toggleExpand(${p.id})">${isExpanded ? '▲' : '▼'}</span>
         </div>
       </div>
       <div class="prog-bar" style="margin-top:6px;"><div class="prog-fill ${fillCls}" style="width:${pct}%"></div></div>
 
-      <!-- EXPANDED CONTENT -->
       ${isExpanded ? `
       <div class="stage-row" style="margin-top:10px;">${stages}</div>
       <div class="proj-bottom">
@@ -1004,10 +1091,10 @@ function renderProjects() {
           </div>
         </div>
         <div>
-          <div class="proj-section-label">יעד יומי ${gt?`<span class="goal-pct">· ${gpct}%</span>`:''}</div>
+          <div class="proj-section-label">יעד יומי ${gt ? `<span class="goal-pct">· ${gpct}%</span>` : ''}</div>
           <div style="margin-bottom:6px;">
             <div style="font-size:11px;color:var(--text3);margin-bottom:3px;">🎯 יעד (הגדרה)</div>
-            <input type="number" value="${gt||''}" min="0" placeholder="הגדירי יעד..." oninput="updateGoalTarget(${p.id},this.value)"
+            <input type="number" value="${gt || ''}" min="0" placeholder="הגדירי יעד..." oninput="updateGoalTarget(${p.id},this.value)"
               style="width:90px;padding:6px 10px;font-size:14px;font-weight:600;border:2px solid var(--accent);border-radius:var(--radius-sm);background:var(--accent-light);color:var(--accent);font-family:'Heebo',sans-serif;outline:none;text-align:center;" />
             <span style="font-size:12px;color:var(--text3);margin-right:6px;">תמונות</span>
           </div>
@@ -1016,7 +1103,7 @@ function renderProjects() {
             <div class="num-row" style="margin-bottom:0;">
               <input type="number" value="${gd}" min="0" id="gdone-${p.id}" onchange="updateGoalDone(${p.id},this.value)"
                 style="width:65px;text-align:center;" />
-              <span style="font-size:12px;color:var(--text3);">מתוך ${gt||'?'}</span>
+              <span style="font-size:12px;color:var(--text3);">מתוך ${gt || '?'}</span>
             </div>
           </div>
           <div class="quick-btns">
@@ -1025,20 +1112,20 @@ function renderProjects() {
             <button class="qbtn" onclick="bumpGoal(${p.id},5)">+5</button>
             <button class="qbtn" onclick="bumpGoal(${p.id},10)">+10</button>
           </div>
-          ${gt?`<div class="prog-bar" style="margin-top:8px"><div class="prog-fill" style="width:${gpct}%"></div></div>`:''}
+          ${gt ? `<div class="prog-bar" style="margin-top:8px"><div class="prog-fill" style="width:${gpct}%"></div></div>` : ''}
         </div>
       </div>
       <div class="notes-area">
         <div class="proj-section-label">הערות</div>
-        <textarea placeholder="מה עשיתי · מה נשאר · הערות ללקוח..." onchange="updateNotes(${p.id},this.value)">${p.notes||''}</textarea>
+        <textarea placeholder="מה עשיתי · מה נשאר · הערות ללקוח..." onchange="updateNotes(${p.id},this.value)">${p.notes || ''}</textarea>
       </div>
       <div class="timer-row">
         <div class="timer-info">
           <div class="proj-section-label">זמן עבודה כולל</div>
-          <div class="timer-val ${isRunning?'running':''}" id="ptv-${p.id}">${fmtTime(secs)}</div>
-          <div class="timer-meta">${p.sessions||0} סשנים</div>
+          <div class="timer-val ${isRunning ? 'running' : ''}" id="ptv-${p.id}">${fmtTime(secs)}</div>
+          <div class="timer-meta">${p.sessions || 0} סשנים</div>
         </div>
-        <button class="timer-btn ${isRunning?'running':''}" id="ptb-${p.id}" onclick="toggleTimer(${p.id})">${isRunning?'⏹ עצור':'▶ התחל'}</button>
+        <button class="timer-btn ${isRunning ? 'running' : ''}" id="ptb-${p.id}" onclick="toggleTimer(${p.id})">${isRunning ? '⏹ עצור' : '▶ התחל'}</button>
       </div>
       ` : ''}
     </div>`;
@@ -1099,6 +1186,7 @@ function addProject() {
   const client=document.getElementById('np-client').value.trim();
   const title=document.getElementById('np-title').value.trim();
   if(!client||!title) return;
+  const maxOrder = state.projects.reduce((m,p) => Math.max(m, p.order !== undefined ? p.order : 0), 0);
   state.projects.push({
     id:Date.now(),client,title,
     date:document.getElementById('np-date').value,
@@ -1108,7 +1196,8 @@ function addProject() {
     editedToday:0,
     goalDaily:parseInt(document.getElementById('np-goal').value)||0,
     goalDone:0,
-    notes:'',seconds:0,sessions:0
+    notes:'',seconds:0,sessions:0,
+    order: maxOrder + 1
   });
   ['np-client','np-title','np-date','np-total','np-goal'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('add-proj-form').classList.add('hidden');
