@@ -1240,7 +1240,7 @@ function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+(d.getMonth(
 function applyDayReset(s){
   const today = todayStr();
   if(s.lastReset !== today){
-    s.projects.forEach(p=>{ p.goalDone=0; p.editedToday=0; });
+    s.projects.forEach(p=>{ p.goalDone=0; p.editedToday=0; p.goalDaily=0; });
     s.tasks.forEach(t=>{ t.done=0; });
     s.lastReset = today;
   }
@@ -1250,7 +1250,7 @@ function applyDayReset(s){
 function newDay(){
   if(!confirm('יום חדש:\n• יעדים יומיים ו"ערכתי היום" יאופסו\n• סימוני ✓ על משימות יאופסו\nשאר המידע נשמר.'))return;
   state.lastReset = todayStr();
-  state.projects.forEach(p=>{ p.goalDone=0; p.editedToday=0; });
+  state.projects.forEach(p=>{ p.goalDone=0; p.editedToday=0; p.goalDaily=0; });
   state.tasks.forEach(t=>{ t.done=0; });
   blockCloudLoad = true;
   setTimeout(()=>{ blockCloudLoad = false; }, 8000);
