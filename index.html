@@ -478,6 +478,10 @@
         <div class="card-title">📅 תעדוף לפי דדליין</div>
         <div id="urgency-list"><p style="font-size:13px;color:var(--text3)">אין פרויקטים עם דדליין</p></div>
       </div>
+      <div class="urgency-card">
+        <div class="card-title">💰 גביה פתוחה</div>
+        <div id="billing-summary-morning"><p style="font-size:13px;color:var(--text3)">אין חובות פתוחים</p></div>
+      </div>
     </div>
 
     <!-- CALENDAR -->
@@ -903,7 +907,7 @@ function setGreeting() {
   document.getElementById('today-date').textContent = 'יום '+days[d.getDay()]+', '+d.toLocaleDateString('he-IL');
 }
 
-function render() { setGreeting(); renderTasks(); renderProjects(); refreshSelects(); renderUrgency(); renderCalendar(); loadSettings(); }
+function render() { setGreeting(); renderTasks(); renderProjects(); refreshSelects(); renderUrgency(); renderCalendar(); loadSettings(); renderBillingSummaryMorning(); }
 
 function renderTasks() {
   const sorted = [...state.tasks].sort((a,b)=>PORDER[a.priority]-PORDER[b.priority]);
@@ -1305,6 +1309,49 @@ function importBackup(e){
 document.getElementById('edit-modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
 
 
+
+function renderBillingSummaryMorning() {
+  const el = document.getElementById('billing-summary-morning');
+  if (!el) return;
+
+  const unpaidRows = [];
+  let totalUnpaid = 0;
+
+  state.projects.forEach(p => {
+    const payers = p.payers || [];
+    const unpaid = payers.filter(x => !x.paid);
+    unpaid.forEach(pay => {
+      unpaidRows.push({project: p.client + ' — ' + p.title, name: pay.name, type: pay.type, amount: Number(pay.amount) || 0});
+      totalUnpaid += Number(pay.amount) || 0;
+    });
+  });
+
+  if (!unpaidRows.length) {
+    el.innerHTML = '<p style="font-size:13px;color:var(--accent)">✓ אין חובות פתוחים</p>';
+    return;
+  }
+
+  const rows = unpaidRows.map(r => `
+    <div class="urgency-row">
+      <div class="urgency-days danger" style="min-width:52px;text-align:center;">
+        <div style="font-size:15px;font-weight:700;">₪${r.amount.toLocaleString()}</div>
+        <div style="font-size:10px;opacity:0.75;">${r.type === 'client' ? 'לקוח' : 'ספק'}</div>
+      </div>
+      <div class="urgency-info">
+        <div class="urgency-name">${r.name}</div>
+        <div class="urgency-sub">${r.project}</div>
+      </div>
+    </div>
+  `).join('');
+
+  const total = `<div style="margin-top:10px;padding:10px 14px;background:var(--urgent-light);border-radius:var(--radius-sm);display:flex;justify-content:space-between;align-items:center;">
+    <span style="font-size:13px;color:var(--urgent);font-weight:500;">סה״כ לגביה</span>
+    <span style="font-size:20px;font-weight:700;color:var(--urgent);">₪${totalUnpaid.toLocaleString()}</span>
+  </div>`;
+
+  el.innerHTML = rows + total;
+}
+
 // ===== גביה =====
 function billingBadgeHtml(p) {
   const payers = p.payers || [];
@@ -1369,7 +1416,7 @@ function addPayer(projId) {
 function togglePaid(projId, idx) {
   const p = state.projects.find(p => p.id === projId); if (!p || !p.payers) return;
   p.payers[idx].paid = !p.payers[idx].paid;
-  save(); renderProjects();
+  save(); renderProjects(); renderBillingSummaryMorning();
 }
 
 function deletePayer(projId, idx) {
