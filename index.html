@@ -521,6 +521,7 @@
     <div id="page-projects" class="page">
       <div class="page-header">
         <div class="page-title" id="proj-page-title">פרויקטים</div>
+        <button onclick="collapseAll()" style="padding:7px 16px;font-size:12px;font-family:'Heebo',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">▲ קפל הכל</button>
       </div>
       <div class="mobile-filter" id="mobile-filter">
         <button class="mobile-filter-btn active" onclick="filterStage(null,this,true)"><div class="sub-dot" style="background:var(--text3);width:7px;height:7px;border-radius:50%"></div>הכל</button>
@@ -1319,10 +1320,11 @@ function renderBillingSummaryMorning() {
 
   state.projects.forEach(p => {
     const payers = p.payers || [];
-    const unpaid = payers.filter(x => !x.paid);
-    unpaid.forEach(pay => {
-      unpaidRows.push({project: p.client + ' — ' + p.title, name: pay.name, type: pay.type, amount: Number(pay.amount) || 0});
-      totalUnpaid += Number(pay.amount) || 0;
+    payers.forEach((pay, idx) => {
+      if (!pay.paid) {
+        unpaidRows.push({projId: p.id, payerIdx: idx, project: p.client + ' — ' + p.title, name: pay.name, type: pay.type, amount: Number(pay.amount) || 0});
+        totalUnpaid += Number(pay.amount) || 0;
+      }
     });
   });
 
@@ -1341,6 +1343,7 @@ function renderBillingSummaryMorning() {
         <div class="urgency-name">${r.name}</div>
         <div class="urgency-sub">${r.project}</div>
       </div>
+      <button class="billing-paid-btn" onclick="togglePaid(${r.projId},${r.payerIdx})" title="סמן כשולם">✓</button>
     </div>
   `).join('');
 
@@ -1425,6 +1428,11 @@ function deletePayer(projId, idx) {
   save(); renderProjects();
 }
 // ===== END גביה =====
+
+function collapseAll() {
+  expandedProjects.clear();
+  renderProjects();
+}
 
 load();
 render();
