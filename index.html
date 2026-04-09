@@ -139,15 +139,10 @@
   .proj-card.s-billing { border-top-color:var(--s-billing-b); background:linear-gradient(to bottom,var(--s-billing) 0%,var(--surface) 70px); }
   .proj-card.s-done    { border-top-color:var(--s-done-b);    background:linear-gradient(to bottom,var(--s-done) 0%,var(--surface) 70px); opacity:0.75; }
 
-  /* Drag & Drop */
   .proj-card[draggable="true"] { cursor: default; }
   .proj-card.dragging { opacity: 0.4; }
   .proj-card.drag-over { outline: 2px dashed var(--accent); outline-offset: 2px; }
-  .drag-handle {
-    color: var(--text3); font-size: 16px; padding: 4px 6px;
-    cursor: grab; flex-shrink: 0; line-height: 1;
-    transition: color 0.15s;
-  }
+  .drag-handle { color: var(--text3); font-size: 16px; padding: 4px 6px; cursor: grab; flex-shrink: 0; line-height: 1; transition: color 0.15s; }
   .drag-handle:hover { color: var(--accent); }
   .drag-handle:active { cursor: grabbing; }
 
@@ -214,7 +209,6 @@
     display:flex; align-items:center; justify-content:space-between;
     margin-top:8px; padding-top:8px; border-top:1px solid var(--border);
   }
-  .timer-info { }
   .timer-val { font-size:22px; font-weight:600; font-variant-numeric:tabular-nums; color:var(--text); }
   .timer-val.running { color:var(--accent); }
   .timer-meta { font-size:11px; color:var(--text3); margin-top:2px; }
@@ -280,11 +274,7 @@
   .urgency-sub { font-size:12px; color:var(--text3); margin-top:2px; }
   .urgency-rec { font-size:12px; font-weight:600; color:var(--accent); background:var(--accent-light); padding:2px 8px; border-radius:20px; white-space:nowrap; }
 
-  .rem-badge {
-    display:inline-flex; align-items:center; gap:6px;
-    border-radius:20px; padding:3px 14px 3px 10px;
-    font-weight:700; line-height:1;
-  }
+  .rem-badge { display:inline-flex; align-items:center; gap:6px; border-radius:20px; padding:3px 14px 3px 10px; font-weight:700; line-height:1; }
   .rem-badge .rem-num { font-size:22px; }
   .rem-badge .rem-label { font-size:11px; font-weight:500; opacity:0.85; }
   .rem-badge.rem-urgent { background:var(--urgent); color:#fff; }
@@ -311,7 +301,7 @@
   .billing-summary-item.green strong { color:var(--accent); }
   .billing-summary-item.red strong { color:var(--urgent); }
   .billing-add-row { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; align-items:center; }
-  .billing-add-row input, .billing-add-row select { padding:6px 10px; font-size:13px; border:1px solid var(--border2); border-radius:var(--radius-sm); background:var(--surface); color:var(--text); font-family:"Heebo",sans-serif; outline:none; }
+  .billing-add-row input, .billing-add-row select { padding:6px 10px; font-size:13px; border:1px solid var(--border2); border-radius:var(--radius-sm); background:var(--surface); color:var(--text); font-family:'Heebo',sans-serif; outline:none; }
   .billing-add-row input:focus, .billing-add-row select:focus { border-color:var(--accent); }
   .billing-badge { display:inline-flex; align-items:center; gap:4px; font-size:11px; padding:2px 8px; border-radius:20px; font-weight:500; }
   .billing-badge.all-paid { background:var(--accent-light); color:var(--accent); }
@@ -329,37 +319,17 @@
     .stage-row { gap:4px; }
     .stage-btn { font-size:10px; padding:4px 8px; }
     .quick-btns { flex-wrap:wrap; }
-
-    .mobile-nav {
-      display:flex; position:fixed; bottom:0; left:0; right:0;
-      background:var(--surface); border-top:1px solid var(--border);
-      z-index:50; padding:8px 0 20px;
-    }
-    .mobile-nav-item {
-      flex:1; display:flex; flex-direction:column; align-items:center; gap:3px;
-      padding:6px 4px; cursor:pointer; color:var(--text3); font-size:10px;
-      border:none; background:transparent; font-family:'Heebo',sans-serif;
-    }
+    .mobile-nav { display:flex; position:fixed; bottom:0; left:0; right:0; background:var(--surface); border-top:1px solid var(--border); z-index:50; padding:8px 0 20px; }
+    .mobile-nav-item { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 4px; cursor:pointer; color:var(--text3); font-size:10px; border:none; background:transparent; font-family:'Heebo',sans-serif; }
     .mobile-nav-item.active { color:var(--accent); }
     .mobile-nav-icon { font-size:20px; }
     .main { padding-bottom:80px; }
-
-    .mobile-filter {
-      display:flex; gap:6px; overflow-x:auto; padding:0 0 12px;
-      margin-bottom:8px; scrollbar-width:none;
-    }
+    .mobile-filter { display:flex; gap:6px; overflow-x:auto; padding:0 0 12px; margin-bottom:8px; scrollbar-width:none; }
     .mobile-filter::-webkit-scrollbar { display:none; }
-    .mobile-filter-btn {
-      display:flex; align-items:center; gap:4px; white-space:nowrap;
-      padding:5px 12px; font-size:12px; border:1px solid var(--border);
-      border-radius:20px; background:var(--surface2); cursor:pointer;
-      color:var(--text2); font-family:'Heebo',sans-serif; flex-shrink:0;
-    }
+    .mobile-filter-btn { display:flex; align-items:center; gap:4px; white-space:nowrap; padding:5px 12px; font-size:12px; border:1px solid var(--border); border-radius:20px; background:var(--surface2); cursor:pointer; color:var(--text2); font-family:'Heebo',sans-serif; flex-shrink:0; }
     .mobile-filter-btn.active { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:500; }
-
     .rem-badge .rem-num { font-size:18px; }
   }
-
   @media (min-width: 769px) {
     .mobile-nav { display:none; }
     .mobile-filter { display:none; }
@@ -368,21 +338,14 @@
 </head>
 <body>
 <div class="shell">
-
   <aside class="sidebar">
     <div class="logo">
       <div class="logo-name">קרין רבנה</div>
       <div class="logo-sub">צלמת אדריכלות ועיצוב פנים</div>
     </div>
-    <div class="nav-item active" id="nav-morning" onclick="showPage('morning',this)">
-      <span class="nav-icon">☀</span><span>בוקר טוב</span>
-    </div>
-    <div class="nav-item" id="nav-projects" onclick="showPage('projects',this)">
-      <span class="nav-icon">📁</span><span>פרויקטים</span>
-    </div>
-    <div class="nav-item" id="nav-calendar" onclick="showPage('calendar',this)">
-      <span class="nav-icon">📅</span><span>לוח עריכה</span>
-    </div>
+    <div class="nav-item active" id="nav-morning" onclick="showPage('morning',this)"><span class="nav-icon">☀</span><span>בוקר טוב</span></div>
+    <div class="nav-item" id="nav-projects" onclick="showPage('projects',this)"><span class="nav-icon">📁</span><span>פרויקטים</span></div>
+    <div class="nav-item" id="nav-calendar" onclick="showPage('calendar',this)"><span class="nav-icon">📅</span><span>לוח עריכה</span></div>
     <div class="sub-nav">
       <div class="sub-item active" onclick="filterStage(null,this)"><div class="sub-dot" style="background:var(--text3)"></div>הכל</div>
       <div class="sub-item" onclick="filterStage('edit',this)"><div class="sub-dot" style="background:var(--s-edit-b)"></div>עריכה</div>
@@ -428,7 +391,6 @@
   </aside>
 
   <main class="main">
-
     <!-- MORNING -->
     <div id="page-morning" class="page active">
       <div class="page-header">
@@ -438,7 +400,6 @@
         </div>
         <button class="new-day-btn" onclick="newDay()">☀ יום חדש</button>
       </div>
-
       <div class="metric-row">
         <div class="metric-card"><div class="metric-val" id="m-projects">0</div><div class="metric-label">פרויקטים פעילים</div></div>
         <div class="metric-card"><div class="metric-val" id="m-remaining">0</div><div class="metric-label">תמונות לעריכה</div></div>
@@ -486,9 +447,7 @@
 
     <!-- CALENDAR -->
     <div id="page-calendar" class="page">
-      <div class="page-header">
-        <div class="page-title">לוח עריכה חודשי</div>
-      </div>
+      <div class="page-header"><div class="page-title">לוח עריכה חודשי</div></div>
       <div class="card" style="margin-bottom:16px;">
         <div class="card-title">סמני את ימי העריכה שלך החודש</div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
@@ -497,13 +456,7 @@
           <button onclick="calNextMonth()" style="padding:4px 12px;font-size:13px;font-family:'Heebo',sans-serif;border:1px solid var(--border2);border-radius:6px;background:var(--surface2);cursor:pointer;">←</button>
         </div>
         <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;margin-bottom:6px;">
-          <div style="font-size:11px;color:var(--text3);padding:4px;">א</div>
-          <div style="font-size:11px;color:var(--text3);padding:4px;">ב</div>
-          <div style="font-size:11px;color:var(--text3);padding:4px;">ג</div>
-          <div style="font-size:11px;color:var(--text3);padding:4px;">ד</div>
-          <div style="font-size:11px;color:var(--text3);padding:4px;">ה</div>
-          <div style="font-size:11px;color:var(--text3);padding:4px;">ו</div>
-          <div style="font-size:11px;color:var(--text3);padding:4px;">ש</div>
+          <div style="font-size:11px;color:var(--text3);padding:4px;">א</div><div style="font-size:11px;color:var(--text3);padding:4px;">ב</div><div style="font-size:11px;color:var(--text3);padding:4px;">ג</div><div style="font-size:11px;color:var(--text3);padding:4px;">ד</div><div style="font-size:11px;color:var(--text3);padding:4px;">ה</div><div style="font-size:11px;color:var(--text3);padding:4px;">ו</div><div style="font-size:11px;color:var(--text3);padding:4px;">ש</div>
         </div>
         <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;"></div>
         <div style="margin-top:12px;font-size:12px;color:var(--text3);">
@@ -546,27 +499,16 @@
         </div>
       </div>
     </div>
-
   </main>
 </div>
 
-<!-- MOBILE BOTTOM NAV -->
 <nav class="mobile-nav">
-  <button class="mobile-nav-item active" id="mnav-morning" onclick="showPageMobile('morning',this)">
-    <span class="mobile-nav-icon">☀</span>בוקר טוב
-  </button>
-  <button class="mobile-nav-item" id="mnav-projects" onclick="showPageMobile('projects',this)">
-    <span class="mobile-nav-icon">📁</span>פרויקטים
-  </button>
-  <button class="mobile-nav-item" id="mnav-calendar" onclick="showPageMobile('calendar',this)">
-    <span class="mobile-nav-icon">📅</span>לוח
-  </button>
-  <button class="mobile-nav-item" onclick="exportBackup()">
-    <span class="mobile-nav-icon">💾</span>גיבוי
-  </button>
+  <button class="mobile-nav-item active" id="mnav-morning" onclick="showPageMobile('morning',this)"><span class="mobile-nav-icon">☀</span>בוקר טוב</button>
+  <button class="mobile-nav-item" id="mnav-projects" onclick="showPageMobile('projects',this)"><span class="mobile-nav-icon">📁</span>פרויקטים</button>
+  <button class="mobile-nav-item" id="mnav-calendar" onclick="showPageMobile('calendar',this)"><span class="mobile-nav-icon">📅</span>לוח</button>
+  <button class="mobile-nav-item" onclick="exportBackup()"><span class="mobile-nav-icon">💾</span>גיבוי</button>
 </nav>
 
-<!-- EDIT MODAL -->
 <div class="modal-bg" id="edit-modal">
   <div class="modal">
     <div class="modal-title">עריכת פרויקט</div>
@@ -607,11 +549,10 @@ let state = {projects:[],tasks:[],settings:{hoursPerDay:6,photosPerDay:20,workDa
 let editingId = null;
 let stageFilter = null;
 let activeTimer = {projId:null,startTs:null,iv:null};
+let blockCloudLoad = false;
 
 function remBadgeHtml(rem) {
-  if (rem <= 0) {
-    return `<span class="rem-badge rem-done"><span class="rem-num">✓</span><span class="rem-label">הושלם</span></span>`;
-  }
+  if (rem <= 0) return `<span class="rem-badge rem-done"><span class="rem-num">✓</span><span class="rem-label">הושלם</span></span>`;
   const cls = rem > 100 ? 'rem-urgent' : rem > 30 ? 'rem-high' : 'rem-ok';
   return `<span class="rem-badge ${cls}"><span class="rem-num">${rem}</span><span class="rem-label">נשאר לעריכה</span></span>`;
 }
@@ -624,10 +565,7 @@ function fmtTime(s) {
 const API='https://script.google.com/macros/s/AKfycbz_w9LEe6o4B_GwkX2CBxUv1ymjQGUklA1v-n4One6WVwzotyDNfhKLdAxfftpggMDh/exec';
 let saveTimer=null;
 
-function setSyncStatus(msg,color){
-  const el=document.getElementById('sync-status');
-  if(el){el.textContent=msg;el.style.color=color||'var(--text3)';}
-}
+function setSyncStatus(msg,color){ const el=document.getElementById('sync-status'); if(el){el.textContent=msg;el.style.color=color||'var(--text3)';} }
 
 function normalizeProject(x) {
   return {
@@ -686,52 +624,39 @@ function loadSettings(){
   if(h) h.value=s.hoursPerDay||6;
   if(r) r.value=s.photosPerDay||20;
   const wd=s.workDays||[0,1,2,3,4];
-  document.querySelectorAll('.wday-btn').forEach(btn=>{
-    const d=Number(btn.dataset.day);
-    btn.classList.toggle('active', wd.includes(d));
-  });
+  document.querySelectorAll('.wday-btn').forEach(btn=>{ const d=Number(btn.dataset.day); btn.classList.toggle('active', wd.includes(d)); });
 }
 
 function countWorkDays(fromDate, toDate, workDays){
-  let count=0;
-  const d=new Date(fromDate);
+  let count=0; const d=new Date(fromDate);
   while(d<=toDate){ if(workDays.includes(d.getDay())) count++; d.setDate(d.getDate()+1); }
   return count;
 }
 
 function renderUrgency(){
-  const el=document.getElementById('urgency-list');
-  if(!el) return;
+  const el=document.getElementById('urgency-list'); if(!el) return;
   const s=state.settings||{};
   const photosPerDay=s.photosPerDay||20;
   const workDays=s.workDays||[0,1,2,3,4];
   const today=new Date(); today.setHours(0,0,0,0);
-
   const active=state.projects.filter(p=>p.stage!=='done'&&p.stage!=='billing'&&p.deadline);
   if(!active.length){el.innerHTML='<p style="font-size:13px;color:var(--text3)">אין פרויקטים עם דדליין</p>';return;}
-
   const rows=active.map(p=>{
     const deadline=new Date(p.deadline); deadline.setHours(0,0,0,0);
     const wdaysLeft=countWorkDays(today,deadline,workDays);
     const editDaysLeft=countEditDaysUntil(deadline);
     const rem=Math.max(0,(p.total||0)-(p.edited||0));
-    const canFinish=wdaysLeft*photosPerDay>=rem;
     const recToday=editDaysLeft>0?Math.ceil(rem/editDaysLeft):rem;
     const diff=editDaysLeft-Math.ceil(rem/(photosPerDay||1));
-    return {p,wdaysLeft,editDaysLeft,rem,recToday,diff,canFinish};
+    return {p,wdaysLeft,editDaysLeft,rem,recToday,diff};
   }).sort((a,b)=>a.diff-b.diff);
-
-  el.innerHTML=rows.map(({p,wdaysLeft,editDaysLeft,rem,recToday,diff,canFinish})=>{
+  el.innerHTML=rows.map(({p,wdaysLeft,editDaysLeft,rem,recToday,diff})=>{
     const daysNeeded=Math.ceil(rem/photosPerDay)||0;
     const cls=rem===0?'ok':diff<0?'danger':diff<=1?'warn':'ok';
     const deadlineStr=new Date(p.deadline).toLocaleDateString('he-IL');
-    let mainLabel, mainCls;
-    if(rem===0){ mainLabel='הסתיים'; mainCls='ok'; }
-    else if(daysNeeded<=1){ mainLabel='יום 1'; mainCls='ok'; }
-    else { mainLabel=`${daysNeeded} ימים`; mainCls=diff<0?'danger':diff<=1?'warn':'ok'; }
     const status=rem===0?'✓ הסתיים':diff<0?`⚠ חסרים ${Math.abs(diff)} ימי עריכה!`:diff===0?'בדיוק בזמן':`יש ${diff} ימים פנויים`;
     return `<div class="urgency-row">
-      <div class="urgency-days ${mainCls}" style="min-width:52px;text-align:center;">
+      <div class="urgency-days ${cls}" style="min-width:52px;text-align:center;">
         <div style="font-size:18px;font-weight:700;">${daysNeeded}</div>
         <div style="font-size:10px;opacity:0.75;">ימים לסיום</div>
       </div>
@@ -745,26 +670,14 @@ function renderUrgency(){
   }).join('');
 }
 
-// ===== CALENDAR =====
 let calYear = new Date().getFullYear();
 let calMonth = new Date().getMonth();
-
 function calKey(y,m,d){ return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`; }
-
-function toggleCalDay(key){
-  if(!state.editDays) state.editDays={};
-  if(state.editDays[key]) delete state.editDays[key];
-  else state.editDays[key]=1;
-  save(); renderCalendar(); renderUrgency();
-}
-
+function toggleCalDay(key){ if(!state.editDays) state.editDays={}; if(state.editDays[key]) delete state.editDays[key]; else state.editDays[key]=1; save(); renderCalendar(); renderUrgency(); }
 function calPrevMonth(){ calMonth--; if(calMonth<0){calMonth=11;calYear--;} renderCalendar(); }
 function calNextMonth(){ calMonth++; if(calMonth>11){calMonth=0;calYear++;} renderCalendar(); }
-
 function renderCalendar(){
-  const titleEl=document.getElementById('cal-title');
-  const gridEl=document.getElementById('cal-grid');
-  const summaryEl=document.getElementById('cal-summary');
+  const titleEl=document.getElementById('cal-title'); const gridEl=document.getElementById('cal-grid'); const summaryEl=document.getElementById('cal-summary');
   if(!titleEl||!gridEl) return;
   const months=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
   titleEl.textContent=months[calMonth]+' '+calYear;
@@ -774,12 +687,10 @@ function renderCalendar(){
   const editDays=state.editDays||{};
   let html='';
   for(let i=0;i<firstDay;i++) html+=`<div></div>`;
-  let countEdit=0;
   for(let d=1;d<=daysInMonth;d++){
     const key=calKey(calYear,calMonth,d);
     const isEdit=!!editDays[key];
     const isToday=today.getFullYear()===calYear&&today.getMonth()===calMonth&&today.getDate()===d;
-    if(isEdit) countEdit++;
     const bg=isEdit?'var(--accent)':(isToday?'var(--urgent-light)':'var(--surface2)');
     const color=isEdit?'#fff':(isToday?'var(--urgent)':'var(--text2)');
     const border=isToday&&!isEdit?'1px solid var(--urgent)':'1px solid transparent';
@@ -791,21 +702,14 @@ function renderCalendar(){
     summaryEl.innerHTML=`<strong>${totalEdit}</strong> ימי עריכה מסומנים החודש · <strong>${daysInMonth-totalEdit}</strong> ימים ללא עריכה`;
   }
 }
-
 function countEditDaysUntil(deadline){
   const today=new Date(); today.setHours(0,0,0,0);
   const end=new Date(deadline); end.setHours(0,0,0,0);
   const editDays=state.editDays||{};
-  let count=0;
-  const d=new Date(today);
-  while(d<=end){
-    const key=calKey(d.getFullYear(),d.getMonth(),d.getDate());
-    if(editDays[key]) count++;
-    d.setDate(d.getDate()+1);
-  }
+  let count=0; const d=new Date(today);
+  while(d<=end){ const key=calKey(d.getFullYear(),d.getMonth(),d.getDate()); if(editDays[key]) count++; d.setDate(d.getDate()+1); }
   return count;
 }
-// ===== END CALENDAR =====
 
 function dedup(arr) {
   const seen = new Set();
@@ -834,11 +738,7 @@ function load() {
       p.projects=dedup(p.projects.map(normalizeProject));
       p.tasks=dedup((p.tasks||[]).map(x=>({...x,done:Number(x.done)||0})));
       let local = {};
-      try {
-        const ls = localStorage.getItem('karin_pm');
-        if(ls) local = JSON.parse(ls);
-      } catch(e){}
-
+      try { const ls = localStorage.getItem('karin_pm'); if(ls) local = JSON.parse(ls); } catch(e){}
       const localProjMap = {};
       (local.projects||[]).forEach(x=>{ localProjMap[x.id]=x; });
       p.projects = p.projects.map(x=>{
@@ -848,10 +748,10 @@ function load() {
           goalDone: lp.goalDone||0,
           editedToday: lp.editedToday||0,
           goalDaily: lp.goalDaily||0,
+          payers: lp.payers||x.payers||[],
           order: lp.order !== undefined ? lp.order : (x.order !== undefined ? x.order : 9999)
         };
       });
-
       state=applyDayReset({
         projects:p.projects,
         tasks:p.tasks||[],
@@ -875,44 +775,34 @@ function showPage(p, el) {
   document.getElementById('page-'+p).classList.add('active');
   el.classList.add('active');
 }
-
 function showPageMobile(p, el) {
   document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));
   document.querySelectorAll('.mobile-nav-item').forEach(e=>e.classList.remove('active'));
   document.getElementById('page-'+p).classList.add('active');
   el.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
-  const dn = document.getElementById('nav-'+p);
-  if(dn) dn.classList.add('active');
+  const dn = document.getElementById('nav-'+p); if(dn) dn.classList.add('active');
 }
-
 function filterStage(stage, el, isMobile) {
   stageFilter = stage;
-  if (isMobile) {
-    document.querySelectorAll('.mobile-filter-btn').forEach(e=>e.classList.remove('active'));
-  } else {
-    document.querySelectorAll('.sub-item').forEach(e=>e.classList.remove('active'));
-  }
+  if (isMobile) document.querySelectorAll('.mobile-filter-btn').forEach(e=>e.classList.remove('active'));
+  else document.querySelectorAll('.sub-item').forEach(e=>e.classList.remove('active'));
   el.classList.add('active');
   showPage('projects', document.getElementById('nav-projects'));
   document.getElementById('proj-page-title').textContent = stage ? STAGES[stage] : 'פרויקטים';
   renderProjects();
 }
-
 function toggleEl(id) { document.getElementById(id).classList.toggle('hidden'); }
-
 function setGreeting() {
   const h = new Date().getHours();
   document.getElementById('morning-greeting').textContent = (h<12?'בוקר טוב':h<17?'צהריים טובים':'ערב טוב')+', קרין';
   const d = new Date(), days=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
   document.getElementById('today-date').textContent = 'יום '+days[d.getDay()]+', '+d.toLocaleDateString('he-IL');
 }
-
 function render() { setGreeting(); renderTasks(); renderProjects(); refreshSelects(); renderUrgency(); renderCalendar(); loadSettings(); renderBillingSummaryMorning(); }
 
 function renderTasks() {
   const sorted = [...state.tasks].sort((a,b)=>PORDER[a.priority]-PORDER[b.priority]);
-
   document.getElementById('m-projects').textContent = state.projects.filter(p=>p.stage!=='done'&&p.stage!=='s-done'&&p.stage!=='billing'&&p.stage!=='s-billing').length;
   document.getElementById('m-remaining').textContent = state.projects.filter(p=>p.stage==='edit').reduce((s,p)=>s+Math.max(0,(p.total||0)-(p.edited||0)),0);
   const totalGoal = state.projects.filter(p=>p.goalDaily>0).reduce((s,p)=>s+(p.goalDaily||0),0);
@@ -921,25 +811,20 @@ function renderTasks() {
   document.getElementById('m-goal-total').textContent = totalGoal;
   document.getElementById('m-goal-done').textContent = totalEditedToday;
   document.getElementById('m-goal-left').textContent = Math.max(0, totalGoal - totalEditedToday);
-
   document.getElementById('tasks-list').innerHTML = sorted.map(t=>`
     <div class="task-row">
       <div class="priority-strip ${PSTRIP[t.priority]}"></div>
       <div class="task-check ${t.done?'done':''}" onclick="toggleTask(${t.id})">${t.done?'✓':''}</div>
       <div class="task-body">
         <div class="task-text ${t.done?'done':''}">${t.text}</div>
-        <div class="task-meta">${t.client?t.client+' · ':''}${t.stage||''}
-          <span class="badge ${PBADGE[t.priority]}">${PLABEL[t.priority]}</span>
-        </div>
+        <div class="task-meta">${t.client?t.client+' · ':''}${t.stage||''}<span class="badge ${PBADGE[t.priority]}">${PLABEL[t.priority]}</span></div>
       </div>
     </div>`).join('');
 }
 
 function toggleTask(id) { const t=state.tasks.find(t=>t.id===id); if(t){t.done=t.done?0:1;save();renderTasks();} }
-
 function addTask() {
-  const text=document.getElementById('nt-text').value.trim();
-  if(!text) return;
+  const text=document.getElementById('nt-text').value.trim(); if(!text) return;
   state.tasks.push({id:Date.now(),text,client:document.getElementById('nt-client').value,stage:document.getElementById('nt-stage').value,priority:document.getElementById('nt-priority').value,done:0});
   document.getElementById('nt-text').value='';
   document.getElementById('add-task-form').classList.add('hidden');
@@ -951,17 +836,14 @@ function toggleTimer(id) {
   if (activeTimer.iv) stopTimer();
   activeTimer = {projId:id, startTs:Date.now(), iv:null};
   activeTimer.iv = setInterval(()=>{
-    const p = state.projects.find(p=>p.id===id);
-    if (!p) { clearInterval(activeTimer.iv); return; }
+    const p = state.projects.find(p=>p.id===id); if (!p) { clearInterval(activeTimer.iv); return; }
     const el = document.getElementById('ptv-'+id);
     if (el) el.textContent = fmtTime((p.seconds||0)+Math.floor((Date.now()-activeTimer.startTs)/1000));
   },1000);
-  const btn=document.getElementById('ptb-'+id);
-  const val=document.getElementById('ptv-'+id);
+  const btn=document.getElementById('ptb-'+id); const val=document.getElementById('ptv-'+id);
   if(btn){btn.textContent='⏹ עצור';btn.classList.add('running');}
   if(val) val.classList.add('running');
 }
-
 function stopTimer() {
   if(!activeTimer.projId) return;
   const elapsed=Math.floor((Date.now()-activeTimer.startTs)/1000);
@@ -973,7 +855,6 @@ function stopTimer() {
 }
 
 let expandedProjects = new Set();
-let blockCloudLoad = false;
 
 function toggleExpand(id) {
   if (expandedProjects.has(id)) expandedProjects.delete(id);
@@ -981,84 +862,32 @@ function toggleExpand(id) {
   renderProjects();
 }
 
-// ===== DRAG & DROP =====
 let dragSrcId = null;
-
 function dragStart(e, id) {
-  dragSrcId = id;
-  e.dataTransfer.effectAllowed = 'move';
-  setTimeout(() => {
-    const el = document.querySelector(`.proj-card[data-id="${id}"]`);
-    if (el) el.classList.add('dragging');
-  }, 0);
+  dragSrcId = id; e.dataTransfer.effectAllowed = 'move';
+  setTimeout(() => { const el = document.querySelector(`.proj-card[data-id="${id}"]`); if (el) el.classList.add('dragging'); }, 0);
 }
-
-function dragEnd(e) {
-  document.querySelectorAll('.proj-card').forEach(el => {
-    el.classList.remove('dragging');
-    el.classList.remove('drag-over');
-  });
-}
-
-function dragOver(e) {
-  e.preventDefault();
-  e.dataTransfer.dropEffect = 'move';
-  e.currentTarget.classList.add('drag-over');
-}
-
-function dragLeave(e) {
-  e.currentTarget.classList.remove('drag-over');
-}
-
+function dragEnd(e) { document.querySelectorAll('.proj-card').forEach(el => { el.classList.remove('dragging'); el.classList.remove('drag-over'); }); }
+function dragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; e.currentTarget.classList.add('drag-over'); }
+function dragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
 function dragDrop(e, targetId) {
-  e.preventDefault();
-  e.currentTarget.classList.remove('drag-over');
+  e.preventDefault(); e.currentTarget.classList.remove('drag-over');
   if (dragSrcId === targetId) return;
-
-  const sorted = [...state.projects]
-    .filter(p => stageFilter === null || p.stage === stageFilter)
-    .sort((a, b) => {
-      const ao = a.order !== undefined ? a.order : 9999;
-      const bo = b.order !== undefined ? b.order : 9999;
-      if (ao !== bo) return ao - bo;
-      return (STAGE_ORDER[a.stage] ?? 5) - (STAGE_ORDER[b.stage] ?? 5);
-    });
-
+  const sorted = [...state.projects].filter(p => stageFilter === null || p.stage === stageFilter)
+    .sort((a, b) => { const ao = a.order!==undefined?a.order:9999; const bo = b.order!==undefined?b.order:9999; if (ao !== bo) return ao - bo; return (STAGE_ORDER[a.stage]??5)-(STAGE_ORDER[b.stage]??5); });
   const srcIdx = sorted.findIndex(p => p.id === dragSrcId);
   const tgtIdx = sorted.findIndex(p => p.id === targetId);
   if (srcIdx < 0 || tgtIdx < 0) return;
-
   sorted.splice(tgtIdx, 0, sorted.splice(srcIdx, 1)[0]);
-
-  sorted.forEach((p, i) => {
-    const proj = state.projects.find(x => x.id === p.id);
-    if (proj) proj.order = i;
-  });
-
-  dragSrcId = null;
-  save();
-  renderProjects();
+  sorted.forEach((p, i) => { const proj = state.projects.find(x => x.id === p.id); if (proj) proj.order = i; });
+  dragSrcId = null; save(); renderProjects();
 }
-// ===== END DRAG & DROP =====
 
 function renderProjects() {
-  const el = document.getElementById('projects-list');
-  if (!el) return;
-
-  const list = [...state.projects]
-    .filter(p => stageFilter === null || p.stage === stageFilter)
-    .sort((a, b) => {
-      const ao = a.order !== undefined ? a.order : 9999;
-      const bo = b.order !== undefined ? b.order : 9999;
-      if (ao !== bo) return ao - bo;
-      return (STAGE_ORDER[a.stage] ?? 5) - (STAGE_ORDER[b.stage] ?? 5);
-    });
-
-  if (!list.length) {
-    el.innerHTML = `<p style="font-size:13px;color:var(--text3);padding:16px 0">${stageFilter ? 'אין פרויקטים בשלב זה' : 'עוד אין פרויקטים — הוסיפי את הראשון למטה'}</p>`;
-    return;
-  }
-
+  const el = document.getElementById('projects-list'); if (!el) return;
+  const list = [...state.projects].filter(p => stageFilter === null || p.stage === stageFilter)
+    .sort((a, b) => { const ao = a.order!==undefined?a.order:9999; const bo = b.order!==undefined?b.order:9999; if (ao !== bo) return ao - bo; return (STAGE_ORDER[a.stage]??5)-(STAGE_ORDER[b.stage]??5); });
+  if (!list.length) { el.innerHTML = `<p style="font-size:13px;color:var(--text3);padding:16px 0">${stageFilter ? 'אין פרויקטים בשלב זה' : 'עוד אין פרויקטים — הוסיפי את הראשון למטה'}</p>`; return; }
   el.innerHTML = list.map(p => {
     const pct = p.total ? Math.min(100, Math.round(p.edited / p.total * 100)) : 0;
     const fillCls = pct >= 80 ? 'red' : pct >= 50 ? 'amber' : '';
@@ -1071,19 +900,15 @@ function renderProjects() {
     const secs = (p.seconds || 0) + (isRunning ? Math.floor((Date.now() - activeTimer.startTs) / 1000) : 0);
     const stages = Object.keys(STAGES).map(s => `<button class="stage-btn ${p.stage === s ? 'active s-' + s : ''}" data-pid="${p.id}" data-stage="${s}" onclick="setStageBtn(this)">${STAGES[s]}</button>`).join('');
     const isExpanded = expandedProjects.has(p.id);
-
     return `<div class="proj-card s-${p.stage || 'send'}" draggable="true" data-id="${p.id}"
-        ondragstart="dragStart(event,${p.id})"
-        ondragend="dragEnd(event)"
-        ondragover="dragOver(event)"
-        ondragleave="dragLeave(event)"
-        ondrop="dragDrop(event,${p.id})">
+        ondragstart="dragStart(event,${p.id})" ondragend="dragEnd(event)" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event,${p.id})">
       <div class="proj-compact" style="display:flex;align-items:center;gap:10px;">
         <div class="drag-handle" title="גרור לסידור" onclick="event.stopPropagation()">⠿</div>
         <div style="flex:1;min-width:0;cursor:pointer;" onclick="toggleExpand(${p.id})">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
             <span class="proj-name" style="font-size:14px;">${p.client} — ${p.title}</span>
             ${urgCnt ? `<span class="badge b-urgent">${urgCnt} דחוף</span>` : ''}
+            ${billingBadgeHtml(p)}
           </div>
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
             ${remBadgeHtml(rem)}
@@ -1103,16 +928,12 @@ function renderProjects() {
         </div>
       </div>
       <div class="prog-bar" style="margin-top:6px;"><div class="prog-fill ${fillCls}" style="width:${pct}%"></div></div>
-
       ${isExpanded ? `
       <div class="stage-row" style="margin-top:10px;">${stages}</div>
       <div class="proj-bottom">
         <div>
           <div class="proj-section-label">תמונות שנערכו</div>
-          <div class="num-row">
-            <input type="number" value="${p.edited}" min="0" max="${p.total}" id="edited-${p.id}" onchange="updateEdited(${p.id},this.value)" />
-            <span>מתוך ${p.total}</span>
-          </div>
+          <div class="num-row"><input type="number" value="${p.edited}" min="0" max="${p.total}" id="edited-${p.id}" onchange="updateEdited(${p.id},this.value)" /><span>מתוך ${p.total}</span></div>
           <div class="quick-btns">
             <button class="qbtn minus" onclick="bumpEdited(${p.id},-1)">−1</button>
             <button class="qbtn minus" onclick="bumpEdited(${p.id},-5)">−5</button>
@@ -1132,8 +953,7 @@ function renderProjects() {
           <div style="margin-bottom:6px;">
             <div style="font-size:11px;color:var(--text3);margin-bottom:3px;">✅ ערכתי היום</div>
             <div class="num-row" style="margin-bottom:0;">
-              <input type="number" value="${gd}" min="0" id="gdone-${p.id}" onchange="updateGoalDone(${p.id},this.value)"
-                style="width:65px;text-align:center;" />
+              <input type="number" value="${gd}" min="0" id="gdone-${p.id}" onchange="updateGoalDone(${p.id},this.value)" style="width:65px;text-align:center;" />
               <span style="font-size:12px;color:var(--text3);">מתוך ${gt || '?'}</span>
             </div>
           </div>
@@ -1168,47 +988,32 @@ function setStageBtn(btn){const id=Number(btn.dataset.pid);const s=btn.dataset.s
 function setStage(id,s){const p=state.projects.find(p=>p.id===id);if(p){p.stage=s;save();renderProjects();}}
 
 function updateEdited(id,v){
-  const p=state.projects.find(p=>p.id===id);
-  if(p){
-    const newVal=Math.max(0,parseInt(v)||0);
-    const diff=newVal-(p.edited||0);
-    if(diff>0) p.editedToday=(p.editedToday||0)+diff;
-    p.edited=newVal;
-    save();renderProjects();
-  }
+  const p=state.projects.find(p=>p.id===id); if(!p) return;
+  const newVal=Math.max(0,parseInt(v)||0); const diff=newVal-(p.edited||0);
+  if(diff>0) p.editedToday=(p.editedToday||0)+diff;
+  p.edited=newVal; save();renderProjects();
 }
-
 function updateGoalDone(id,v){
   const p=state.projects.find(p=>p.id===id);if(!p)return;
-  const newVal=Math.max(0,parseInt(v)||0);
-  const diff=newVal-(p.goalDone||0);
+  const newVal=Math.max(0,parseInt(v)||0); const diff=newVal-(p.goalDone||0);
   p.goalDone=newVal;
-  if(diff>0){
-    p.edited=Math.min(p.total||9999,(p.edited||0)+diff);
-    p.editedToday=(p.editedToday||0)+diff;
-  }
+  if(diff>0){p.edited=Math.min(p.total||9999,(p.edited||0)+diff);p.editedToday=(p.editedToday||0)+diff;}
   save();renderProjects();renderTasks();renderUrgency();
 }
 function updateGoalTarget(id,v){const p=state.projects.find(p=>p.id===id);if(p){p.goalDaily=Math.max(0,parseInt(v)||0);renderTasks();save();renderProjects();}}
 function updateNotes(id,v){const p=state.projects.find(p=>p.id===id);if(p){p.notes=v;save();}}
 
 function bumpEdited(id,d){
-  const p=state.projects.find(p=>p.id===id);
-  if(!p) return;
+  const p=state.projects.find(p=>p.id===id); if(!p) return;
   p.edited=Math.max(0,Math.min(p.total||9999,(p.edited||0)+d));
   if(d>0) p.editedToday=(p.editedToday||0)+d;
-  const i=document.getElementById('edited-'+id);
-  if(i) i.value=p.edited;
+  const i=document.getElementById('edited-'+id); if(i) i.value=p.edited;
   save();renderProjects();renderTasks();renderUrgency();
 }
-
 function bumpGoal(id,d){
   const p=state.projects.find(p=>p.id===id);if(!p)return;
   p.goalDone=Math.max(0,(p.goalDone||0)+d);
-  if(d>0){
-    p.edited=Math.min(p.total||9999,(p.edited||0)+d);
-    p.editedToday=(p.editedToday||0)+d;
-  }
+  if(d>0){p.edited=Math.min(p.total||9999,(p.edited||0)+d);p.editedToday=(p.editedToday||0)+d;}
   const i=document.getElementById('gdone-'+id);if(i)i.value=p.goalDone;
   const e=document.getElementById('edited-'+id);if(e)e.value=p.edited;
   save();renderProjects();renderTasks();renderUrgency();
@@ -1219,18 +1024,7 @@ function addProject() {
   const title=document.getElementById('np-title').value.trim();
   if(!client||!title) return;
   const maxOrder = state.projects.reduce((m,p) => Math.max(m, p.order !== undefined ? p.order : 0), 0);
-  state.projects.push({
-    id:Date.now(),client,title,
-    date:document.getElementById('np-date').value,
-    stage:'send',
-    total:parseInt(document.getElementById('np-total').value)||0,
-    edited:0,
-    editedToday:0,
-    goalDaily:parseInt(document.getElementById('np-goal').value)||0,
-    goalDone:0,
-    notes:'',seconds:0,sessions:0,
-    order: maxOrder + 1
-  });
+  state.projects.push({id:Date.now(),client,title,date:document.getElementById('np-date').value,stage:'send',total:parseInt(document.getElementById('np-total').value)||0,edited:0,editedToday:0,goalDaily:parseInt(document.getElementById('np-goal').value)||0,goalDone:0,notes:'',seconds:0,sessions:0,order:maxOrder+1,payers:[]});
   ['np-client','np-title','np-date','np-total','np-goal'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('add-proj-form').classList.add('hidden');
   save(); renderProjects(); refreshSelects();
@@ -1297,63 +1091,26 @@ function exportBackup(){
   a.href=URL.createObjectURL(new Blob([JSON.stringify(state,null,2)],{type:'application/json'}));
   a.download=`karin-backup-${date}.json`;a.click();
 }
+
 function importBackup(e){
   const file=e.target.files[0];if(!file)return;
   const r=new FileReader();
   r.onload=function(ev){
-    try{const p=JSON.parse(ev.target.result);if(!p.projects){alert('קובץ לא תקין');return;}if(!confirm('לייבא גיבוי? הנתונים הנוכחיים יוחלפו.'))return;state={projects:p.projects||[],tasks:p.tasks||[]};save();render();}
+    try{
+      const p=JSON.parse(ev.target.result);
+      if(!p.projects){alert('קובץ לא תקין');return;}
+      if(!confirm('לייבא גיבוי? הנתונים הנוכחיים יוחלפו.'))return;
+      state={projects:p.projects||[],tasks:p.tasks||[],settings:p.settings||state.settings,editDays:p.editDays||{},lastReset:p.lastReset||''};
+      blockCloudLoad = true;
+      setTimeout(()=>{ blockCloudLoad = false; }, 30000);
+      save();render();
+    }
     catch(err){alert('שגיאה בקריאת הקובץ');}
   };
   r.readAsText(file);e.target.value='';
 }
 
 document.getElementById('edit-modal').addEventListener('click',function(e){if(e.target===this)closeModal();});
-
-
-
-function renderBillingSummaryMorning() {
-  const el = document.getElementById('billing-summary-morning');
-  if (!el) return;
-
-  const unpaidRows = [];
-  let totalUnpaid = 0;
-
-  state.projects.forEach(p => {
-    const payers = p.payers || [];
-    payers.forEach((pay, idx) => {
-      if (!pay.paid) {
-        unpaidRows.push({projId: p.id, payerIdx: idx, project: p.client + ' — ' + p.title, name: pay.name, type: pay.type, amount: Number(pay.amount) || 0});
-        totalUnpaid += Number(pay.amount) || 0;
-      }
-    });
-  });
-
-  if (!unpaidRows.length) {
-    el.innerHTML = '<p style="font-size:13px;color:var(--accent)">✓ אין חובות פתוחים</p>';
-    return;
-  }
-
-  const rows = unpaidRows.map(r => `
-    <div class="urgency-row">
-      <div class="urgency-days danger" style="min-width:52px;text-align:center;">
-        <div style="font-size:15px;font-weight:700;">₪${r.amount.toLocaleString()}</div>
-        <div style="font-size:10px;opacity:0.75;">${r.type === 'client' ? 'לקוח' : 'ספק'}</div>
-      </div>
-      <div class="urgency-info">
-        <div class="urgency-name">${r.name}</div>
-        <div class="urgency-sub">${r.project}</div>
-      </div>
-      <button class="billing-paid-btn" onclick="togglePaid(${r.projId},${r.payerIdx})" title="סמן כשולם">✓</button>
-    </div>
-  `).join('');
-
-  const total = `<div style="margin-top:10px;padding:10px 14px;background:var(--urgent-light);border-radius:var(--radius-sm);display:flex;justify-content:space-between;align-items:center;">
-    <span style="font-size:13px;color:var(--urgent);font-weight:500;">סה״כ לגביה</span>
-    <span style="font-size:20px;font-weight:700;color:var(--urgent);">₪${totalUnpaid.toLocaleString()}</span>
-  </div>`;
-
-  el.innerHTML = rows + total;
-}
 
 // ===== גביה =====
 function billingBadgeHtml(p) {
@@ -1371,7 +1128,6 @@ function renderBillingSection(p) {
   const totalAmount = payers.reduce((s, x) => s + (Number(x.amount) || 0), 0);
   const paidAmount = payers.filter(x => x.paid).reduce((s, x) => s + (Number(x.amount) || 0), 0);
   const remainAmount = totalAmount - paidAmount;
-
   const rows = payers.map((pay, i) => `
     <div class="billing-row">
       <span class="billing-type">${pay.type === 'client' ? 'לקוח' : 'ספק'}</span>
@@ -1381,16 +1137,12 @@ function renderBillingSection(p) {
       <button class="billing-delete-btn" onclick="deletePayer(${p.id},${i})">✕</button>
     </div>
   `).join('');
-
   return `
     <div class="billing-section">
       <div class="proj-section-label">💰 גביה</div>
       ${rows}
       <div class="billing-add-row">
-        <select id="btype-${p.id}">
-          <option value="client">לקוח</option>
-          <option value="vendor">ספק</option>
-        </select>
+        <select id="btype-${p.id}"><option value="client">לקוח</option><option value="vendor">ספק</option></select>
         <input type="text" id="bname-${p.id}" placeholder="שם" style="width:120px" />
         <input type="number" id="bamount-${p.id}" placeholder="סכום ₪" style="width:90px" />
         <button class="btn-save" style="font-size:12px;padding:6px 14px" onclick="addPayer(${p.id})">+ הוסף</button>
@@ -1405,6 +1157,37 @@ function renderBillingSection(p) {
   `;
 }
 
+function renderBillingSummaryMorning() {
+  const el = document.getElementById('billing-summary-morning'); if (!el) return;
+  const unpaidRows = []; let totalUnpaid = 0;
+  state.projects.forEach(p => {
+    (p.payers || []).forEach((pay, idx) => {
+      if (!pay.paid) {
+        unpaidRows.push({projId: p.id, payerIdx: idx, project: p.client + ' — ' + p.title, name: pay.name, type: pay.type, amount: Number(pay.amount) || 0});
+        totalUnpaid += Number(pay.amount) || 0;
+      }
+    });
+  });
+  if (!unpaidRows.length) { el.innerHTML = '<p style="font-size:13px;color:var(--accent)">✓ אין חובות פתוחים</p>'; return; }
+  const rows = unpaidRows.map(r => `
+    <div class="urgency-row">
+      <div class="urgency-days danger" style="min-width:52px;text-align:center;">
+        <div style="font-size:15px;font-weight:700;">₪${r.amount.toLocaleString()}</div>
+        <div style="font-size:10px;opacity:0.75;">${r.type === 'client' ? 'לקוח' : 'ספק'}</div>
+      </div>
+      <div class="urgency-info">
+        <div class="urgency-name">${r.name}</div>
+        <div class="urgency-sub">${r.project}</div>
+      </div>
+      <button class="billing-paid-btn" onclick="togglePaid(${r.projId},${r.payerIdx})" title="סמן כשולם">✓</button>
+    </div>
+  `).join('');
+  el.innerHTML = rows + `<div style="margin-top:10px;padding:10px 14px;background:var(--urgent-light);border-radius:var(--radius-sm);display:flex;justify-content:space-between;align-items:center;">
+    <span style="font-size:13px;color:var(--urgent);font-weight:500;">סה״כ לגביה</span>
+    <span style="font-size:20px;font-weight:700;color:var(--urgent);">₪${totalUnpaid.toLocaleString()}</span>
+  </div>`;
+}
+
 function addPayer(projId) {
   const p = state.projects.find(p => p.id === projId); if (!p) return;
   const name = document.getElementById('bname-' + projId).value.trim();
@@ -1415,24 +1198,19 @@ function addPayer(projId) {
   p.payers.push({ name, amount, type, paid: false });
   save(); renderProjects();
 }
-
 function togglePaid(projId, idx) {
   const p = state.projects.find(p => p.id === projId); if (!p || !p.payers) return;
   p.payers[idx].paid = !p.payers[idx].paid;
   save(); renderProjects(); renderBillingSummaryMorning();
 }
-
 function deletePayer(projId, idx) {
   const p = state.projects.find(p => p.id === projId); if (!p || !p.payers) return;
   p.payers.splice(idx, 1);
-  save(); renderProjects();
+  save(); renderProjects(); renderBillingSummaryMorning();
 }
 // ===== END גביה =====
 
-function collapseAll() {
-  expandedProjects.clear();
-  renderProjects();
-}
+function collapseAll() { expandedProjects.clear(); renderProjects(); }
 
 load();
 render();
