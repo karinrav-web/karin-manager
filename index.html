@@ -1186,12 +1186,17 @@ function renderBillingSection(p) {
 
   const vendorRows = vendors.map((pay, i) => {
     const realIdx = payers.indexOf(pay);
+    const amt = Number(pay.amount) || 0;
+    const paidToDesigner = amt === 0;
     return `<div class="billing-row">
       <span class="billing-type">ספק</span>
       <span class="billing-name">${pay.name}</span>
       <div style="display:flex;align-items:center;gap:6px;">
-        <input type="number" value="${pay.amount||500}" style="width:75px;padding:4px 8px;font-size:13px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-family:'Heebo',sans-serif;text-align:center;" onchange="updateVendorAmount(${p.id},${realIdx},this.value)" />
-        <span style="font-size:11px;color:var(--text3);">(${fmtILS(Number(pay.amount||500)*VAT_RATE)} כולל מעמ)</span>
+        <input type="number" value="${amt}" style="width:75px;padding:4px 8px;font-size:13px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-family:'Heebo',sans-serif;text-align:center;" onchange="updateVendorAmount(${p.id},${realIdx},this.value)" />
+        ${paidToDesigner
+          ? `<span style="font-size:11px;color:var(--high);font-weight:500;">שילם למעצבת</span>`
+          : `<span style="font-size:11px;color:var(--text3);">(${fmtILS(amt*VAT_RATE)} כולל מעמ)</span>`
+        }
       </div>
       <button class="billing-paid-btn ${pay.paid ? 'paid' : ''}" onclick="togglePaid(${p.id},${realIdx})">${pay.paid ? '✓' : ''}</button>
       <button class="billing-delete-btn" onclick="deletePayer(${p.id},${realIdx})">✕</button>
