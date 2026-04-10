@@ -1140,6 +1140,12 @@ function updateBillingAdj(projId, val) {
   recalcClientShare(p);
   save(); renderProjects(); renderBillingSummaryMorning();
 }
+function updateBillingDiscount(projId, val) {
+  const p = state.projects.find(p => p.id === projId); if (!p) return;
+  p.billingDiscount = Number(val) || 0;
+  recalcClientShare(p);
+  save(); renderProjects(); renderBillingSummaryMorning();
+}
 function updateVendorAmount(projId, idx, val) {
   const p = state.projects.find(p => p.id === projId); if (!p || !p.payers) return;
   p.payers[idx].amount = Number(val) || 0;
@@ -1149,7 +1155,8 @@ function updateVendorAmount(projId, idx, val) {
 function recalcClientShare(p) {
   const base = Number(p.billingBase) || 0;
   const adj = Number(p.billingAdj) || 0;
-  const total = base + adj;
+  const discount = Number(p.billingDiscount) || 0;
+  const total = base + adj - discount;
   const vendors = (p.payers || []).filter(x => x.type === 'vendor');
   const vendorTotal = vendors.reduce((s, x) => s + (Number(x.amount) || 0), 0);
   const clientShare = Math.max(0, total - vendorTotal);
@@ -1162,7 +1169,8 @@ function renderBillingSection(p) {
   const payers = p.payers || [];
   const base = Number(p.billingBase) || 0;
   const adj = Number(p.billingAdj) || 0;
-  const totalBeforeVat = base + adj;
+  const discount = Number(p.billingDiscount) || 0;
+  const totalBeforeVat = base + adj - discount;
   const vendors = payers.filter(x => x.type === 'vendor');
   const client = payers.find(x => x.type === 'client');
   const vendorTotal = vendors.reduce((s, x) => s + (Number(x.amount) || 0), 0);
@@ -1213,10 +1221,14 @@ function renderBillingSection(p) {
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">${baseButtons}
           <input type="number" placeholder="אחר..." value="${base && ![2700,3700,5000].includes(base)?base:''}" style="width:90px;padding:4px 8px;font-size:12px;border:1px solid var(--border2);border-radius:20px;font-family:'Heebo',sans-serif;" onchange="updateBillingBase(${p.id},this.value)" />
         </div>
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
           <div style="display:flex;align-items:center;gap:6px;">
-            <span style="font-size:12px;color:var(--text2);">תוספת/הנחה:</span>
-            <input type="number" value="${adj||''}" placeholder="0" style="width:80px;padding:4px 8px;font-size:12px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-family:'Heebo',sans-serif;text-align:center;" onchange="updateBillingAdj(${p.id},this.value)" />
+            <span style="font-size:12px;color:var(--accent);">+ תוספת:</span>
+            <input type="number" value="${adj||''}" placeholder="0" min="0" style="width:75px;padding:4px 8px;font-size:12px;border:1px solid var(--accent);border-radius:var(--radius-sm);font-family:'Heebo',sans-serif;text-align:center;" onchange="updateBillingAdj(${p.id},this.value)" />
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:12px;color:var(--urgent);">− הנחה:</span>
+            <input type="number" value="${discount||''}" placeholder="0" min="0" style="width:75px;padding:4px 8px;font-size:12px;border:1px solid var(--urgent);border-radius:var(--radius-sm);font-family:'Heebo',sans-serif;text-align:center;" onchange="updateBillingDiscount(${p.id},this.value)" />
           </div>
           ${totalBeforeVat ? `<span style="font-size:13px;font-weight:600;color:var(--text);">סה״כ: ${fmtILS(totalBeforeVat)} <span style="font-size:11px;color:var(--text3);font-weight:400;">(${fmtILS(totalBeforeVat*VAT_RATE)} כולל מעמ)</span></span>` : ''}
         </div>
