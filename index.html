@@ -1227,7 +1227,7 @@ function renderBillingSection(p) {
 
       <div class="billing-add-row" style="margin-top:8px;">
         <input type="text" id="bname-${p.id}" placeholder="שם ספק" style="width:130px" />
-        <input type="number" id="bamount-${p.id}" placeholder="סכום ₪" value="500" style="width:80px" />
+        <input type="number" id="bamount-${p.id}" placeholder="סכום ₪ (0 אם שילם למעצבת)" value="0" style="width:80px" />
         <button class="btn-save" style="font-size:12px;padding:6px 14px" onclick="addVendor(${p.id})">+ הוסף ספק</button>
         ${!client ? `<button class="edit-btn" onclick="addClient(${p.id})">+ הוסף לקוח</button>` : ''}
       </div>
@@ -1287,13 +1287,15 @@ function addPayer(projId) {
 function addVendor(projId) {
   const p = state.projects.find(p => p.id === projId); if (!p) return;
   const name = document.getElementById('bname-' + projId).value.trim();
-  const amount = parseFloat(document.getElementById('bamount-' + projId).value) || 500;
+  const amount = parseFloat(document.getElementById('bamount-' + projId).value) || 0;
   if (!name) return;
   if (!p.payers) p.payers = [];
   p.payers.push({ name, amount, type: 'vendor', paid: false });
+  // כל ספק מוסיף 500 לבסיס אוטומטית
+  p.billingAdj = (Number(p.billingAdj) || 0) + 500;
   recalcClientShare(p);
   document.getElementById('bname-' + projId).value = '';
-  document.getElementById('bamount-' + projId).value = '500';
+  document.getElementById('bamount-' + projId).value = '0';
   save(); renderProjects(); renderBillingSummaryMorning();
 }
 function addClient(projId) {
