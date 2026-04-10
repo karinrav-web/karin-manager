@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>קרין רבנה — ניהול פרויקטים</title>
+<title>קרין רבנה — ניהול פרויקטים 2026</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600&display=swap');
 
@@ -395,7 +395,7 @@
     <div id="page-morning" class="page active">
       <div class="page-header">
         <div>
-          <div class="page-title" id="morning-greeting">בוקר טוב, קרין</div>
+          <div class="page-title" id="morning-greeting">שלום קרין! 👋</div>
           <div class="page-date" id="today-date"></div>
         </div>
         <button class="new-day-btn" onclick="newDay()">☀ יום חדש</button>
@@ -795,7 +795,7 @@ function filterStage(stage, el, isMobile) {
 function toggleEl(id) { document.getElementById(id).classList.toggle('hidden'); }
 function setGreeting() {
   const h = new Date().getHours();
-  document.getElementById('morning-greeting').textContent = (h<12?'בוקר טוב':h<17?'צהריים טובים':'ערב טוב')+', קרין';
+  document.getElementById('morning-greeting').textContent = 'שלום קרין! 👋';
   const d = new Date(), days=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
   document.getElementById('today-date').textContent = 'יום '+days[d.getDay()]+', '+d.toLocaleDateString('he-IL');
 }
