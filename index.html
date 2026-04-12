@@ -417,9 +417,13 @@
         <label style="font-size:12px;color:var(--text2);width:90px;">שעות/יום</label>
         <input type="number" id="s-hours" min="1" max="16" value="6" style="width:50px;padding:4px 6px;font-size:13px;border:1px solid var(--border2);border-radius:4px;font-family:'Heebo',sans-serif;" oninput="saveSettings()"/>
       </div>
-      <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
-        <label style="font-size:12px;color:var(--text2);width:90px;">תמונות/יום</label>
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">
+        <label style="font-size:12px;color:var(--text2);width:90px;">תמונות/יום (סה״כ)</label>
         <input type="number" id="s-rate" min="1" max="500" value="20" style="width:50px;padding:4px 6px;font-size:13px;border:1px solid var(--border2);border-radius:4px;font-family:'Heebo',sans-serif;" oninput="saveSettings()"/>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;">
+        <label style="font-size:12px;color:var(--text2);width:90px;">תמ׳ לפרויקט/יום</label>
+        <input type="number" id="s-rate-proj" min="1" max="200" value="10" style="width:50px;padding:4px 6px;font-size:13px;border:1px solid var(--border2);border-radius:4px;font-family:'Heebo',sans-serif;" oninput="saveSettings()"/>
       </div>
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">ימי עבודה קבועים</div>
       <div style="display:flex;gap:3px;flex-wrap:wrap;">
@@ -623,7 +627,7 @@ const PBADGE = {urgent:'b-urgent',high:'b-high',normal:'b-normal',low:'b-low'};
 const PSTRIP = {urgent:'ps-urgent',high:'ps-high',normal:'ps-normal',low:'ps-low'};
 const STAGEMAP = {culling:'edit',retouch:'edit',approval:'wait',delivery:'deliver','s-send':'send','s-wait':'wait','s-edit':'edit','s-deliver':'deliver','s-notes':'notes','s-billing':'billing','s-done':'done'};
 
-let state = {projects:[],tasks:[],settings:{hoursPerDay:6,photosPerDay:20,workDays:[0,1,2,3,4]}};
+let state = {projects:[],tasks:[],settings:{hoursPerDay:6,photosPerDay:20,photosPerProj:10,workDays:[0,1,2,3,4]}};
 let editingId = null;
 let stageFilter = null;
 let activeTimer = {projId:null,startTs:null,iv:null};
@@ -682,7 +686,8 @@ function save() {
 function saveSettings(){
   const h=parseInt(document.getElementById('s-hours').value)||6;
   const r=parseInt(document.getElementById('s-rate').value)||20;
-  state.settings={...state.settings,hoursPerDay:h,photosPerDay:r};
+  const rp=parseInt(document.getElementById('s-rate-proj').value)||10;
+  state.settings={...state.settings,hoursPerDay:h,photosPerDay:r,photosPerProj:rp};
   save(); renderUrgency();
 }
 
@@ -699,8 +704,10 @@ function loadSettings(){
   const s=state.settings||{};
   const h=document.getElementById('s-hours');
   const r=document.getElementById('s-rate');
+  const rp=document.getElementById('s-rate-proj');
   if(h) h.value=s.hoursPerDay||6;
   if(r) r.value=s.photosPerDay||20;
+  if(rp) rp.value=s.photosPerProj||10;
   const wd=s.workDays||[0,1,2,3,4];
   document.querySelectorAll('.wday-btn').forEach(btn=>{ const d=Number(btn.dataset.day); btn.classList.toggle('active', wd.includes(d)); });
 }
@@ -714,36 +721,36 @@ function countWorkDays(fromDate, toDate, workDays){
 function renderUrgency(){
   const el=document.getElementById('urgency-list'); if(!el) return;
   const s=state.settings||{};
-  const photosPerDay=s.photosPerDay||20;
-  const workDays=s.workDays||[0,1,2,3,4];
+  const photosPerProj=s.photosPerProj||10;
   const today=new Date(); today.setHours(0,0,0,0);
-  const active=state.projects.filter(p=>p.stage!=='done'&&p.stage!=='billing'&&p.deadline);
+  const active=state.projects.filter(p=>p.stage!=='done'&&p.stage!=='s-done'&&p.stage!=='billing'&&p.stage!=='s-billing'&&p.deadline);
   if(!active.length){el.innerHTML='<p style="font-size:13px;color:var(--text3)">אין פרויקטים עם דדליין</p>';return;}
   const rows=active.map(p=>{
     const deadline=new Date(p.deadline); deadline.setHours(0,0,0,0);
-    const wdaysLeft=countWorkDays(today,deadline,workDays);
-    const editDaysLeft=countEditDaysUntil(deadline);
+    const calDaysLeft=Math.round((deadline-today)/(1000*60*60*24));
     const rem=Math.max(0,(p.total||0)-(p.edited||0));
-    const recToday=editDaysLeft>0?Math.ceil(rem/editDaysLeft):rem;
-    const diff=editDaysLeft-Math.ceil(rem/(photosPerDay||1));
-    return {p,wdaysLeft,editDaysLeft,rem,recToday,diff};
-  }).sort((a,b)=>a.diff-b.diff);
-  el.innerHTML=rows.map(({p,wdaysLeft,editDaysLeft,rem,recToday,diff})=>{
-    const daysNeeded=Math.ceil(rem/photosPerDay)||0;
-    const cls=rem===0?'ok':diff<0?'danger':diff<=1?'warn':'ok';
+    const daysToFinish=rem>0?Math.ceil(rem/photosPerProj):0;
+    return {p,calDaysLeft,rem,daysToFinish};
+  }).sort((a,b)=>a.calDaysLeft-b.calDaysLeft);
+  el.innerHTML=rows.map(({p,calDaysLeft,rem,daysToFinish})=>{
     const deadlineStr=new Date(p.deadline).toLocaleDateString('he-IL');
-    const status=rem===0?'✓ הסתיים':diff<0?`⚠ חסרים ${Math.abs(diff)} ימי עריכה!`:diff===0?'בדיוק בזמן':`יש ${diff} ימים פנויים`;
-    return `<div class="urgency-row" onclick="openProjectFromUrgency('${p.id}')" style="cursor:pointer" title="לחץ לפתיחת הפרויקט">
-      <div class="urgency-days ${cls}" style="min-width:52px;text-align:center;">
-        <div style="font-size:18px;font-weight:700;">${daysNeeded}</div>
-        <div style="font-size:10px;opacity:0.75;">ימים לסיום</div>
+    const done=rem===0;
+    const late=calDaysLeft<0;
+    const cls=done?'ok':late?'danger':daysToFinish>calDaysLeft?'danger':daysToFinish===calDaysLeft?'warn':'ok';
+    const daysLabel=late?`איחור ${Math.abs(calDaysLeft)} י׳`:calDaysLeft===0?'היום!':calDaysLeft===1?'מחר':calDaysLeft+' ימים';
+    const finishNote=done?'✓ הסתיים':late?`⚠ פג תוקף, נשאר ${rem} תמ׳`:`ניתן לסיים תוך ${daysToFinish} ימים (${photosPerProj} תמ׳/יום)`;
+    const statusColor=done||(!late&&daysToFinish<=calDaysLeft)?'var(--normal)':'var(--urgent)';
+    return `<div class="urgency-row" onclick="openProjectFromUrgency('${p.id}')" style="cursor:pointer" title="לפתיחת הפרויקט">
+      <div class="urgency-days ${cls}" style="min-width:56px;text-align:center;">
+        <div style="font-size:20px;font-weight:700;line-height:1;">${done?'✓':late?'!':calDaysLeft}</div>
+        <div style="font-size:10px;opacity:0.8;margin-top:2px;">${late||done?'':daysLabel==='היום!'||daysLabel==='מחר'?'':''}</div>
+        <div style="font-size:10px;font-weight:600;">${done?'הסתיים':daysLabel}</div>
       </div>
       <div class="urgency-info">
         <div class="urgency-name">${p.client} — ${p.title}</div>
-        <div class="urgency-sub">דדליין: ${deadlineStr} · נשאר ${rem} תמונות · ${status}</div>
-        <div style="margin-top:2px;font-size:11px;color:var(--text3)">${editDaysLeft} ימי עריכה פנויים · ${wdaysLeft} ימי עבודה</div>
+        <div class="urgency-sub">דדליין: ${deadlineStr} · נשאר ${rem} תמונות</div>
+        <div style="margin-top:3px;font-size:12px;font-weight:500;color:${statusColor}">${finishNote}</div>
       </div>
-      ${rem>0?`<div class="urgency-rec">+${recToday} היום</div>`:'<div class="urgency-rec" style="background:var(--normal-light)">✓</div>'}
     </div>`;
   }).join('');
 }
