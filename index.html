@@ -308,6 +308,16 @@
   .billing-badge.partial { background:var(--high-light); color:var(--high); }
   .billing-badge.none-paid { background:var(--urgent-light); color:var(--urgent); }
 
+  /* === Morning dashboard (desktop) === */
+  #page-morning.active { display:flex; flex-direction:column; height:calc(100vh - 64px); overflow:hidden; }
+  .morning-metrics { display:grid; grid-template-columns:repeat(6,1fr); gap:10px; margin-bottom:12px; flex-shrink:0; }
+  .morning-metrics .metric-card { padding:10px 14px; }
+  .morning-metrics .metric-val { font-size:22px; }
+  .morning-grid { display:grid; grid-template-columns:1fr 264px; gap:14px; flex:1; min-height:0; }
+  .morning-col { display:flex; flex-direction:column; gap:10px; min-height:0; overflow:hidden; }
+  .morning-panel { flex:1; overflow-y:auto; margin-bottom:0 !important; min-height:0; }
+  .morning-legend { flex-shrink:0; margin-bottom:0 !important; }
+
   @media (max-width: 768px) {
     .sidebar { display:none; }
     .main { margin-right:0; padding:16px; max-width:100%; }
@@ -329,6 +339,10 @@
     .mobile-filter-btn { display:flex; align-items:center; gap:4px; white-space:nowrap; padding:5px 12px; font-size:12px; border:1px solid var(--border); border-radius:20px; background:var(--surface2); cursor:pointer; color:var(--text2); font-family:'Heebo',sans-serif; flex-shrink:0; }
     .mobile-filter-btn.active { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:500; }
     .rem-badge .rem-num { font-size:18px; }
+    #page-morning.active { height:auto; overflow:visible; display:block; }
+    .morning-metrics { grid-template-columns:repeat(3,1fr); }
+    .morning-grid { grid-template-columns:1fr; }
+    .morning-panel { overflow-y:visible; flex:none; }
   }
   @media (min-width: 769px) {
     .mobile-nav { display:none; }
@@ -393,55 +407,59 @@
   <main class="main">
     <!-- MORNING -->
     <div id="page-morning" class="page active">
-      <div class="page-header">
+      <div class="page-header" style="margin-bottom:12px">
         <div>
           <div class="page-title" id="morning-greeting">שלום קרין! 👋</div>
           <div class="page-date" id="today-date"></div>
         </div>
         <button class="new-day-btn" onclick="newDay()">☀ יום חדש</button>
       </div>
-      <div class="metric-row">
+      <div class="morning-metrics">
         <div class="metric-card"><div class="metric-val" id="m-projects">0</div><div class="metric-label">פרויקטים פעילים</div></div>
         <div class="metric-card"><div class="metric-val" id="m-remaining">0</div><div class="metric-label">תמונות לעריכה</div></div>
         <div class="metric-card"><div class="metric-val" id="m-edited-today">0</div><div class="metric-label">נערכו היום</div></div>
-      </div>
-      <div class="metric-row">
         <div class="metric-card"><div class="metric-val" id="m-goal-total">0</div><div class="metric-label">יעד יומי (סה"כ)</div></div>
         <div class="metric-card"><div class="metric-val green" id="m-goal-done">0</div><div class="metric-label">הושלמו מהיעד</div></div>
         <div class="metric-card"><div class="metric-val red" id="m-goal-left">0</div><div class="metric-label">נשאר מהיעד</div></div>
       </div>
-      <div class="legend">
-        <div class="legend-item"><div class="legend-dot" style="background:var(--urgent)"></div>דחוף</div>
-        <div class="legend-item"><div class="legend-dot" style="background:var(--high)"></div>גבוה</div>
-        <div class="legend-item"><div class="legend-dot" style="background:var(--normal)"></div>רגיל</div>
-        <div class="legend-item"><div class="legend-dot" style="background:var(--low)"></div>נמוך</div>
-      </div>
-      <div class="card">
-        <div class="card-title">משימות — ממוינות לפי עדיפות</div>
-        <div id="tasks-list"></div>
-        <button class="add-btn" onclick="toggleEl('add-task-form')">+ הוסף משימה</button>
-        <div id="add-task-form" class="hidden">
-          <div class="form-row">
-            <input type="text" id="nt-text" placeholder="תיאור המשימה" style="flex:2;min-width:160px" />
-            <select id="nt-client"><option value="">לקוח</option></select>
-            <input type="text" id="nt-stage" placeholder="קטגוריה (אופציונלי)" style="width:140px" />
-            <select id="nt-priority">
-              <option value="urgent">דחוף</option>
-              <option value="high">גבוה</option>
-              <option value="normal" selected>רגיל</option>
-              <option value="low">נמוך</option>
-            </select>
-            <button class="btn-save" onclick="addTask()">שמור</button>
+      <div class="morning-grid">
+        <div class="morning-col">
+          <div class="legend morning-legend">
+            <div class="legend-item"><div class="legend-dot" style="background:var(--urgent)"></div>דחוף</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--high)"></div>גבוה</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--normal)"></div>רגיל</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--low)"></div>נמוך</div>
+          </div>
+          <div class="card morning-panel">
+            <div class="card-title">משימות — ממוינות לפי עדיפות</div>
+            <div id="tasks-list"></div>
+            <button class="add-btn" onclick="toggleEl('add-task-form')">+ הוסף משימה</button>
+            <div id="add-task-form" class="hidden">
+              <div class="form-row">
+                <input type="text" id="nt-text" placeholder="תיאור המשימה" style="flex:2;min-width:160px" />
+                <select id="nt-client"><option value="">לקוח</option></select>
+                <input type="text" id="nt-stage" placeholder="קטגוריה (אופציונלי)" style="width:140px" />
+                <select id="nt-priority">
+                  <option value="urgent">דחוף</option>
+                  <option value="high">גבוה</option>
+                  <option value="normal" selected>רגיל</option>
+                  <option value="low">נמוך</option>
+                </select>
+                <button class="btn-save" onclick="addTask()">שמור</button>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-      <div class="urgency-card">
-        <div class="card-title">📅 תעדוף לפי דדליין</div>
-        <div id="urgency-list"><p style="font-size:13px;color:var(--text3)">אין פרויקטים עם דדליין</p></div>
-      </div>
-      <div class="urgency-card">
-        <div class="card-title">💰 גביה פתוחה</div>
-        <div id="billing-summary-morning"><p style="font-size:13px;color:var(--text3)">אין חובות פתוחים</p></div>
+        <div class="morning-col">
+          <div class="urgency-card morning-panel">
+            <div class="card-title">📅 תעדוף לפי דדליין</div>
+            <div id="urgency-list"><p style="font-size:13px;color:var(--text3)">אין פרויקטים עם דדליין</p></div>
+          </div>
+          <div class="urgency-card morning-panel">
+            <div class="card-title">💰 גביה פתוחה</div>
+            <div id="billing-summary-morning"><p style="font-size:13px;color:var(--text3)">אין חובות פתוחים</p></div>
+          </div>
+        </div>
       </div>
     </div>
 
