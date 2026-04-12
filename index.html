@@ -61,6 +61,7 @@
   .sub-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
 
   .main { margin-right:220px; flex:1; padding:32px 36px; max-width:900px; }
+  .main.dashboard-mode { max-width:100%; padding:24px 28px; }
   .page { display:none; }
   .page.active { display:block; }
 
@@ -308,6 +309,38 @@
   .billing-badge.partial { background:var(--high-light); color:var(--high); }
   .billing-badge.none-paid { background:var(--urgent-light); color:var(--urgent); }
 
+  /* === Dashboard customize === */
+  .customize-btn {
+    padding:8px 14px; font-size:13px; font-family:'Heebo',sans-serif;
+    border:1px solid var(--border2); border-radius:var(--radius-sm);
+    background:var(--surface2); color:var(--text2); cursor:pointer; transition:all 0.15s;
+  }
+  .customize-btn:hover { border-color:var(--accent); color:var(--accent); background:var(--accent-light); }
+  .dash-customize-bar {
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:var(--radius); padding:10px 16px; margin-bottom:10px; flex-shrink:0;
+  }
+  .dash-label { font-size:12px; color:var(--text3); font-weight:500; white-space:nowrap; }
+  .theme-swatches { display:flex; gap:8px; align-items:center; }
+  .theme-swatch {
+    width:26px; height:26px; border-radius:50%; cursor:pointer;
+    border:2px solid transparent; transition:transform 0.15s, border-color 0.15s;
+    flex-shrink:0;
+  }
+  .theme-swatch:hover { transform:scale(1.2); }
+  .theme-swatch.active { border-color:var(--text); box-shadow:0 0 0 2px var(--bg); }
+  .panel-handle {
+    text-align:center; color:var(--border2); font-size:12px; cursor:grab;
+    padding-bottom:8px; margin-bottom:8px; border-bottom:1px solid var(--border);
+    user-select:none; letter-spacing:3px; transition:color 0.15s;
+  }
+  .panel-handle:hover { color:var(--accent); }
+  .morning-panel.dragging { opacity:0.35; }
+  .morning-panel.drop-before { box-shadow:0 -3px 0 var(--accent); }
+  .morning-panel.drop-after  { box-shadow:0  3px 0 var(--accent); }
+  .morning-col.drop-highlight { outline:2px dashed var(--accent); outline-offset:-3px; border-radius:var(--radius); }
+
   /* === Morning dashboard (desktop) === */
   #page-morning.active { display:flex; flex-direction:column; height:calc(100vh - 64px); overflow:hidden; }
   .morning-metrics { display:grid; grid-template-columns:repeat(6,1fr); gap:10px; margin-bottom:12px; flex-shrink:0; }
@@ -407,12 +440,20 @@
   <main class="main">
     <!-- MORNING -->
     <div id="page-morning" class="page active">
-      <div class="page-header" style="margin-bottom:12px">
+      <div class="page-header" style="margin-bottom:10px">
         <div>
           <div class="page-title" id="morning-greeting">שלום קרין! 👋</div>
           <div class="page-date" id="today-date"></div>
         </div>
-        <button class="new-day-btn" onclick="newDay()">☀ יום חדש</button>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="customize-btn" onclick="toggleEl('dash-customize-bar')" title="התאמה אישית">⚙ התאמה אישית</button>
+          <button class="new-day-btn" onclick="newDay()">☀ יום חדש</button>
+        </div>
+      </div>
+      <div id="dash-customize-bar" class="dash-customize-bar hidden">
+        <span class="dash-label">צבע נושא:</span>
+        <div class="theme-swatches" id="theme-swatches"></div>
+        <span class="dash-label" style="margin-right:16px">גרור פאנלים לסידור רצוי ↕</span>
       </div>
       <div class="morning-metrics">
         <div class="metric-card"><div class="metric-val" id="m-projects">0</div><div class="metric-label">פרויקטים פעילים</div></div>
@@ -423,14 +464,17 @@
         <div class="metric-card"><div class="metric-val red" id="m-goal-left">0</div><div class="metric-label">נשאר מהיעד</div></div>
       </div>
       <div class="morning-grid">
-        <div class="morning-col">
-          <div class="legend morning-legend">
-            <div class="legend-item"><div class="legend-dot" style="background:var(--urgent)"></div>דחוף</div>
-            <div class="legend-item"><div class="legend-dot" style="background:var(--high)"></div>גבוה</div>
-            <div class="legend-item"><div class="legend-dot" style="background:var(--normal)"></div>רגיל</div>
-            <div class="legend-item"><div class="legend-dot" style="background:var(--low)"></div>נמוך</div>
-          </div>
-          <div class="card morning-panel">
+        <div class="morning-col" id="mcol-left"
+             ondragover="colDragOver(event,this)" ondrop="colDrop(event,this)" ondragleave="colDragLeave(event,this)">
+          <div class="card morning-panel" id="panel-tasks" draggable="true"
+               ondragstart="panelDragStart(event,this)" ondragend="panelDragEnd()">
+            <div class="panel-handle">⠿⠿⠿</div>
+            <div class="legend" style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border)">
+              <div class="legend-item"><div class="legend-dot" style="background:var(--urgent)"></div>דחוף</div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--high)"></div>גבוה</div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--normal)"></div>רגיל</div>
+              <div class="legend-item"><div class="legend-dot" style="background:var(--low)"></div>נמוך</div>
+            </div>
             <div class="card-title">משימות — ממוינות לפי עדיפות</div>
             <div id="tasks-list"></div>
             <button class="add-btn" onclick="toggleEl('add-task-form')">+ הוסף משימה</button>
@@ -450,12 +494,17 @@
             </div>
           </div>
         </div>
-        <div class="morning-col">
-          <div class="urgency-card morning-panel">
+        <div class="morning-col" id="mcol-right"
+             ondragover="colDragOver(event,this)" ondrop="colDrop(event,this)" ondragleave="colDragLeave(event,this)">
+          <div class="urgency-card morning-panel" id="panel-urgency" draggable="true"
+               ondragstart="panelDragStart(event,this)" ondragend="panelDragEnd()">
+            <div class="panel-handle">⠿⠿⠿</div>
             <div class="card-title">📅 תעדוף לפי דדליין</div>
             <div id="urgency-list"><p style="font-size:13px;color:var(--text3)">אין פרויקטים עם דדליין</p></div>
           </div>
-          <div class="urgency-card morning-panel">
+          <div class="urgency-card morning-panel" id="panel-billing" draggable="true"
+               ondragstart="panelDragStart(event,this)" ondragend="panelDragEnd()">
+            <div class="panel-handle">⠿⠿⠿</div>
             <div class="card-title">💰 גביה פתוחה</div>
             <div id="billing-summary-morning"><p style="font-size:13px;color:var(--text3)">אין חובות פתוחים</p></div>
           </div>
@@ -792,6 +841,7 @@ function showPage(p, el) {
   document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
   document.getElementById('page-'+p).classList.add('active');
   el.classList.add('active');
+  document.querySelector('.main').classList.toggle('dashboard-mode', p==='morning');
 }
 function showPageMobile(p, el) {
   document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));
@@ -800,6 +850,7 @@ function showPageMobile(p, el) {
   el.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
   const dn = document.getElementById('nav-'+p); if(dn) dn.classList.add('active');
+  document.querySelector('.main').classList.toggle('dashboard-mode', p==='morning');
 }
 function filterStage(stage, el, isMobile) {
   stageFilter = stage;
@@ -817,7 +868,116 @@ function setGreeting() {
   const d = new Date(), days=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
   document.getElementById('today-date').textContent = 'יום '+days[d.getDay()]+', '+d.toLocaleDateString('he-IL');
 }
-function render() { setGreeting(); renderTasks(); renderProjects(); refreshSelects(); renderUrgency(); renderCalendar(); loadSettings(); renderBillingSummaryMorning(); }
+function render() { setGreeting(); renderTasks(); renderProjects(); refreshSelects(); renderUrgency(); renderCalendar(); loadSettings(); renderBillingSummaryMorning(); document.querySelector('.main').classList.add('dashboard-mode'); initThemeSwatches(); loadDashboardSettings(); }
+
+/* ===== Dashboard Customize ===== */
+const THEMES = [
+  {accent:'#2D6A4F', light:'#E8F4EE', name:'ירוק'},
+  {accent:'#1B4F8A', light:'#DCE9F8', name:'כחול'},
+  {accent:'#6B3FA0', light:'#EDE0FA', name:'סגול'},
+  {accent:'#1A6B6B', light:'#DDF0F0', name:'טורקיז'},
+  {accent:'#8B4400', light:'#FEE8D6', name:'כתום'},
+  {accent:'#4A4A4A', light:'#EBEBEB', name:'אפור'},
+];
+
+function initThemeSwatches() {
+  const container = document.getElementById('theme-swatches');
+  if (!container || container.children.length) return;
+  THEMES.forEach(t => {
+    const s = document.createElement('div');
+    s.className = 'theme-swatch';
+    s.title = t.name;
+    s.style.background = t.accent;
+    s.dataset.accent = t.accent;
+    s.dataset.light = t.light;
+    s.onclick = () => applyTheme(t.accent, t.light);
+    container.appendChild(s);
+  });
+}
+
+function applyTheme(accent, light) {
+  const r = document.documentElement;
+  r.style.setProperty('--accent', accent);
+  r.style.setProperty('--accent-light', light);
+  r.style.setProperty('--normal', accent);
+  r.style.setProperty('--normal-light', light);
+  document.querySelectorAll('.theme-swatch').forEach(s =>
+    s.classList.toggle('active', s.dataset.accent === accent));
+  state.settings.dashboard = {...(state.settings.dashboard || {}), theme: accent, themeLight: light};
+  save();
+}
+
+let dragPanel = null;
+
+function panelDragStart(e, el) {
+  dragPanel = el;
+  e.dataTransfer.effectAllowed = 'move';
+  setTimeout(() => el.classList.add('dragging'), 0);
+}
+
+function panelDragEnd() {
+  if (dragPanel) dragPanel.classList.remove('dragging');
+  dragPanel = null;
+  document.querySelectorAll('.morning-col').forEach(c => c.classList.remove('drop-highlight'));
+  document.querySelectorAll('.morning-panel').forEach(p => p.classList.remove('drop-before','drop-after'));
+}
+
+function colDragOver(e, col) {
+  e.preventDefault();
+  col.classList.add('drop-highlight');
+  const panels = [...col.querySelectorAll('.morning-panel')].filter(p => p !== dragPanel);
+  document.querySelectorAll('.morning-panel').forEach(p => p.classList.remove('drop-before','drop-after'));
+  let target = null;
+  for (const p of panels) {
+    if (e.clientY < p.getBoundingClientRect().top + p.getBoundingClientRect().height / 2) { target = p; break; }
+  }
+  if (target) target.classList.add('drop-before');
+  else if (panels.length) panels[panels.length - 1].classList.add('drop-after');
+}
+
+function colDragLeave(e, col) {
+  if (!col.contains(e.relatedTarget)) col.classList.remove('drop-highlight');
+}
+
+function colDrop(e, col) {
+  e.preventDefault();
+  col.classList.remove('drop-highlight');
+  if (!dragPanel) return;
+  const panels = [...col.querySelectorAll('.morning-panel')].filter(p => p !== dragPanel);
+  let insertBefore = null;
+  for (const p of panels) {
+    if (e.clientY < p.getBoundingClientRect().top + p.getBoundingClientRect().height / 2) { insertBefore = p; break; }
+  }
+  if (insertBefore) col.insertBefore(dragPanel, insertBefore);
+  else col.appendChild(dragPanel);
+  document.querySelectorAll('.morning-panel').forEach(p => p.classList.remove('drop-before','drop-after'));
+  saveDashboardLayout();
+}
+
+function saveDashboardLayout() {
+  const cols = {};
+  document.querySelectorAll('.morning-col').forEach(col => {
+    cols[col.id] = [...col.querySelectorAll('.morning-panel')].map(p => p.id);
+  });
+  state.settings.dashboard = {...(state.settings.dashboard || {}), cols};
+  save();
+}
+
+function loadDashboardSettings() {
+  const d = state.settings.dashboard;
+  if (!d) return;
+  if (d.theme) applyTheme(d.theme, d.themeLight || '#E8F4EE');
+  if (d.cols) {
+    Object.entries(d.cols).forEach(([colId, panelIds]) => {
+      const col = document.getElementById(colId);
+      if (!col) return;
+      panelIds.forEach(pid => {
+        const panel = document.getElementById(pid);
+        if (panel && panel !== col) col.appendChild(panel);
+      });
+    });
+  }
+}
 
 function renderTasks() {
   const sorted = [...state.tasks].sort((a,b)=>PORDER[a.priority]-PORDER[b.priority]);
