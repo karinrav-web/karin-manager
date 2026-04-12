@@ -733,7 +733,7 @@ function renderUrgency(){
     const cls=rem===0?'ok':diff<0?'danger':diff<=1?'warn':'ok';
     const deadlineStr=new Date(p.deadline).toLocaleDateString('he-IL');
     const status=rem===0?'✓ הסתיים':diff<0?`⚠ חסרים ${Math.abs(diff)} ימי עריכה!`:diff===0?'בדיוק בזמן':`יש ${diff} ימים פנויים`;
-    return `<div class="urgency-row">
+    return `<div class="urgency-row" onclick="openProjectFromUrgency('${p.id}')" style="cursor:pointer" title="לחץ לפתיחת הפרויקט">
       <div class="urgency-days ${cls}" style="min-width:52px;text-align:center;">
         <div style="font-size:18px;font-weight:700;">${daysNeeded}</div>
         <div style="font-size:10px;opacity:0.75;">ימים לסיום</div>
@@ -873,6 +873,18 @@ function filterStage(stage, el, isMobile) {
   renderProjects();
 }
 function toggleEl(id) { document.getElementById(id).classList.toggle('hidden'); }
+
+function openProjectFromUrgency(projId) {
+  showPage('projects', document.getElementById('nav-projects'));
+  setTimeout(() => {
+    const card = document.querySelector(`.proj-card[data-id="${projId}"]`);
+    if (!card) return;
+    card.scrollIntoView({behavior:'smooth', block:'center'});
+    card.style.transition = 'box-shadow 0.3s';
+    card.style.boxShadow = '0 0 0 3px var(--accent)';
+    setTimeout(() => { card.style.boxShadow = ''; }, 1800);
+  }, 80);
+}
 function setGreeting() {
   const h = new Date().getHours();
   document.getElementById('morning-greeting').textContent = 'שלום קרין! 👋';
