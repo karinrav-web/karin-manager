@@ -824,19 +824,28 @@ function load() {
       p.tasks=dedup((p.tasks||[]).map(x=>({...x,done:Number(x.done)||0})));
       let local = {};
       try { const ls = localStorage.getItem('karin_pm'); if(ls) local = JSON.parse(ls); } catch(e){}
+      // מיזוג: שמור את כל הפרויקטים המקומיים + כל פרויקטי הענן
+      const cloudProjMap = {};
+      p.projects.forEach(x=>{ cloudProjMap[x.id]=x; });
       const localProjMap = {};
       (local.projects||[]).forEach(x=>{ localProjMap[x.id]=x; });
-      p.projects = p.projects.map(x=>{
-        const lp = localProjMap[x.id]||{};
-        return {...x,
-          deadline: lp.deadline||x.deadline||'',
+      // התחל מפרויקטים מקומיים (כולל כאלה שלא בענן)
+      const merged = (local.projects||[]).map(lp=>{
+        const cp = cloudProjMap[lp.id];
+        if(!cp) return lp; // קיים רק מקומית — שמור
+        return {...cp, // ענן גובר על שדות כלליים
+          deadline: lp.deadline||cp.deadline||'',
           goalDone: lp.goalDone||0,
           editedToday: lp.editedToday||0,
           goalDaily: lp.goalDaily||0,
-          payers: lp.payers||x.payers||[],
-          order: lp.order !== undefined ? lp.order : (x.order !== undefined ? x.order : 9999)
+          payers: lp.payers||cp.payers||[],
+          order: lp.order!==undefined?lp.order:(cp.order!==undefined?cp.order:9999)
         };
       });
+      // הוסף פרויקטי ענן שאינם מקומיים
+      const localIds = new Set((local.projects||[]).map(x=>x.id));
+      p.projects.forEach(cp=>{ if(!localIds.has(cp.id)) merged.push(cp); });
+      p.projects = dedup(merged.map(normalizeProject));
       state=applyDayReset({
         projects:p.projects,
         tasks:p.tasks||[],
