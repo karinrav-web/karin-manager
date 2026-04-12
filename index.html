@@ -340,6 +340,14 @@
   .morning-panel.drop-before { box-shadow:0 -3px 0 var(--accent); }
   .morning-panel.drop-after  { box-shadow:0  3px 0 var(--accent); }
   .morning-col.drop-highlight { outline:2px dashed var(--accent); outline-offset:-3px; border-radius:var(--radius); }
+  .panel-resize-handle {
+    height:6px; margin:8px -22px -20px; cursor:ns-resize;
+    display:flex; align-items:center; justify-content:center;
+    color:var(--border2); font-size:10px; letter-spacing:2px;
+    transition:color 0.15s; border-radius:0 0 var(--radius) var(--radius);
+    user-select:none;
+  }
+  .panel-resize-handle:hover, .morning-panel.resizing .panel-resize-handle { color:var(--accent); background:var(--accent-light); }
 
   /* === Morning dashboard (desktop) === */
   #page-morning.active { display:flex; flex-direction:column; height:calc(100vh - 64px); overflow:hidden; }
@@ -467,7 +475,7 @@
         <div class="morning-col" id="mcol-left"
              ondragover="colDragOver(event,this)" ondrop="colDrop(event,this)" ondragleave="colDragLeave(event,this)">
           <div class="card morning-panel" id="panel-tasks" draggable="true"
-               ondragstart="panelDragStart(event,this)" ondragend="panelDragEnd()">
+               ondragstart="panelDragStart(event,this)" ondragend="panelDragEnd()" style="flex:1;min-height:80px">
             <div class="panel-handle">⠿⠿⠿</div>
             <div class="legend" style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border)">
               <div class="legend-item"><div class="legend-dot" style="background:var(--urgent)"></div>דחוף</div>
@@ -492,21 +500,24 @@
                 <button class="btn-save" onclick="addTask()">שמור</button>
               </div>
             </div>
+            <div class="panel-resize-handle" onmousedown="startPanelResize(event,this)">— — —</div>
           </div>
         </div>
         <div class="morning-col" id="mcol-right"
              ondragover="colDragOver(event,this)" ondrop="colDrop(event,this)" ondragleave="colDragLeave(event,this)">
           <div class="urgency-card morning-panel" id="panel-urgency" draggable="true"
-               ondragstart="panelDragStart(event,this)" ondragend="panelDragEnd()">
+               ondragstart="panelDragStart(event,this)" ondragend="panelDragEnd()" style="min-height:80px">
             <div class="panel-handle">⠿⠿⠿</div>
             <div class="card-title">📅 תעדוף לפי דדליין</div>
             <div id="urgency-list"><p style="font-size:13px;color:var(--text3)">אין פרויקטים עם דדליין</p></div>
+            <div class="panel-resize-handle" onmousedown="startPanelResize(event,this)">— — —</div>
           </div>
           <div class="urgency-card morning-panel" id="panel-billing" draggable="true"
-               ondragstart="panelDragStart(event,this)" ondragend="panelDragEnd()">
+               ondragstart="panelDragStart(event,this)" ondragend="panelDragEnd()" style="min-height:80px">
             <div class="panel-handle">⠿⠿⠿</div>
             <div class="card-title">💰 גביה פתוחה</div>
             <div id="billing-summary-morning"><p style="font-size:13px;color:var(--text3)">אין חובות פתוחים</p></div>
+            <div class="panel-resize-handle" onmousedown="startPanelResize(event,this)">— — —</div>
           </div>
         </div>
       </div>
@@ -954,10 +965,36 @@ function colDrop(e, col) {
   saveDashboardLayout();
 }
 
+function startPanelResize(e, handle) {
+  e.preventDefault();
+  e.stopPropagation();
+  const panel = handle.closest('.morning-panel');
+  panel.classList.add('resizing');
+  const startY = e.clientY;
+  const startH = panel.getBoundingClientRect().height;
+  function onMove(e) {
+    const newH = Math.max(80, startH + (e.clientY - startY));
+    panel.style.flexBasis = newH + 'px';
+    panel.style.flexGrow = '0';
+    panel.style.flexShrink = '0';
+  }
+  function onUp() {
+    panel.classList.remove('resizing');
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    saveDashboardLayout();
+  }
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+}
+
 function saveDashboardLayout() {
   const cols = {};
   document.querySelectorAll('.morning-col').forEach(col => {
-    cols[col.id] = [...col.querySelectorAll('.morning-panel')].map(p => p.id);
+    cols[col.id] = [...col.querySelectorAll('.morning-panel')].map(p => {
+      const el = document.getElementById(p.id);
+      return { id: p.id, flexBasis: el.style.flexBasis || '' };
+    });
   });
   state.settings.dashboard = {...(state.settings.dashboard || {}), cols};
   save();
@@ -968,12 +1005,16 @@ function loadDashboardSettings() {
   if (!d) return;
   if (d.theme) applyTheme(d.theme, d.themeLight || '#E8F4EE');
   if (d.cols) {
-    Object.entries(d.cols).forEach(([colId, panelIds]) => {
+    Object.entries(d.cols).forEach(([colId, panels]) => {
       const col = document.getElementById(colId);
       if (!col) return;
-      panelIds.forEach(pid => {
+      panels.forEach(entry => {
+        const pid = typeof entry === 'string' ? entry : entry.id;
+        const fb  = typeof entry === 'object' ? entry.flexBasis : '';
         const panel = document.getElementById(pid);
-        if (panel && panel !== col) col.appendChild(panel);
+        if (!panel) return;
+        col.appendChild(panel);
+        if (fb) { panel.style.flexBasis = fb; panel.style.flexGrow = '0'; panel.style.flexShrink = '0'; }
       });
     });
   }
