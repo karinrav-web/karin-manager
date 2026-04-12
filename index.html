@@ -445,6 +445,8 @@
         📂 ייבוא גיבוי
         <input type="file" accept=".json" onchange="importBackup(event)" style="display:none" />
       </label>
+      <button onclick="showRestoreMenu()" style="width:100%;padding:7px;font-size:12px;font-family:'Heebo',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text2);cursor:pointer;margin-bottom:6px;">🔄 שחזר גיבוי אוטומטי</button>
+      <div id="auto-backup-list" class="hidden" style="margin-bottom:6px;"></div>
       <button onclick="resetAll()" style="width:100%;padding:7px;font-size:12px;font-family:'Heebo',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text3);cursor:pointer;">🗑 מחק הכל</button>
     </div>
   </aside>
@@ -664,8 +666,57 @@ function normalizeProject(x) {
   };
 }
 
+const AUTO_BACKUP_PREFIX = 'karin_ab_';
+const AUTO_BACKUP_DAYS = 7;
+
+function autoBackup() {
+  try {
+    const key = AUTO_BACKUP_PREFIX + todayStr();
+    localStorage.setItem(key, JSON.stringify(state));
+    // מחק גיבויים ישנים מעבר ל-7 ימים
+    Object.keys(localStorage)
+      .filter(k => k.startsWith(AUTO_BACKUP_PREFIX))
+      .sort().reverse()
+      .slice(AUTO_BACKUP_DAYS)
+      .forEach(k => localStorage.removeItem(k));
+  } catch(e) {}
+}
+
+function listAutoBackups() {
+  return Object.keys(localStorage)
+    .filter(k => k.startsWith(AUTO_BACKUP_PREFIX))
+    .sort().reverse()
+    .map(k => k.replace(AUTO_BACKUP_PREFIX, ''));
+}
+
+function showRestoreMenu() {
+  const el = document.getElementById('auto-backup-list');
+  const dates = listAutoBackups();
+  if (!dates.length) { alert('אין גיבויים אוטומטיים שמורים עדיין'); return; }
+  el.innerHTML = dates.map(d =>
+    `<button onclick="restoreAutoBackup('${d}')" style="display:block;width:100%;text-align:right;padding:6px 10px;margin-bottom:4px;font-size:12px;font-family:'Heebo',sans-serif;border:1px solid var(--border);border-radius:6px;background:var(--surface2);cursor:pointer;color:var(--text2);">📅 ${d}</button>`
+  ).join('');
+  el.classList.toggle('hidden');
+}
+
+function restoreAutoBackup(dateStr) {
+  try {
+    const data = localStorage.getItem(AUTO_BACKUP_PREFIX + dateStr);
+    if (!data) { alert('גיבוי לא נמצא'); return; }
+    const p = JSON.parse(data);
+    if (!p.projects) { alert('גיבוי לא תקין'); return; }
+    if (!confirm(`לשחזר גיבוי מ-${dateStr}?\n${p.projects.length} פרויקטים, ${(p.tasks||[]).length} משימות.\n\nהנתונים הנוכחיים יוחלפו.`)) return;
+    state = {projects:p.projects||[],tasks:p.tasks||[],settings:p.settings||state.settings,editDays:p.editDays||{},lastReset:p.lastReset||''};
+    blockCloudLoad = true;
+    setTimeout(()=>{ blockCloudLoad=false; },30000);
+    save(); render();
+    document.getElementById('auto-backup-list').classList.add('hidden');
+  } catch(e) { alert('שגיאה בשחזור'); }
+}
+
 function save() {
   try{localStorage.setItem('karin_pm',JSON.stringify(state));}catch(e){}
+  autoBackup();
   clearTimeout(saveTimer);
   setSyncStatus('שומר...','var(--text3)');
   saveTimer=setTimeout(()=>{
