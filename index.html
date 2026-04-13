@@ -206,6 +206,15 @@
   }
   .notes-area textarea:focus { border-color:var(--accent); background:var(--surface); }
 
+  .session-log { margin-top:10px; border-top:1px solid var(--border); padding-top:8px; }
+  .session-row { display:flex; align-items:center; gap:8px; padding:4px 0; font-size:12px; border-bottom:1px solid var(--border); }
+  .session-row:last-child { border-bottom:none; }
+  .session-date { color:var(--text3); min-width:60px; }
+  .session-dur { font-weight:600; color:var(--text); flex:1; }
+  .session-act { display:flex; gap:4px; }
+  .session-act button { padding:2px 7px; font-size:11px; font-family:'Heebo',sans-serif; border:1px solid var(--border2); border-radius:4px; background:var(--surface2); color:var(--text3); cursor:pointer; }
+  .session-act button:hover { border-color:var(--accent); color:var(--accent); }
+  .session-edit-row { display:flex; align-items:center; gap:6px; padding:4px 0; }
   .timer-row {
     display:flex; align-items:center; justify-content:space-between;
     margin-top:8px; padding-top:8px; border-top:1px solid var(--border);
@@ -1157,7 +1166,10 @@ function saveTimerEdit(id) {
   if (!p) return;
   // אם הטיימר רץ עכשיו — עצור אותו קודם
   if (activeTimer.projId===id) { clearInterval(activeTimer.iv); activeTimer={projId:null,startTs:null,iv:null}; }
-  p.seconds = newSecs;
+  // הוסף כרשומה ידנית בלוג
+  if(!p.timeLogs) p.timeLogs=[];
+  p.timeLogs.push({id:Date.now(), date:todayStr(), seconds:newSecs, manual:true});
+  recalcTimer(p);
   save(); renderProjects();
 }
 
@@ -1178,9 +1190,51 @@ function stopTimer() {
   if(!activeTimer.projId) return;
   const elapsed=Math.floor((Date.now()-activeTimer.startTs)/1000);
   const p=state.projects.find(p=>p.id===activeTimer.projId);
-  if(p){p.seconds=(p.seconds||0)+elapsed;p.sessions=(p.sessions||0)+1;}
+  if(p){
+    if(!p.timeLogs) p.timeLogs=[];
+    p.timeLogs.push({id:Date.now(), date:todayStr(), seconds:elapsed});
+    recalcTimer(p);
+  }
   clearInterval(activeTimer.iv);
   activeTimer={projId:null,startTs:null,iv:null};
+  save(); renderProjects();
+}
+
+function recalcTimer(p){
+  p.seconds=(p.timeLogs||[]).reduce((s,l)=>s+l.seconds,0);
+  p.sessions=(p.timeLogs||[]).length;
+}
+
+function deleteTimerSession(projId, sessionId){
+  const p=state.projects.find(p=>p.id===projId); if(!p) return;
+  p.timeLogs=(p.timeLogs||[]).filter(l=>l.id!==sessionId);
+  recalcTimer(p);
+  save(); renderProjects();
+}
+
+function editTimerSession(projId, sessionId){
+  const row=document.getElementById('sedit-'+sessionId);
+  if(!row) return;
+  row.classList.toggle('hidden');
+  if(!row.classList.contains('hidden')){
+    const l=(state.projects.find(p=>p.id===projId)?.timeLogs||[]).find(l=>l.id===sessionId);
+    if(l){
+      const h=Math.floor(l.seconds/3600), m=Math.floor((l.seconds%3600)/60);
+      const inp=document.getElementById('sedit-val-'+sessionId);
+      if(inp){inp.value=h+':'+(m<10?'0':'')+m; inp.focus(); inp.select();}
+    }
+  }
+}
+
+function saveTimerSession(projId, sessionId){
+  const inp=document.getElementById('sedit-val-'+sessionId); if(!inp) return;
+  const parts=inp.value.trim().split(':');
+  const h=parseInt(parts[0])||0, m=parseInt(parts[1])||0;
+  if(h<0||m<0||m>59){alert('פורמט לא תקין — שע:דק למשל 1:30'); return;}
+  const p=state.projects.find(p=>p.id===projId); if(!p) return;
+  const l=(p.timeLogs||[]).find(l=>l.id===sessionId); if(!l) return;
+  l.seconds=h*3600+m*60;
+  recalcTimer(p);
   save(); renderProjects();
 }
 
@@ -1301,18 +1355,33 @@ function renderProjects() {
         <textarea placeholder="מה עשיתי · מה נשאר · הערות ללקוח..." onchange="updateNotes(${p.id},this.value)">${p.notes || ''}</textarea>
       </div>
       <div class="timer-row">
-        <div class="timer-info">
+        <div class="timer-info" style="flex:1">
           <div class="proj-section-label">זמן עבודה כולל</div>
           <div style="display:flex;align-items:center;gap:8px;">
             <div class="timer-val ${isRunning ? 'running' : ''}" id="ptv-${p.id}">${fmtTime(secs)}</div>
-            <button onclick="toggleTimerEdit(${p.id})" title="ערוך זמן" style="padding:2px 7px;font-size:11px;font-family:'Heebo',sans-serif;border:1px solid var(--border2);border-radius:4px;background:var(--surface2);color:var(--text3);cursor:pointer;">✏️</button>
+            <button onclick="toggleTimerEdit(${p.id})" title="הוסף רשומה ידנית" style="padding:2px 7px;font-size:11px;font-family:'Heebo',sans-serif;border:1px solid var(--border2);border-radius:4px;background:var(--surface2);color:var(--text3);cursor:pointer;">+ הוסף</button>
           </div>
           <div id="timer-edit-${p.id}" class="hidden" style="margin-top:6px;display:flex;align-items:center;gap:6px;">
             <input type="text" id="timer-edit-val-${p.id}" placeholder="שע:דק (למשל 1:30)" style="width:100px;padding:4px 8px;font-size:13px;border:1px solid var(--border2);border-radius:4px;font-family:'Heebo',sans-serif;" />
             <button onclick="saveTimerEdit(${p.id})" style="padding:4px 10px;font-size:12px;font-family:'Heebo',sans-serif;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;">שמור</button>
             <button onclick="toggleTimerEdit(${p.id})" style="padding:4px 8px;font-size:12px;font-family:'Heebo',sans-serif;background:transparent;border:1px solid var(--border2);border-radius:4px;cursor:pointer;color:var(--text3);">ביטול</button>
           </div>
-          <div class="timer-meta">${p.sessions || 0} סשנים</div>
+          ${(p.timeLogs||[]).length>0?`<div class="session-log">${(p.timeLogs||[]).map(l=>{
+            const lh=Math.floor(l.seconds/3600), lm=Math.floor((l.seconds%3600)/60);
+            const dparts=l.date.split('-'); const dstr=dparts[2]+'.'+dparts[1]+'.'+String(dparts[0]).slice(2);
+            return `<div class="session-row">
+              <span class="session-date">${dstr}${l.manual?'&nbsp;✍️':''}</span>
+              <span class="session-dur">${fmtTime(l.seconds)}</span>
+              <div class="session-act">
+                <button onclick="editTimerSession(${p.id},${l.id})">✏️</button>
+                <button onclick="deleteTimerSession(${p.id},${l.id})" style="color:var(--urgent)">🗑</button>
+              </div>
+            </div>
+            <div id="sedit-${l.id}" class="session-edit-row hidden">
+              <input id="sedit-val-${l.id}" type="text" placeholder="שע:דק" style="width:80px;padding:3px 7px;font-size:12px;border:1px solid var(--border2);border-radius:4px;font-family:'Heebo',sans-serif;" />
+              <button onclick="saveTimerSession(${p.id},${l.id})" style="padding:3px 8px;font-size:11px;font-family:'Heebo',sans-serif;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;">שמור</button>
+            </div>`;
+          }).join('')}</div>`:''}
         </div>
         <button class="timer-btn ${isRunning ? 'running' : ''}" id="ptb-${p.id}" onclick="toggleTimer(${p.id})">${isRunning ? '⏹ עצור' : '▶ התחל'}</button>
       </div>
