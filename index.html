@@ -702,7 +702,6 @@ function setLockUI(sub, btnText, placeholder) {
 }
 
 async function pinInit() {
-  if (sessionStorage.getItem('karin_unlocked') === '1') { pinUnlock(); return; }
   document.getElementById('lock-sub').textContent = 'מתחברת...';
   document.getElementById('pin-pad').style.opacity = '0.4';
   document.getElementById('pin-pad').style.pointerEvents = 'none';
@@ -752,14 +751,12 @@ async function pinSubmit() {
 function pinError(msg) { document.getElementById('lock-msg').textContent = msg; }
 
 function pinUnlock() {
-  sessionStorage.setItem('karin_unlocked', '1');
   const ls = document.getElementById('lock-screen');
   ls.style.opacity = '0'; ls.style.transition = 'opacity 0.3s';
   setTimeout(() => { ls.style.display = 'none'; document.getElementById('app-shell').style.display = ''; }, 300);
 }
 
 function changePin() {
-  sessionStorage.removeItem('karin_unlocked');
   cloudPinHash = null;
   sessionStorage.setItem('karin_clear_pin', '1');
   location.reload();
