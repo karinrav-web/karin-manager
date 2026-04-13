@@ -712,6 +712,14 @@ async function pinInit() {
     const d = await r.json();
     if (d.ok && d.state) { prefetchedState = d.state; cloudPinHash = d.state.settings?.pinHash || null; }
   } catch(e) {}
+  // fallback: if cloud didn't have pinHash yet (e.g. refresh right after first save),
+  // check localStorage — save() writes there immediately before the delayed cloud upload
+  if (!cloudPinHash) {
+    try {
+      const local = JSON.parse(localStorage.getItem('karin_pm')||'{}');
+      if (local.settings?.pinHash) cloudPinHash = local.settings.pinHash;
+    } catch(e) {}
+  }
   document.getElementById('pin-pad').style.opacity = '';
   document.getElementById('pin-pad').style.pointerEvents = '';
   if (!cloudPinHash) {
@@ -1041,8 +1049,9 @@ function mergeCloudState(d) {
       const localIds = new Set((local.projects||[]).map(x=>x.id));
       p.projects.forEach(cp=>{ if(!localIds.has(cp.id)) merged.push(cp); });
       p.projects = dedup(merged.map(normalizeProject));
-      // שמור pinHash מהענן בהגדרות מקומיות
+      // מיזוג הגדרות: ענן גובר על מקומי, אבל pinHash מקומי נשמר אם לענן אין
       const mergedSettings = {...(local.settings||{}), ...(p.settings||{})};
+      if (!mergedSettings.pinHash && local.settings?.pinHash) mergedSettings.pinHash = local.settings.pinHash;
       state=applyDayReset({
         projects:p.projects,
         tasks:p.tasks||[],
@@ -1055,7 +1064,6 @@ function mergeCloudState(d) {
       applyPinToState();
       render();
       return true;
-  return false;
 }
 
 function load() {
