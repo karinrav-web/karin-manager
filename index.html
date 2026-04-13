@@ -127,9 +127,10 @@
   .hidden { display:none !important; }
 
   .prog-bar { height:6px; background:var(--surface2); border-radius:3px; overflow:hidden; margin-top:6px; }
-  .prog-fill { height:100%; border-radius:3px; background:var(--accent); transition:width 0.3s; }
-  .prog-fill.amber { background:var(--high); }
-  .prog-fill.red { background:var(--urgent); }
+  .prog-fill { height:100%; border-radius:3px; background:var(--urgent); transition:width 0.3s; }
+  .prog-fill.amber  { background:var(--high); }
+  .prog-fill.yellow { background:#E6B800; }
+  .prog-fill.green  { background:var(--accent); }
 
   .proj-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:12px 16px; margin-bottom:10px; border-top:4px solid var(--border); transition: opacity 0.2s; }
   .proj-card.s-send    { border-top-color:var(--s-send-b);    background:linear-gradient(to bottom,var(--s-send) 0%,var(--surface) 70px); }
@@ -1279,7 +1280,7 @@ function renderProjects() {
   if (!list.length) { el.innerHTML = `<p style="font-size:13px;color:var(--text3);padding:16px 0">${stageFilter ? 'אין פרויקטים בשלב זה' : 'עוד אין פרויקטים — הוסיפי את הראשון למטה'}</p>`; return; }
   el.innerHTML = list.map(p => {
     const pct = p.total ? Math.min(100, Math.round(p.edited / p.total * 100)) : 0;
-    const fillCls = pct >= 80 ? 'red' : pct >= 50 ? 'amber' : '';
+    const fillCls = pct >= 80 ? 'green' : pct >= 50 ? 'yellow' : pct >= 25 ? 'amber' : '';
     const gd = p.goalDone || 0, gt = p.goalDaily || 0;
     const gpct = gt ? Math.min(100, Math.round(gd / gt * 100)) : 0;
     const rem = Math.max(0, (p.total || 0) - (p.edited || 0));
