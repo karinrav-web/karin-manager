@@ -706,6 +706,13 @@ function setLockUI(sub, btnText, placeholder, isNew) {
 }
 
 async function pinInit() {
+  // נסי למלא אוטומטית מהדפדפן
+  if (window.PasswordCredential && navigator.credentials?.get) {
+    try {
+      const cred = await navigator.credentials.get({ password: true, mediation: 'optional' });
+      if (cred?.password) document.getElementById('lock-input').value = cred.password;
+    } catch(e) {}
+  }
   document.getElementById('lock-sub').textContent = 'מתחברת...';
   document.getElementById('pin-pad').style.opacity = '0.4';
   document.getElementById('pin-pad').style.pointerEvents = 'none';
@@ -762,7 +769,14 @@ async function pinSubmit() {
 
 function pinError(msg) { document.getElementById('lock-msg').textContent = msg; }
 
-function pinUnlock() {
+async function pinUnlock() {
+  // שמור סיסמה במנהל הסיסמאות של הדפדפן
+  if (window.PasswordCredential) {
+    try {
+      const cred = new PasswordCredential({ id: 'karin', password: document.getElementById('lock-input').value });
+      await navigator.credentials.store(cred);
+    } catch(e) {}
+  }
   const ls = document.getElementById('lock-screen');
   ls.style.opacity = '0'; ls.style.transition = 'opacity 0.3s';
   setTimeout(() => { ls.style.display = 'none'; document.getElementById('app-shell').style.display = ''; }, 300);
