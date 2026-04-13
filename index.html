@@ -716,15 +716,19 @@ async function pinInit() {
   document.getElementById('lock-sub').textContent = 'מתחברת...';
   document.getElementById('pin-pad').style.opacity = '0.4';
   document.getElementById('pin-pad').style.pointerEvents = 'none';
+  let cloudLoaded = false;
   try {
     const ctrl = new AbortController();
     setTimeout(()=>ctrl.abort(), 6000);
     const r = await fetch(API+'?t='+Date.now(), {signal:ctrl.signal});
     const d = await r.json();
-    if (d.ok && d.state) { prefetchedState = d.state; cloudPinHash = d.state.settings?.pinHash || null; }
+    if (d.ok && d.state) {
+      prefetchedState = d.state;
+      cloudPinHash = d.state.settings?.pinHash || null;
+      cloudLoaded = true;
+    }
   } catch(e) {}
-  // fallback: if cloud didn't have pinHash yet (e.g. refresh right after first save),
-  // check localStorage — save() writes there immediately before the delayed cloud upload
+  // fallback לסיסמה שמורה מקומית (אצל המשתמש שהגדיר — לא אצל אחרים)
   if (!cloudPinHash) {
     try {
       const local = JSON.parse(localStorage.getItem('karin_pm')||'{}');
@@ -733,7 +737,14 @@ async function pinInit() {
   }
   document.getElementById('pin-pad').style.opacity = '';
   document.getElementById('pin-pad').style.pointerEvents = '';
-  if (!cloudPinHash) {
+  if (!cloudPinHash && !cloudLoaded) {
+    // הענן לא נטען — חסום גישה לגמרי
+    document.getElementById('pin-pad').style.opacity = '0.4';
+    document.getElementById('pin-pad').style.pointerEvents = 'none';
+    setLockUI('שגיאת חיבור — נסי לרענן', '', 'סיסמה');
+    document.getElementById('lock-submit-btn').style.display = 'none';
+  } else if (!cloudPinHash && cloudLoaded) {
+    // ענן נטען בהצלחה וממש אין סיסמה — מצב הגדרה ראשונית
     pinMode = 'set';
     setLockUI('בחרי סיסמה', 'המשך', 'סיסמה חדשה', true);
   } else {
