@@ -436,13 +436,15 @@
     <div class="lock-title">קרין רבנה</div>
     <div class="lock-sub" id="lock-sub">ניהול פרויקטים 2026</div>
     <div id="pin-pad">
-      <div class="lock-input-wrap">
-        <input class="lock-input" type="password" id="lock-input" placeholder="סיסמה" autocomplete="current-password"
-               oninput="document.getElementById('lock-msg').textContent=''"
-               onkeydown="if(event.key==='Enter')pinSubmit()" />
-        <button class="lock-toggle" onclick="toggleLockVis()" tabindex="-1">👁</button>
-      </div>
-      <button class="lock-submit" id="lock-submit-btn" onclick="pinSubmit()">כניסה</button>
+      <form onsubmit="pinSubmit(); return false;" autocomplete="on">
+        <input type="text" name="username" value="karin" autocomplete="username" style="display:none" />
+        <div class="lock-input-wrap">
+          <input class="lock-input" type="password" id="lock-input" name="password" placeholder="סיסמה" autocomplete="current-password"
+                 oninput="document.getElementById('lock-msg').textContent=''"  />
+          <button class="lock-toggle" type="button" onclick="toggleLockVis()" tabindex="-1">👁</button>
+        </div>
+        <button class="lock-submit" id="lock-submit-btn" type="submit">כניסה</button>
+      </form>
     </div>
     <div class="lock-msg" id="lock-msg"></div>
   </div>
@@ -694,11 +696,13 @@ function toggleLockVis() {
   inp.type = inp.type === 'password' ? 'text' : 'password';
 }
 
-function setLockUI(sub, btnText, placeholder) {
+function setLockUI(sub, btnText, placeholder, isNew) {
   document.getElementById('lock-sub').textContent = sub;
   document.getElementById('lock-submit-btn').textContent = btnText;
   const inp = document.getElementById('lock-input');
-  inp.placeholder = placeholder; inp.value = ''; inp.focus();
+  inp.placeholder = placeholder; inp.value = '';
+  inp.autocomplete = isNew ? 'new-password' : 'current-password';
+  inp.focus();
 }
 
 async function pinInit() {
@@ -724,7 +728,7 @@ async function pinInit() {
   document.getElementById('pin-pad').style.pointerEvents = '';
   if (!cloudPinHash) {
     pinMode = 'set';
-    setLockUI('בחרי סיסמה', 'המשך', 'סיסמה חדשה');
+    setLockUI('בחרי סיסמה', 'המשך', 'סיסמה חדשה', true);
   } else {
     setLockUI('ניהול פרויקטים 2026', 'כניסה', 'סיסמה');
   }
@@ -737,7 +741,7 @@ async function pinSubmit() {
   const h = await hashPin(pw);
   if (pinMode === 'set') {
     pinFirst = pw;
-    setLockUI('הזיני שוב לאישור', 'אשרי', 'אישור סיסמה');
+    setLockUI('הזיני שוב לאישור', 'אשרי', 'אישור סיסמה', true);
     pinMode = 'confirm'; return;
   }
   if (pinMode === 'confirm') {
@@ -747,7 +751,7 @@ async function pinSubmit() {
       pinUnlock();
     } else {
       pinError('הסיסמאות לא תואמות — נסי שוב');
-      setLockUI('בחרי סיסמה', 'המשך', 'סיסמה חדשה');
+      setLockUI('בחרי סיסמה', 'המשך', 'סיסמה חדשה', true);
       pinMode = 'set'; pinFirst = '';
     }
     return;
