@@ -410,20 +410,22 @@
   }
   .lock-title { font-size:20px; font-weight:600; margin-bottom:4px; }
   .lock-sub { font-size:13px; color:var(--text3); margin-bottom:28px; }
-  .pin-dots { display:flex; gap:12px; justify-content:center; margin-bottom:24px; }
-  .pin-dot { width:14px; height:14px; border-radius:50%; border:2px solid var(--border2); transition:all 0.15s; }
-  .pin-dot.filled { background:var(--accent); border-color:var(--accent); }
-  .pin-dot.error { background:var(--urgent); border-color:var(--urgent); }
-  .pin-pad { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px; }
-  .pin-btn {
-    padding:16px; font-size:18px; font-weight:500; font-family:'Heebo',sans-serif;
-    border:1px solid var(--border2); border-radius:var(--radius); background:var(--surface2);
-    cursor:pointer; color:var(--text); transition:all 0.1s;
+  .lock-input-wrap { position:relative; margin-bottom:16px; }
+  .lock-input {
+    width:100%; padding:12px 44px 12px 16px; font-size:15px; font-family:'Heebo',sans-serif;
+    border:1.5px solid var(--border2); border-radius:var(--radius); background:var(--surface2);
+    color:var(--text); outline:none; text-align:right; direction:ltr;
   }
-  .pin-btn:hover { background:var(--accent-light); border-color:var(--accent); color:var(--accent); }
-  .pin-btn:active { transform:scale(0.95); }
-  .pin-del { font-size:14px; color:var(--text3); }
-  .lock-msg { font-size:12px; color:var(--urgent); min-height:18px; margin-top:4px; }
+  .lock-input:focus { border-color:var(--accent); background:var(--surface); }
+  .lock-input.error { border-color:var(--urgent); }
+  .lock-toggle { position:absolute; left:12px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; font-size:16px; color:var(--text3); }
+  .lock-submit {
+    width:100%; padding:12px; font-size:15px; font-weight:600; font-family:'Heebo',sans-serif;
+    background:var(--accent); color:#fff; border:none; border-radius:var(--radius); cursor:pointer; transition:background 0.15s;
+  }
+  .lock-submit:hover { background:#245C43; }
+  .lock-submit:disabled { background:var(--border2); cursor:not-allowed; }
+  .lock-msg { font-size:12px; color:var(--urgent); min-height:18px; margin-top:8px; }
 </style>
 </head>
 <body>
@@ -433,25 +435,14 @@
   <div class="lock-card">
     <div class="lock-title">קרין רבנה</div>
     <div class="lock-sub" id="lock-sub">ניהול פרויקטים 2026</div>
-    <div class="pin-dots" id="pin-dots">
-      <div class="pin-dot" id="pd0"></div>
-      <div class="pin-dot" id="pd1"></div>
-      <div class="pin-dot" id="pd2"></div>
-      <div class="pin-dot" id="pd3"></div>
-    </div>
-    <div class="pin-pad">
-      <button class="pin-btn" onclick="pinPress('1')">1</button>
-      <button class="pin-btn" onclick="pinPress('2')">2</button>
-      <button class="pin-btn" onclick="pinPress('3')">3</button>
-      <button class="pin-btn" onclick="pinPress('4')">4</button>
-      <button class="pin-btn" onclick="pinPress('5')">5</button>
-      <button class="pin-btn" onclick="pinPress('6')">6</button>
-      <button class="pin-btn" onclick="pinPress('7')">7</button>
-      <button class="pin-btn" onclick="pinPress('8')">8</button>
-      <button class="pin-btn" onclick="pinPress('9')">9</button>
-      <div></div>
-      <button class="pin-btn" onclick="pinPress('0')">0</button>
-      <button class="pin-btn pin-del" onclick="pinDel()">⌫</button>
+    <div id="pin-pad">
+      <div class="lock-input-wrap">
+        <input class="lock-input" type="password" id="lock-input" placeholder="סיסמה" autocomplete="current-password"
+               oninput="document.getElementById('lock-msg').textContent=''"
+               onkeydown="if(event.key==='Enter')pinSubmit()" />
+        <button class="lock-toggle" onclick="toggleLockVis()" tabindex="-1">👁</button>
+      </div>
+      <button class="lock-submit" id="lock-submit-btn" onclick="pinSubmit()">כניסה</button>
     </div>
     <div class="lock-msg" id="lock-msg"></div>
   </div>
@@ -687,96 +678,78 @@
 </div>
 
 <script>
-/* ===== PIN Lock ===== */
-let pinBuffer = '';
-let pinMode = 'enter'; // 'enter' | 'set' | 'confirm'
-let pinFirst = '';
+/* ===== Password Lock ===== */
 let cloudPinHash = null;
 let prefetchedState = null;
+let pinMode = 'enter'; // 'enter' | 'set' | 'confirm'
+let pinFirst = '';
 
-async function hashPin(pin) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pin + 'karin2026'));
+async function hashPin(pw) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw + 'karin2026'));
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+function toggleLockVis() {
+  const inp = document.getElementById('lock-input');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+function setLockUI(sub, btnText, placeholder) {
+  document.getElementById('lock-sub').textContent = sub;
+  document.getElementById('lock-submit-btn').textContent = btnText;
+  const inp = document.getElementById('lock-input');
+  inp.placeholder = placeholder; inp.value = ''; inp.focus();
 }
 
 async function pinInit() {
   if (sessionStorage.getItem('karin_unlocked') === '1') { pinUnlock(); return; }
-  document.getElementById('lock-sub').textContent = 'מתחבר...';
-  document.getElementById('pin-pad').style.opacity = '0.3';
+  document.getElementById('lock-sub').textContent = 'מתחברת...';
+  document.getElementById('pin-pad').style.opacity = '0.4';
   document.getElementById('pin-pad').style.pointerEvents = 'none';
   try {
     const ctrl = new AbortController();
     setTimeout(()=>ctrl.abort(), 6000);
     const r = await fetch(API+'?t='+Date.now(), {signal:ctrl.signal});
     const d = await r.json();
-    if (d.ok && d.state) {
-      prefetchedState = d.state;
-      cloudPinHash = d.state.settings && d.state.settings.pinHash || null;
-    }
+    if (d.ok && d.state) { prefetchedState = d.state; cloudPinHash = d.state.settings?.pinHash || null; }
   } catch(e) {}
   document.getElementById('pin-pad').style.opacity = '';
   document.getElementById('pin-pad').style.pointerEvents = '';
   if (!cloudPinHash) {
     pinMode = 'set';
-    document.getElementById('lock-sub').textContent = 'הגדר קוד גישה (4 ספרות)';
+    setLockUI('בחרי סיסמה', 'המשך', 'סיסמה חדשה');
   } else {
-    document.getElementById('lock-sub').textContent = 'הכיני קוד גישה';
-  }
-  document.addEventListener('keydown', e => { if(/^[0-9]$/.test(e.key)) pinPress(e.key); else if(e.key==='Backspace') pinDel(); });
-}
-
-function pinPress(d) {
-  if (pinBuffer.length >= 4) return;
-  pinBuffer += d;
-  pinUpdateDots();
-  if (pinBuffer.length === 4) setTimeout(pinSubmit, 150);
-}
-
-function pinDel() {
-  pinBuffer = pinBuffer.slice(0, -1);
-  pinUpdateDots();
-  document.getElementById('lock-msg').textContent = '';
-}
-
-function pinUpdateDots(state) {
-  for (let i = 0; i < 4; i++) {
-    const dot = document.getElementById('pd' + i);
-    dot.className = 'pin-dot' + (i < pinBuffer.length ? ' filled' : '') + (state === 'error' ? ' error' : '');
+    setLockUI('ניהול פרויקטים 2026', 'כניסה', 'סיסמה');
   }
 }
 
 async function pinSubmit() {
-  const h = await hashPin(pinBuffer);
+  const inp = document.getElementById('lock-input');
+  const pw = inp.value.trim();
+  if (!pw) return;
+  const h = await hashPin(pw);
   if (pinMode === 'set') {
-    pinFirst = pinBuffer; pinBuffer = '';
-    pinMode = 'confirm';
-    document.getElementById('lock-sub').textContent = 'הזיני שוב לאישור';
-    pinUpdateDots(); return;
+    pinFirst = pw;
+    setLockUI('הזיני שוב לאישור', 'אשרי', 'אישור סיסמה');
+    pinMode = 'confirm'; return;
   }
   if (pinMode === 'confirm') {
-    if (pinBuffer === pinFirst) {
+    if (pw === pinFirst) {
       cloudPinHash = h;
-      sessionStorage.setItem('karin_pin_pending', h); // יישמר לענן אחרי טעינה
+      sessionStorage.setItem('karin_pin_pending', h);
       pinUnlock();
     } else {
-      pinError('הקודים לא תואמים — נסי שוב');
+      pinError('הסיסמאות לא תואמות — נסי שוב');
+      setLockUI('בחרי סיסמה', 'המשך', 'סיסמה חדשה');
       pinMode = 'set'; pinFirst = '';
-      document.getElementById('lock-sub').textContent = 'הגדר קוד גישה (4 ספרות)';
     }
     return;
   }
-  if (h === cloudPinHash) {
-    pinUnlock();
-  } else {
-    pinError('קוד שגוי');
-  }
+  if (h === cloudPinHash) { pinUnlock(); }
+  else { pinError('סיסמה שגויה'); inp.classList.add('error'); setTimeout(()=>inp.classList.remove('error'),800); inp.select(); }
 }
 
-function pinError(msg) {
-  pinUpdateDots('error');
-  document.getElementById('lock-msg').textContent = msg;
-  setTimeout(() => { pinBuffer = ''; pinUpdateDots(); }, 800);
-}
+function pinError(msg) { document.getElementById('lock-msg').textContent = msg; }
 
 function pinUnlock() {
   sessionStorage.setItem('karin_unlocked', '1');
@@ -788,7 +761,6 @@ function pinUnlock() {
 function changePin() {
   sessionStorage.removeItem('karin_unlocked');
   cloudPinHash = null;
-  // מחק מהענן בטעינה הבאה
   sessionStorage.setItem('karin_clear_pin', '1');
   location.reload();
 }
