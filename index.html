@@ -681,9 +681,10 @@
 
 <script>
 /* ===== Password Lock ===== */
+const SETUP_CODE = '151284'; // קוד הגדרה — נדרש כדי להגדיר סיסמה חדשה
 let cloudPinHash = null;
 let prefetchedState = null;
-let pinMode = 'enter'; // 'enter' | 'set' | 'confirm'
+let pinMode = 'enter'; // 'enter' | 'owner' | 'set' | 'confirm'
 let pinFirst = '';
 
 async function hashPin(pw) {
@@ -746,7 +747,9 @@ async function pinInit() {
   } else if (!cloudPinHash && cloudLoaded) {
     // ענן נטען בהצלחה וממש אין סיסמה — מצב הגדרה ראשונית
     pinMode = 'set';
-    setLockUI('בחרי סיסמה', 'המשך', 'סיסמה חדשה', true);
+    // דרוש קוד הגדרה לפני שמגדירים סיסמה
+    pinMode = 'owner';
+    setLockUI('הכנסי קוד הגדרה', 'המשך', 'קוד הגדרה');
   } else {
     setLockUI('ניהול פרויקטים 2026', 'כניסה', 'סיסמה');
   }
@@ -757,6 +760,12 @@ async function pinSubmit() {
   const pw = inp.value.trim();
   if (!pw) return;
   const h = await hashPin(pw);
+  if (pinMode === 'owner') {
+    if (pw !== SETUP_CODE) { pinError('קוד שגוי'); inp.classList.add('error'); setTimeout(()=>inp.classList.remove('error'),800); inp.select(); return; }
+    pinMode = 'set';
+    setLockUI('בחרי סיסמה', 'המשך', 'סיסמה חדשה', true);
+    return;
+  }
   if (pinMode === 'set') {
     pinFirst = pw;
     setLockUI('הזיני שוב לאישור', 'אשרי', 'אישור סיסמה', true);
