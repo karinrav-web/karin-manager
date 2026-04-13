@@ -688,19 +688,39 @@
 
 <script>
 /* ===== PIN Lock ===== */
-const PIN_KEY = 'karin_pin';
 let pinBuffer = '';
 let pinMode = 'enter'; // 'enter' | 'set' | 'confirm'
 let pinFirst = '';
+let cloudPinHash = null;
+let prefetchedState = null;
 
-function pinInit() {
-  const stored = localStorage.getItem(PIN_KEY);
-  if (!stored) {
+async function hashPin(pin) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pin + 'karin2026'));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+async function pinInit() {
+  if (sessionStorage.getItem('karin_unlocked') === '1') { pinUnlock(); return; }
+  document.getElementById('lock-sub').textContent = 'מתחבר...';
+  document.getElementById('pin-pad').style.opacity = '0.3';
+  document.getElementById('pin-pad').style.pointerEvents = 'none';
+  try {
+    const ctrl = new AbortController();
+    setTimeout(()=>ctrl.abort(), 6000);
+    const r = await fetch(API+'?t='+Date.now(), {signal:ctrl.signal});
+    const d = await r.json();
+    if (d.ok && d.state) {
+      prefetchedState = d.state;
+      cloudPinHash = d.state.settings && d.state.settings.pinHash || null;
+    }
+  } catch(e) {}
+  document.getElementById('pin-pad').style.opacity = '';
+  document.getElementById('pin-pad').style.pointerEvents = '';
+  if (!cloudPinHash) {
     pinMode = 'set';
     document.getElementById('lock-sub').textContent = 'הגדר קוד גישה (4 ספרות)';
-  } else if (sessionStorage.getItem('karin_unlocked') === '1') {
-    pinUnlock();
-    return;
+  } else {
+    document.getElementById('lock-sub').textContent = 'הכיני קוד גישה';
   }
   document.addEventListener('keydown', e => { if(/^[0-9]$/.test(e.key)) pinPress(e.key); else if(e.key==='Backspace') pinDel(); });
 }
@@ -725,18 +745,18 @@ function pinUpdateDots(state) {
   }
 }
 
-function pinSubmit() {
-  const stored = localStorage.getItem(PIN_KEY);
+async function pinSubmit() {
+  const h = await hashPin(pinBuffer);
   if (pinMode === 'set') {
     pinFirst = pinBuffer; pinBuffer = '';
     pinMode = 'confirm';
     document.getElementById('lock-sub').textContent = 'הזיני שוב לאישור';
-    pinUpdateDots();
-    return;
+    pinUpdateDots(); return;
   }
   if (pinMode === 'confirm') {
     if (pinBuffer === pinFirst) {
-      localStorage.setItem(PIN_KEY, pinBuffer);
+      cloudPinHash = h;
+      sessionStorage.setItem('karin_pin_pending', h); // יישמר לענן אחרי טעינה
       pinUnlock();
     } else {
       pinError('הקודים לא תואמים — נסי שוב');
@@ -745,7 +765,7 @@ function pinSubmit() {
     }
     return;
   }
-  if (pinBuffer === stored) {
+  if (h === cloudPinHash) {
     pinUnlock();
   } else {
     pinError('קוד שגוי');
@@ -761,14 +781,15 @@ function pinError(msg) {
 function pinUnlock() {
   sessionStorage.setItem('karin_unlocked', '1');
   const ls = document.getElementById('lock-screen');
-  const app = document.getElementById('app-shell');
   ls.style.opacity = '0'; ls.style.transition = 'opacity 0.3s';
-  setTimeout(() => { ls.style.display = 'none'; app.style.display = ''; }, 300);
+  setTimeout(() => { ls.style.display = 'none'; document.getElementById('app-shell').style.display = ''; }, 300);
 }
 
 function changePin() {
   sessionStorage.removeItem('karin_unlocked');
-  localStorage.removeItem(PIN_KEY);
+  cloudPinHash = null;
+  // מחק מהענן בטעינה הבאה
+  sessionStorage.setItem('karin_clear_pin', '1');
   location.reload();
 }
 
@@ -1006,6 +1027,68 @@ function dedup(arr) {
   return arr.filter(x => { if (seen.has(x.id)) return false; seen.add(x.id); return true; });
 }
 
+function applyPinToState() {
+  // שמור PIN חדש לענן אחרי הגדרה
+  const pending = sessionStorage.getItem('karin_pin_pending');
+  if (pending) {
+    state.settings = {...(state.settings||{}), pinHash: pending};
+    sessionStorage.removeItem('karin_pin_pending');
+    save();
+  }
+  // מחק PIN מהענן אם ביקשו
+  if (sessionStorage.getItem('karin_clear_pin')) {
+    state.settings = {...(state.settings||{}), pinHash: ''};
+    sessionStorage.removeItem('karin_clear_pin');
+    save();
+  }
+}
+
+function mergeCloudState(d) {
+  if(!(d.ok&&d.state&&d.state.projects&&d.state.projects.length>0)) return false;
+  if(blockCloudLoad){ setSyncStatus('✓ נשמר','var(--accent)'); return true; }
+  const p=d.state;
+      p.projects=dedup(p.projects.map(normalizeProject));
+      p.tasks=dedup((p.tasks||[]).map(x=>({...x,done:Number(x.done)||0})));
+      let local = {};
+      try { const ls = localStorage.getItem('karin_pm'); if(ls) local = JSON.parse(ls); } catch(e){}
+      const cloudProjMap = {};
+      p.projects.forEach(x=>{ cloudProjMap[x.id]=x; });
+      const merged = (local.projects||[]).map(lp=>{
+        const cp = cloudProjMap[lp.id];
+        if(!cp) return lp;
+        return {...cp,
+          deadline: lp.deadline||cp.deadline||'',
+          goalDone: lp.goalDone||0,
+          editedToday: lp.editedToday||0,
+          goalDaily: lp.goalDaily||0,
+          payers: lp.payers||cp.payers||[],
+          order: lp.order!==undefined?lp.order:(cp.order!==undefined?cp.order:9999),
+          seconds: lp.seconds||cp.seconds||0,
+          sessions: lp.sessions||cp.sessions||0,
+          timeLogs: lp.timeLogs||cp.timeLogs||[],
+          notes: lp.notes||cp.notes||''
+        };
+      });
+      const localIds = new Set((local.projects||[]).map(x=>x.id));
+      p.projects.forEach(cp=>{ if(!localIds.has(cp.id)) merged.push(cp); });
+      p.projects = dedup(merged.map(normalizeProject));
+      // שמור pinHash מהענן בהגדרות מקומיות
+      const mergedSettings = {...(local.settings||{}), ...(p.settings||{})};
+      state=applyDayReset({
+        projects:p.projects,
+        tasks:p.tasks||[],
+        lastReset:local.lastReset||p.lastReset||'',
+        settings:mergedSettings,
+        editDays:local.editDays||p.editDays||{}
+      });
+      try{localStorage.setItem('karin_pm',JSON.stringify(state));}catch(e){}
+      setSyncStatus('✓ סונכרן','var(--accent)');
+      applyPinToState();
+      render();
+      return true;
+  return false;
+}
+
 function load() {
   try {
     const s = localStorage.getItem('karin_pm');
@@ -1017,60 +1100,18 @@ function load() {
     }
   } catch(e) {}
   setSyncStatus('טוען...','var(--text3)');
+  // אם כבר מושך state ב-PIN init — השתמש בו
+  if (prefetchedState) {
+    const done = mergeCloudState({ok:true, state:prefetchedState});
+    if (!done) { setSyncStatus('עובד מקומית','var(--text3)'); applyPinToState(); render(); }
+    return;
+  }
   const controller=new AbortController();
   setTimeout(()=>controller.abort(),6000);
   fetch(API+'?t='+Date.now(),{signal:controller.signal})
   .then(r=>r.json())
-  .then(d=>{
-    if(d.ok&&d.state&&d.state.projects&&d.state.projects.length>0){
-      if(blockCloudLoad){ setSyncStatus('✓ נשמר','var(--accent)'); return; }
-      const p=d.state;
-      p.projects=dedup(p.projects.map(normalizeProject));
-      p.tasks=dedup((p.tasks||[]).map(x=>({...x,done:Number(x.done)||0})));
-      let local = {};
-      try { const ls = localStorage.getItem('karin_pm'); if(ls) local = JSON.parse(ls); } catch(e){}
-      // מיזוג: שמור את כל הפרויקטים המקומיים + כל פרויקטי הענן
-      const cloudProjMap = {};
-      p.projects.forEach(x=>{ cloudProjMap[x.id]=x; });
-      const localProjMap = {};
-      (local.projects||[]).forEach(x=>{ localProjMap[x.id]=x; });
-      // התחל מפרויקטים מקומיים (כולל כאלה שלא בענן)
-      const merged = (local.projects||[]).map(lp=>{
-        const cp = cloudProjMap[lp.id];
-        if(!cp) return lp; // קיים רק מקומית — שמור
-        return {...cp, // ענן גובר על שדות כלליים
-          deadline: lp.deadline||cp.deadline||'',
-          goalDone: lp.goalDone||0,
-          editedToday: lp.editedToday||0,
-          goalDaily: lp.goalDaily||0,
-          payers: lp.payers||cp.payers||[],
-          order: lp.order!==undefined?lp.order:(cp.order!==undefined?cp.order:9999),
-          // שדות מקומיים שהענן לא מכיר — תמיד מהמקומי
-          seconds: lp.seconds||cp.seconds||0,
-          sessions: lp.sessions||cp.sessions||0,
-          timeLogs: lp.timeLogs||cp.timeLogs||[],
-          notes: lp.notes||cp.notes||''
-        };
-      });
-      // הוסף פרויקטי ענן שאינם מקומיים
-      const localIds = new Set((local.projects||[]).map(x=>x.id));
-      p.projects.forEach(cp=>{ if(!localIds.has(cp.id)) merged.push(cp); });
-      p.projects = dedup(merged.map(normalizeProject));
-      state=applyDayReset({
-        projects:p.projects,
-        tasks:p.tasks||[],
-        lastReset:local.lastReset||p.lastReset||'',
-        settings:local.settings||p.settings||{hoursPerDay:6,photosPerDay:20,workDays:[0,1,2,3,4]},
-        editDays:local.editDays||p.editDays||{}
-      });
-      try{localStorage.setItem('karin_pm',JSON.stringify(state));}catch(e){}
-      setSyncStatus('✓ סונכרן','var(--accent)');
-      render();
-    } else {
-      setSyncStatus('עובד מקומית','var(--text3)');
-    }
-  })
-  .catch(e=>setSyncStatus(e.name==='AbortError'?'פג זמן':'עובד מקומית','var(--high)'));
+  .then(d=>{ if(!mergeCloudState(d)){ setSyncStatus('עובד מקומית','var(--text3)'); applyPinToState(); render(); } })
+  .catch(e=>{ setSyncStatus(e.name==='AbortError'?'פג זמן':'עובד מקומית','var(--high)'); applyPinToState(); render(); });
 }
 
 function showPage(p, el) {
