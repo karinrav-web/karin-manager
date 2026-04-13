@@ -399,10 +399,65 @@
     .mobile-nav { display:none; }
     .mobile-filter { display:none; }
   }
+  /* === Lock screen === */
+  .lock-screen {
+    position:fixed; inset:0; background:var(--bg); z-index:9999;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .lock-card {
+    background:var(--surface); border:1px solid var(--border); border-radius:16px;
+    padding:40px 36px; width:min(360px,90vw); text-align:center; box-shadow:0 8px 32px rgba(0,0,0,0.08);
+  }
+  .lock-title { font-size:20px; font-weight:600; margin-bottom:4px; }
+  .lock-sub { font-size:13px; color:var(--text3); margin-bottom:28px; }
+  .pin-dots { display:flex; gap:12px; justify-content:center; margin-bottom:24px; }
+  .pin-dot { width:14px; height:14px; border-radius:50%; border:2px solid var(--border2); transition:all 0.15s; }
+  .pin-dot.filled { background:var(--accent); border-color:var(--accent); }
+  .pin-dot.error { background:var(--urgent); border-color:var(--urgent); }
+  .pin-pad { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px; }
+  .pin-btn {
+    padding:16px; font-size:18px; font-weight:500; font-family:'Heebo',sans-serif;
+    border:1px solid var(--border2); border-radius:var(--radius); background:var(--surface2);
+    cursor:pointer; color:var(--text); transition:all 0.1s;
+  }
+  .pin-btn:hover { background:var(--accent-light); border-color:var(--accent); color:var(--accent); }
+  .pin-btn:active { transform:scale(0.95); }
+  .pin-del { font-size:14px; color:var(--text3); }
+  .lock-msg { font-size:12px; color:var(--urgent); min-height:18px; margin-top:4px; }
 </style>
 </head>
 <body>
-<div class="shell">
+
+<!-- Lock screen -->
+<div class="lock-screen" id="lock-screen">
+  <div class="lock-card">
+    <div class="lock-title">קרין רבנה</div>
+    <div class="lock-sub" id="lock-sub">ניהול פרויקטים 2026</div>
+    <div class="pin-dots" id="pin-dots">
+      <div class="pin-dot" id="pd0"></div>
+      <div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div>
+      <div class="pin-dot" id="pd3"></div>
+    </div>
+    <div class="pin-pad">
+      <button class="pin-btn" onclick="pinPress('1')">1</button>
+      <button class="pin-btn" onclick="pinPress('2')">2</button>
+      <button class="pin-btn" onclick="pinPress('3')">3</button>
+      <button class="pin-btn" onclick="pinPress('4')">4</button>
+      <button class="pin-btn" onclick="pinPress('5')">5</button>
+      <button class="pin-btn" onclick="pinPress('6')">6</button>
+      <button class="pin-btn" onclick="pinPress('7')">7</button>
+      <button class="pin-btn" onclick="pinPress('8')">8</button>
+      <button class="pin-btn" onclick="pinPress('9')">9</button>
+      <div></div>
+      <button class="pin-btn" onclick="pinPress('0')">0</button>
+      <button class="pin-btn pin-del" onclick="pinDel()">⌫</button>
+    </div>
+    <div class="lock-msg" id="lock-msg"></div>
+  </div>
+</div>
+
+<div class="shell" id="app-shell" style="display:none">
   <aside class="sidebar">
     <div class="logo">
       <div class="logo-name">קרין רבנה</div>
@@ -457,6 +512,7 @@
       </label>
       <button onclick="showRestoreMenu()" style="width:100%;padding:7px;font-size:12px;font-family:'Heebo',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text2);cursor:pointer;margin-bottom:6px;">🔄 שחזר גיבוי אוטומטי</button>
       <div id="auto-backup-list" class="hidden" style="margin-bottom:6px;"></div>
+      <button onclick="changePin()" style="width:100%;padding:7px;font-size:12px;font-family:'Heebo',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text3);cursor:pointer;margin-bottom:6px;">🔒 שנה קוד גישה</button>
       <button onclick="resetAll()" style="width:100%;padding:7px;font-size:12px;font-family:'Heebo',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text3);cursor:pointer;">🗑 מחק הכל</button>
     </div>
   </aside>
@@ -631,6 +687,94 @@
 </div>
 
 <script>
+/* ===== PIN Lock ===== */
+const PIN_KEY = 'karin_pin';
+let pinBuffer = '';
+let pinMode = 'enter'; // 'enter' | 'set' | 'confirm'
+let pinFirst = '';
+
+function pinInit() {
+  const stored = localStorage.getItem(PIN_KEY);
+  if (!stored) {
+    pinMode = 'set';
+    document.getElementById('lock-sub').textContent = 'הגדר קוד גישה (4 ספרות)';
+  } else if (sessionStorage.getItem('karin_unlocked') === '1') {
+    pinUnlock();
+    return;
+  }
+  document.addEventListener('keydown', e => { if(/^[0-9]$/.test(e.key)) pinPress(e.key); else if(e.key==='Backspace') pinDel(); });
+}
+
+function pinPress(d) {
+  if (pinBuffer.length >= 4) return;
+  pinBuffer += d;
+  pinUpdateDots();
+  if (pinBuffer.length === 4) setTimeout(pinSubmit, 150);
+}
+
+function pinDel() {
+  pinBuffer = pinBuffer.slice(0, -1);
+  pinUpdateDots();
+  document.getElementById('lock-msg').textContent = '';
+}
+
+function pinUpdateDots(state) {
+  for (let i = 0; i < 4; i++) {
+    const dot = document.getElementById('pd' + i);
+    dot.className = 'pin-dot' + (i < pinBuffer.length ? ' filled' : '') + (state === 'error' ? ' error' : '');
+  }
+}
+
+function pinSubmit() {
+  const stored = localStorage.getItem(PIN_KEY);
+  if (pinMode === 'set') {
+    pinFirst = pinBuffer; pinBuffer = '';
+    pinMode = 'confirm';
+    document.getElementById('lock-sub').textContent = 'הזיני שוב לאישור';
+    pinUpdateDots();
+    return;
+  }
+  if (pinMode === 'confirm') {
+    if (pinBuffer === pinFirst) {
+      localStorage.setItem(PIN_KEY, pinBuffer);
+      pinUnlock();
+    } else {
+      pinError('הקודים לא תואמים — נסי שוב');
+      pinMode = 'set'; pinFirst = '';
+      document.getElementById('lock-sub').textContent = 'הגדר קוד גישה (4 ספרות)';
+    }
+    return;
+  }
+  if (pinBuffer === stored) {
+    pinUnlock();
+  } else {
+    pinError('קוד שגוי');
+  }
+}
+
+function pinError(msg) {
+  pinUpdateDots('error');
+  document.getElementById('lock-msg').textContent = msg;
+  setTimeout(() => { pinBuffer = ''; pinUpdateDots(); }, 800);
+}
+
+function pinUnlock() {
+  sessionStorage.setItem('karin_unlocked', '1');
+  const ls = document.getElementById('lock-screen');
+  const app = document.getElementById('app-shell');
+  ls.style.opacity = '0'; ls.style.transition = 'opacity 0.3s';
+  setTimeout(() => { ls.style.display = 'none'; app.style.display = ''; }, 300);
+}
+
+function changePin() {
+  sessionStorage.removeItem('karin_unlocked');
+  localStorage.removeItem(PIN_KEY);
+  location.reload();
+}
+
+pinInit();
+
+/* ===== App ===== */
 const STAGES = {send:'לשלוח לסינון',wait:'מחכה לסינון לקוח',edit:'עריכה',deliver:'שליחה ללקוח',notes:'הערות',billing:'גביה',done:'הסתיים'};
 const STAGE_ORDER = {edit:0,send:1,wait:2,deliver:3,notes:4,billing:5,done:6};
 const PORDER = {urgent:0,high:1,normal:2,low:3};
