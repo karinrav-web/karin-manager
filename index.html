@@ -426,6 +426,19 @@
   .lock-submit:hover { background:#245C43; }
   .lock-submit:disabled { background:var(--border2); cursor:not-allowed; }
   .lock-msg { font-size:12px; color:var(--urgent); min-height:18px; margin-top:8px; }
+
+  /* Daily Report */
+  .report-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:20px; }
+  .report-stat { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; text-align:center; }
+  .report-stat-val { font-size:28px; font-weight:600; color:var(--accent); }
+  .report-stat-label { font-size:12px; color:var(--text3); margin-top:4px; }
+  .report-proj-row { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--border); }
+  .report-proj-row:last-child { border-bottom:none; }
+  .report-proj-name { flex:1; font-size:14px; font-weight:500; }
+  .report-proj-meta { font-size:12px; color:var(--text3); display:flex; gap:14px; }
+  .report-proj-meta span { display:flex; align-items:center; gap:4px; }
+  .report-empty { color:var(--text3); font-size:13px; padding:12px 0; }
+  @media(max-width:700px){ .report-grid { grid-template-columns:repeat(2,1fr); } }
 </style>
 </head>
 <body>
@@ -459,6 +472,7 @@
     <div class="nav-item active" id="nav-morning" onclick="showPage('morning',this)"><span class="nav-icon">☀</span><span>בוקר טוב</span></div>
     <div class="nav-item" id="nav-projects" onclick="showPage('projects',this)"><span class="nav-icon">📁</span><span>פרויקטים</span></div>
     <div class="nav-item" id="nav-calendar" onclick="showPage('calendar',this)"><span class="nav-icon">📅</span><span>לוח עריכה</span></div>
+    <div class="nav-item" id="nav-report" onclick="showPage('report',this)"><span class="nav-icon">📊</span><span>דוח יומי</span></div>
     <div class="sub-nav">
       <div class="sub-item active" onclick="filterStage(null,this)"><div class="sub-dot" style="background:var(--text3)"></div>הכל</div>
       <div class="sub-item" onclick="filterStage('edit',this)"><div class="sub-dot" style="background:var(--s-edit-b)"></div>עריכה</div>
@@ -613,6 +627,17 @@
       </div>
     </div>
 
+    <!-- REPORT -->
+    <div id="page-report" class="page">
+      <div class="page-header">
+        <div>
+          <div class="page-title">דוח יומי</div>
+          <div class="page-date" id="report-date"></div>
+        </div>
+      </div>
+      <div id="report-content"></div>
+    </div>
+
     <!-- PROJECTS -->
     <div id="page-projects" class="page">
       <div class="page-header">
@@ -649,7 +674,7 @@
   <button class="mobile-nav-item active" id="mnav-morning" onclick="showPageMobile('morning',this)"><span class="mobile-nav-icon">☀</span>בוקר טוב</button>
   <button class="mobile-nav-item" id="mnav-projects" onclick="showPageMobile('projects',this)"><span class="mobile-nav-icon">📁</span>פרויקטים</button>
   <button class="mobile-nav-item" id="mnav-calendar" onclick="showPageMobile('calendar',this)"><span class="mobile-nav-icon">📅</span>לוח</button>
-  <button class="mobile-nav-item" onclick="exportBackup()"><span class="mobile-nav-icon">💾</span>גיבוי</button>
+  <button class="mobile-nav-item" id="mnav-report" onclick="showPageMobile('report',this)"><span class="mobile-nav-icon">📊</span>דוח</button>
 </nav>
 
 <div class="modal-bg" id="edit-modal">
@@ -1173,7 +1198,90 @@ function setGreeting() {
   const d = new Date(), days=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
   document.getElementById('today-date').textContent = 'יום '+days[d.getDay()]+', '+d.toLocaleDateString('he-IL');
 }
-function render() { setGreeting(); renderTasks(); renderProjects(); refreshSelects(); renderUrgency(); renderCalendar(); loadSettings(); renderBillingSummaryMorning(); document.querySelector('.main').classList.add('dashboard-mode'); initThemeSwatches(); loadDashboardSettings(); }
+function render() { setGreeting(); renderTasks(); renderProjects(); refreshSelects(); renderUrgency(); renderCalendar(); loadSettings(); renderBillingSummaryMorning(); renderReport(); document.querySelector('.main').classList.add('dashboard-mode'); initThemeSwatches(); loadDashboardSettings(); }
+
+function renderReport() {
+  const today = todayStr();
+  const el = document.getElementById('report-content');
+  if (!el) return;
+  const dateEl = document.getElementById('report-date');
+  if (dateEl) { const d=new Date(); const days=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת']; dateEl.textContent='יום '+days[d.getDay()]+', '+d.toLocaleDateString('he-IL'); }
+
+  // זמן עבודה כולל היום
+  let totalSecsToday = 0;
+  // תמונות ערוכות היום
+  let totalPhotosToday = 0;
+  // פרויקטים שעבדנו עליהם היום
+  const workedOn = [];
+
+  state.projects.forEach(p => {
+    const loggedToday = (p.timeLogs||[]).filter(l=>l.date===today && !l.migrated).reduce((s,l)=>s+l.seconds,0);
+    const liveExtra = (activeTimer && activeTimer.projId===p.id) ? Math.floor((Date.now()-activeTimer.startTs)/1000) : 0;
+    const secsToday = loggedToday + liveExtra;
+    totalSecsToday += secsToday;
+    const photosToday = p.editedToday || 0;
+    totalPhotosToday += photosToday;
+    if (secsToday > 0 || photosToday > 0) {
+      workedOn.push({ p, secsToday, photosToday });
+    }
+  });
+
+  const doneProjects = state.projects.filter(p=>p.status==='done');
+  const openTasks = state.tasks.filter(t=>!t.done).length;
+  const doneTasks = state.tasks.filter(t=>t.done).length;
+
+  // שורות פרויקטים
+  const projRows = workedOn.length > 0
+    ? workedOn.sort((a,b)=>b.secsToday-a.secsToday).map(({p,secsToday,photosToday})=>`
+      <div class="report-proj-row">
+        <div class="report-proj-name">${p.client||'ללא שם'}</div>
+        <div class="report-proj-meta">
+          ${secsToday>0?`<span>⏱ ${fmtTime(secsToday)}</span>`:''}
+          ${photosToday>0?`<span>📷 ${photosToday} תמונות</span>`:''}
+          ${p.edited&&p.total?`<span style="color:var(--accent)">${p.edited}/${p.total}</span>`:''}
+        </div>
+      </div>`).join('')
+    : '<div class="report-empty">לא עבדת על פרויקטים היום עדיין</div>';
+
+  el.innerHTML = `
+    <div class="report-grid">
+      <div class="report-stat">
+        <div class="report-stat-val">${fmtTime(totalSecsToday)}</div>
+        <div class="report-stat-label">זמן עבודה היום</div>
+      </div>
+      <div class="report-stat">
+        <div class="report-stat-val">${totalPhotosToday}</div>
+        <div class="report-stat-label">תמונות ערכת היום</div>
+      </div>
+      <div class="report-stat">
+        <div class="report-stat-val">${workedOn.length}</div>
+        <div class="report-stat-label">פרויקטים פעילים היום</div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-title">פרויקטים שעבדת עליהם היום</div>
+      ${projRows}
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <div class="card">
+        <div class="card-title">פרויקטים שהסתיימו (סה״כ)</div>
+        ${doneProjects.length > 0
+          ? doneProjects.map(p=>`<div class="report-proj-row"><div class="report-proj-name">${p.client||'ללא שם'}</div><div style="font-size:12px;color:var(--text3)">${p.total||0} תמונות</div></div>`).join('')
+          : '<div class="report-empty">אין פרויקטים שהסתיימו</div>'}
+      </div>
+      <div class="card">
+        <div class="card-title">משימות</div>
+        <div class="report-proj-row" style="border:none;padding:6px 0">
+          <div class="report-proj-name" style="color:var(--accent)">✓ הושלמו</div>
+          <div style="font-size:18px;font-weight:600">${doneTasks}</div>
+        </div>
+        <div class="report-proj-row" style="border:none;padding:6px 0">
+          <div class="report-proj-name" style="color:var(--text3)">פתוחות</div>
+          <div style="font-size:18px;font-weight:600">${openTasks}</div>
+        </div>
+      </div>
+    </div>`;
+}
 
 /* ===== Dashboard Customize ===== */
 const THEMES = [
@@ -1387,6 +1495,8 @@ function toggleTimer(id) {
     const p = state.projects.find(p=>p.id===id); if (!p) { clearInterval(activeTimer.iv); return; }
     const el = document.getElementById('ptv-'+id);
     if (el) el.textContent = fmtTime((p.seconds||0)+Math.floor((Date.now()-activeTimer.startTs)/1000));
+    // עדכן דוח יומי בזמן אמת אם הדף פתוח
+    if (document.getElementById('page-report')?.classList.contains('active')) renderReport();
   },1000);
   const btn=document.getElementById('ptb-'+id); const val=document.getElementById('ptv-'+id);
   if(btn){btn.textContent='⏹ עצור';btn.classList.add('running');}
