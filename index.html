@@ -1129,6 +1129,38 @@ function addTask() {
   save(); renderTasks(); refreshSelects();
 }
 
+function toggleTimerEdit(id) {
+  const box = document.getElementById('timer-edit-'+id);
+  if (!box) return;
+  const isHidden = box.classList.contains('hidden');
+  box.classList.toggle('hidden');
+  box.style.display = isHidden ? 'flex' : 'none';
+  if (isHidden) {
+    const p = state.projects.find(p=>p.id===id);
+    const secs = (p&&p.seconds)||0;
+    const h = Math.floor(secs/3600);
+    const m = Math.floor((secs%3600)/60);
+    const input = document.getElementById('timer-edit-val-'+id);
+    if (input) { input.value = h+':'+(m<10?'0':'')+m; input.focus(); input.select(); }
+  }
+}
+
+function saveTimerEdit(id) {
+  const input = document.getElementById('timer-edit-val-'+id);
+  if (!input) return;
+  const parts = input.value.trim().split(':');
+  const h = parseInt(parts[0])||0;
+  const m = parseInt(parts[1])||0;
+  if (h < 0 || m < 0 || m > 59) { alert('פורמט לא תקין — הזיני שע:דק למשל 1:30'); return; }
+  const newSecs = h*3600 + m*60;
+  const p = state.projects.find(p=>p.id===id);
+  if (!p) return;
+  // אם הטיימר רץ עכשיו — עצור אותו קודם
+  if (activeTimer.projId===id) { clearInterval(activeTimer.iv); activeTimer={projId:null,startTs:null,iv:null}; }
+  p.seconds = newSecs;
+  save(); renderProjects();
+}
+
 function toggleTimer(id) {
   if (activeTimer.projId===id) { stopTimer(); return; }
   if (activeTimer.iv) stopTimer();
@@ -1271,7 +1303,15 @@ function renderProjects() {
       <div class="timer-row">
         <div class="timer-info">
           <div class="proj-section-label">זמן עבודה כולל</div>
-          <div class="timer-val ${isRunning ? 'running' : ''}" id="ptv-${p.id}">${fmtTime(secs)}</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div class="timer-val ${isRunning ? 'running' : ''}" id="ptv-${p.id}">${fmtTime(secs)}</div>
+            <button onclick="toggleTimerEdit(${p.id})" title="ערוך זמן" style="padding:2px 7px;font-size:11px;font-family:'Heebo',sans-serif;border:1px solid var(--border2);border-radius:4px;background:var(--surface2);color:var(--text3);cursor:pointer;">✏️</button>
+          </div>
+          <div id="timer-edit-${p.id}" class="hidden" style="margin-top:6px;display:flex;align-items:center;gap:6px;">
+            <input type="text" id="timer-edit-val-${p.id}" placeholder="שע:דק (למשל 1:30)" style="width:100px;padding:4px 8px;font-size:13px;border:1px solid var(--border2);border-radius:4px;font-family:'Heebo',sans-serif;" />
+            <button onclick="saveTimerEdit(${p.id})" style="padding:4px 10px;font-size:12px;font-family:'Heebo',sans-serif;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;">שמור</button>
+            <button onclick="toggleTimerEdit(${p.id})" style="padding:4px 8px;font-size:12px;font-family:'Heebo',sans-serif;background:transparent;border:1px solid var(--border2);border-radius:4px;cursor:pointer;color:var(--text3);">ביטול</button>
+          </div>
           <div class="timer-meta">${p.sessions || 0} סשנים</div>
         </div>
         <button class="timer-btn ${isRunning ? 'running' : ''}" id="ptb-${p.id}" onclick="toggleTimer(${p.id})">${isRunning ? '⏹ עצור' : '▶ התחל'}</button>
