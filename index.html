@@ -1198,6 +1198,11 @@ function stopTimer() {
   const p=state.projects.find(p=>p.id===activeTimer.projId);
   if(p){
     if(!p.timeLogs) p.timeLogs=[];
+    // מיגרציה: אם יש שניות ישנות שלא בלוג — שמור אותן כרשומה ראשונה
+    const loggedSecs=p.timeLogs.reduce((s,l)=>s+l.seconds,0);
+    if((p.seconds||0)>loggedSecs){
+      p.timeLogs.unshift({id:Date.now()-1, date:'', seconds:(p.seconds||0)-loggedSecs, migrated:true});
+    }
     p.timeLogs.push({id:Date.now(), date:todayStr(), seconds:elapsed});
     recalcTimer(p);
   }
@@ -1374,7 +1379,7 @@ function renderProjects() {
           </div>
           ${(p.timeLogs||[]).length>0?`<div class="session-log">${(p.timeLogs||[]).map(l=>{
             const lh=Math.floor(l.seconds/3600), lm=Math.floor((l.seconds%3600)/60);
-            const dparts=l.date.split('-'); const dstr=dparts[2]+'.'+dparts[1]+'.'+String(dparts[0]).slice(2);
+            const dstr=l.migrated?'(ישן)':l.date?(()=>{const dparts=l.date.split('-');return dparts[2]+'.'+dparts[1]+'.'+String(dparts[0]).slice(2);})():'';
             return `<div class="session-row">
               <span class="session-date">${dstr}${l.manual?'&nbsp;✍️':''}</span>
               <span class="session-dur">${fmtTime(l.seconds)}</span>
