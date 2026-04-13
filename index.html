@@ -865,6 +865,14 @@ function fmtTime(s) {
   s = Math.max(0,Math.floor(s));
   return Math.floor(s/3600)+':'+String(Math.floor((s%3600)/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
 }
+function fmtDuration(s) {
+  s = Math.max(0,Math.floor(s));
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60);
+  if (h > 0 && m > 0) return h+' שע׳ '+m+' דק׳';
+  if (h > 0) return h+' שעות';
+  if (m > 0) return m+' דקות';
+  return s+' שנ׳';
+}
 
 const API='https://script.google.com/macros/s/AKfycbz_w9LEe6o4B_GwkX2CBxUv1ymjQGUklA1v-n4One6WVwzotyDNfhKLdAxfftpggMDh/exec';
 let saveTimer=null;
@@ -1241,7 +1249,7 @@ function renderReport() {
       <div class="report-proj-row">
         <div class="report-proj-name">${p.client||'ללא שם'}</div>
         <div class="report-proj-meta">
-          ${secsToday>0?`<span>⏱ ${fmtTime(secsToday)}</span>`:''}
+          ${secsToday>0?`<span>⏱ ${fmtDuration(secsToday)}</span>`:''}
           ${photosToday>0?`<span>📷 ${photosToday} תמונות</span>`:''}
           ${p.edited&&p.total?`<span style="color:var(--accent)">${p.edited}/${p.total}</span>`:''}
         </div>
@@ -1251,7 +1259,7 @@ function renderReport() {
   el.innerHTML = `
     <div class="report-grid">
       <div class="report-stat">
-        <div class="report-stat-val">${fmtTime(totalSecsToday)}</div>
+        <div class="report-stat-val">${fmtDuration(totalSecsToday)}</div>
         <div class="report-stat-label">זמן עבודה היום</div>
       </div>
       <div class="report-stat">
