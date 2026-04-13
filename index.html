@@ -899,7 +899,12 @@ function load() {
           editedToday: lp.editedToday||0,
           goalDaily: lp.goalDaily||0,
           payers: lp.payers||cp.payers||[],
-          order: lp.order!==undefined?lp.order:(cp.order!==undefined?cp.order:9999)
+          order: lp.order!==undefined?lp.order:(cp.order!==undefined?cp.order:9999),
+          // שדות מקומיים שהענן לא מכיר — תמיד מהמקומי
+          seconds: lp.seconds||cp.seconds||0,
+          sessions: lp.sessions||cp.sessions||0,
+          timeLogs: lp.timeLogs||cp.timeLogs||[],
+          notes: lp.notes||cp.notes||''
         };
       });
       // הוסף פרויקטי ענן שאינם מקומיים
