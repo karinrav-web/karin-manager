@@ -2335,8 +2335,32 @@ function addClient(projId) {
 }
 function togglePaid(projId, idx) {
   const p = state.projects.find(p => p.id === projId); if (!p || !p.payers) return;
-  p.payers[idx].paid = !p.payers[idx].paid;
-  save(); renderProjects(); renderBillingSummaryMorning();
+  const pay = p.payers[idx];
+  pay.paid = !pay.paid;
+  if (!state.billing) state.billing = [];
+  if (pay.paid) {
+    // צור רשומת הכנסה אוטומטית
+    const amount = Math.round((Number(pay.amount)||0) * 1.18);
+    const rec = {
+      id: Date.now(),
+      date: new Date().toISOString().slice(0,10),
+      client: p.client || '',
+      project: p.title || '',
+      designerFee: pay.type === 'client' ? amount : 0,
+      suppliers: pay.type === 'vendor' ? [{name: pay.name, amount}] : [],
+      total: amount,
+      projectId: p.id
+    };
+    pay.billingRecordId = rec.id;
+    state.billing.push(rec);
+  } else {
+    // מחק רשומת הכנסה אם קיימת
+    if (pay.billingRecordId) {
+      state.billing = state.billing.filter(r => r.id !== pay.billingRecordId);
+      delete pay.billingRecordId;
+    }
+  }
+  save(); renderProjects(); renderBillingSummaryMorning(); renderBillingPage();
 }
 function deletePayer(projId, idx) {
   const p = state.projects.find(p => p.id === projId); if (!p || !p.payers) return;
