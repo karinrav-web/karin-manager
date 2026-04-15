@@ -439,6 +439,35 @@
   .report-proj-meta span { display:flex; align-items:center; gap:4px; }
   .report-empty { color:var(--text3); font-size:13px; padding:12px 0; }
   @media(max-width:700px){ .report-grid { grid-template-columns:repeat(2,1fr); } }
+
+  /* Billing / Revenue */
+  .billing-summary { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:20px; }
+  .billing-stat { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; text-align:center; }
+  .billing-stat-val { font-size:26px; font-weight:600; color:var(--accent); }
+  .billing-stat-label { font-size:12px; color:var(--text3); margin-top:4px; }
+  .billing-year-tabs { display:flex; gap:6px; margin-bottom:18px; }
+  .billing-year-tab { padding:6px 16px; font-size:13px; font-family:'Heebo',sans-serif; border:1px solid var(--border2); border-radius:20px; background:var(--surface2); color:var(--text2); cursor:pointer; }
+  .billing-year-tab.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .billing-chart { display:flex; align-items:flex-end; gap:4px; height:120px; margin-bottom:20px; padding:0 4px; }
+  .billing-bar-wrap { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; height:100%; justify-content:flex-end; }
+  .billing-bar { width:100%; border-radius:4px 4px 0 0; background:var(--accent); min-height:2px; transition:height 0.3s; cursor:pointer; }
+  .billing-bar:hover { background:var(--normal); }
+  .billing-bar-label { font-size:10px; color:var(--text3); }
+  .billing-bar-val { font-size:9px; color:var(--text3); }
+  .billing-record { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); }
+  .billing-record:last-child { border-bottom:none; }
+  .billing-record-date { font-size:12px; color:var(--text3); width:72px; flex-shrink:0; }
+  .billing-record-client { flex:1; font-size:14px; font-weight:500; min-width:0; }
+  .billing-record-sub { font-size:12px; color:var(--text3); }
+  .billing-record-amount { font-size:15px; font-weight:600; color:var(--accent); white-space:nowrap; }
+  .billing-record-edit { background:none; border:none; cursor:pointer; color:var(--text3); font-size:14px; padding:4px; }
+  .billing-record-edit:hover { color:var(--text); }
+  .bm-supplier-row { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
+  .bm-supplier-row input { flex:1; padding:6px 10px; font-size:13px; border:1px solid var(--border2); border-radius:6px; font-family:'Heebo',sans-serif; }
+  .bm-supplier-row input[type=number] { width:100px; flex:none; }
+  .bm-remove { background:none; border:none; cursor:pointer; color:var(--text3); font-size:16px; padding:0 4px; }
+  .bm-remove:hover { color:var(--urgent); }
+  @media(max-width:700px){ .billing-summary { grid-template-columns:repeat(2,1fr); } }
 </style>
 </head>
 <body>
@@ -473,6 +502,7 @@
     <div class="nav-item" id="nav-projects" onclick="showPage('projects',this)"><span class="nav-icon">📁</span><span>פרויקטים</span></div>
     <div class="nav-item" id="nav-calendar" onclick="showPage('calendar',this)"><span class="nav-icon">📅</span><span>לוח עריכה</span></div>
     <div class="nav-item" id="nav-report" onclick="showPage('report',this)"><span class="nav-icon">📊</span><span>דוח יומי</span></div>
+    <div class="nav-item" id="nav-billing" onclick="showPage('billing',this)"><span class="nav-icon">💰</span><span>הכנסות</span></div>
     <div class="sub-nav">
       <div class="sub-item active" onclick="filterStage(null,this)"><div class="sub-dot" style="background:var(--text3)"></div>הכל</div>
       <div class="sub-item" onclick="filterStage('edit',this)"><div class="sub-dot" style="background:var(--s-edit-b)"></div>עריכה</div>
@@ -643,6 +673,33 @@
       <div id="report-content"></div>
     </div>
 
+    <!-- BILLING -->
+    <div id="page-billing" class="page">
+      <div class="page-header">
+        <div><div class="page-title">הכנסות</div></div>
+        <div style="display:flex;gap:8px;">
+          <label style="padding:8px 16px;font-size:13px;font-family:'Heebo',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">
+            📥 ייבוא CSV
+            <input type="file" accept=".csv" onchange="importBillingCSV(event)" style="display:none"/>
+          </label>
+          <button onclick="openBillingModal()" style="padding:8px 16px;font-size:13px;font-family:'Heebo',sans-serif;border:none;border-radius:var(--radius-sm);background:var(--accent);color:#fff;cursor:pointer;">+ הוסף</button>
+        </div>
+      </div>
+      <div class="billing-year-tabs" id="billing-year-tabs"></div>
+      <div class="billing-summary" id="billing-summary"></div>
+      <div class="card" style="margin-bottom:18px;">
+        <div class="card-title">לפי חודש</div>
+        <div class="billing-chart" id="billing-chart"></div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="display:flex;justify-content:space-between;">
+          <span>רשומות</span>
+          <span id="billing-count" style="font-weight:400;color:var(--text3);"></span>
+        </div>
+        <div id="billing-records"></div>
+      </div>
+    </div>
+
     <!-- PROJECTS -->
     <div id="page-projects" class="page">
       <div class="page-header">
@@ -680,6 +737,7 @@
   <button class="mobile-nav-item" id="mnav-projects" onclick="showPageMobile('projects',this)"><span class="mobile-nav-icon">📁</span>פרויקטים</button>
   <button class="mobile-nav-item" id="mnav-calendar" onclick="showPageMobile('calendar',this)"><span class="mobile-nav-icon">📅</span>לוח</button>
   <button class="mobile-nav-item" id="mnav-report" onclick="showPageMobile('report',this)"><span class="mobile-nav-icon">📊</span>דוח</button>
+  <button class="mobile-nav-item" id="mnav-billing" onclick="showPageMobile('billing',this)"><span class="mobile-nav-icon">💰</span>הכנסות</button>
 </nav>
 
 <div class="modal-bg" id="edit-modal">
@@ -705,6 +763,38 @@
       <button class="btn-delete" onclick="deleteProject()">🗑 מחק פרויקט</button>
       <button class="btn-cancel" onclick="closeModal()">ביטול</button>
       <button class="btn-confirm" onclick="saveEdit()">שמור</button>
+    </div>
+  </div>
+</div>
+
+<!-- Billing Modal -->
+<div class="modal-bg" id="billing-modal" style="display:none">
+  <div class="modal" style="max-width:540px">
+    <div class="modal-title" id="bm-title">הכנסה חדשה</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+      <div class="modal-field"><label>תאריך</label><input id="bm-date" type="date"/></div>
+      <div class="modal-field"><label>לקוח</label><input id="bm-client" type="text" placeholder="שם לקוח"/></div>
+      <div class="modal-field"><label>שם פרויקט</label><input id="bm-project" type="text" placeholder="פרויקט"/></div>
+      <div class="modal-field"><label>מיקום</label><input id="bm-location" type="text" placeholder="עיר / כתובת"/></div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:6px;font-weight:500;">תשלום מעצבת</div>
+      <input id="bm-designer" type="number" min="0" placeholder="0 ₪" oninput="updateBillingTotal()"
+             style="width:140px;padding:7px 10px;font-size:14px;border:1px solid var(--border2);border-radius:6px;font-family:'Heebo',sans-serif;"/>
+    </div>
+    <div style="margin-bottom:8px;">
+      <div style="font-size:12px;color:var(--text3);margin-bottom:6px;font-weight:500;">ספקים</div>
+      <div id="bm-suppliers"></div>
+      <button onclick="addBillingSupplier()" style="font-size:12px;color:var(--accent);background:none;border:1px dashed var(--accent);border-radius:6px;padding:4px 12px;cursor:pointer;font-family:'Heebo',sans-serif;">+ ספק</button>
+    </div>
+    <div style="padding:12px 0;border-top:1px solid var(--border);margin-top:8px;display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:13px;color:var(--text2);">סה"כ</span>
+      <span id="bm-total" style="font-size:20px;font-weight:600;color:var(--accent);">0 ₪</span>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-delete" id="bm-delete-btn" onclick="deleteBillingRecord()" style="display:none">🗑 מחק</button>
+      <button class="btn-cancel" onclick="closeBillingModal()">ביטול</button>
+      <button class="btn-confirm" onclick="saveBillingRecord()">שמור</button>
     </div>
   </div>
 </div>
@@ -904,6 +994,7 @@ function save() {
       tasks: state.tasks,
       settings: state.settings,
       editDays: state.editDays||{},
+      billing: state.billing||[],
       projects: state.projects.map(p=>({...p, goalDone:0, editedToday:0}))
     };
     fetch(API,{method:'POST',body:JSON.stringify({action:'save',state:cloudState})})
@@ -1030,6 +1121,11 @@ function dedup(arr) {
   const seen = new Set();
   return arr.filter(x => { if (seen.has(x.id)) return false; seen.add(x.id); return true; });
 }
+function mergeBilling(local, cloud) {
+  const map = {};
+  [...local, ...cloud].forEach(r => { if (r.id) map[r.id] = r; });
+  return Object.values(map);
+}
 
 function applyPinToState() {
   const pending = sessionStorage.getItem('karin_pin_pending');
@@ -1094,7 +1190,8 @@ function mergeCloudState(d) {
         tasks:p.tasks||[],
         lastReset:local.lastReset||p.lastReset||'',
         settings:mergedSettings,
-        editDays:local.editDays||p.editDays||{}
+        editDays:local.editDays||p.editDays||{},
+        billing: mergeBilling(local.billing||[], p.billing||[])
       });
       try{localStorage.setItem('karin_pm',JSON.stringify(state));}catch(e){}
       setSyncStatus('✓ סונכרן','var(--accent)');
@@ -1110,7 +1207,7 @@ function load() {
       const p = JSON.parse(s);
       if (p.projects) p.projects = dedup(p.projects.map(normalizeProject));
       if (p.tasks) p.tasks = dedup(p.tasks.map(x=>({...x,done:Number(x.done)||0})));
-      state = applyDayReset({projects:p.projects||[],tasks:p.tasks||[],settings:p.settings||{hoursPerDay:6,photosPerDay:20,workDays:[0,1,2,3,4]},editDays:p.editDays||{}});
+      state = applyDayReset({projects:p.projects||[],tasks:p.tasks||[],settings:p.settings||{hoursPerDay:6,photosPerDay:20,workDays:[0,1,2,3,4]},editDays:p.editDays||{},billing:p.billing||[]});
     }
   } catch(e) {}
   setSyncStatus('טוען...','var(--text3)');
@@ -1172,7 +1269,7 @@ function setGreeting() {
   const d = new Date(), days=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
   document.getElementById('today-date').textContent = 'יום '+days[d.getDay()]+', '+d.toLocaleDateString('he-IL');
 }
-function render() { setGreeting(); renderTasks(); renderProjects(); refreshSelects(); renderUrgency(); renderCalendar(); loadSettings(); renderBillingSummaryMorning(); renderReport(); document.querySelector('.main').classList.add('dashboard-mode'); initThemeSwatches(); loadDashboardSettings(); }
+function render() { setGreeting(); renderTasks(); renderProjects(); refreshSelects(); renderUrgency(); renderCalendar(); loadSettings(); renderBillingSummaryMorning(); renderReport(); renderBillingPage(); document.querySelector('.main').classList.add('dashboard-mode'); initThemeSwatches(); loadDashboardSettings(); }
 
 function renderReport() {
   const today = todayStr();
@@ -1256,6 +1353,215 @@ function renderReport() {
       </div>
     </div>`;
 }
+
+/* ===== Billing / Revenue ===== */
+let billingYear = new Date().getFullYear();
+let editingBillingId = null;
+
+function fmtMoney(n) { return Math.round(n).toLocaleString('he-IL') + ' ₪'; }
+
+function getBillingRecords() { return state.billing || []; }
+
+function billingYears() {
+  const years = new Set(getBillingRecords().map(r => r.date?.slice(0,4)).filter(Boolean));
+  const cur = String(new Date().getFullYear());
+  years.add(cur);
+  return [...years].sort((a,b)=>b-a);
+}
+
+function renderBillingPage() {
+  if (!document.getElementById('page-billing')) return;
+  const records = getBillingRecords();
+
+  // Year tabs
+  const years = billingYears();
+  const tabsEl = document.getElementById('billing-year-tabs');
+  if (tabsEl) tabsEl.innerHTML = years.map(y =>
+    `<button class="billing-year-tab${y==billingYear?' active':''}" onclick="setBillingYear(${y})">${y}</button>`
+  ).join('');
+
+  const yearRecs = records.filter(r => r.date?.startsWith(String(billingYear)));
+  const months = ['ינו','פבר','מרץ','אפר','מאי','יוני','יולי','אוג','ספט','אוק','נוב','דצמ'];
+
+  // Monthly totals
+  const byMonth = Array(12).fill(0);
+  yearRecs.forEach(r => {
+    const m = parseInt(r.date?.slice(5,7)) - 1;
+    if (m >= 0) byMonth[m] += r.total || 0;
+  });
+
+  const nowMonth = new Date().getMonth();
+  const totalYear = yearRecs.reduce((s,r) => s + (r.total||0), 0);
+  const totalThisMonth = byMonth[nowMonth];
+  const totalLastMonth = byMonth[nowMonth > 0 ? nowMonth-1 : 11];
+
+  // Summary cards
+  const sumEl = document.getElementById('billing-summary');
+  if (sumEl) sumEl.innerHTML = `
+    <div class="billing-stat"><div class="billing-stat-val">${fmtMoney(totalYear)}</div><div class="billing-stat-label">סה"כ ${billingYear}</div></div>
+    <div class="billing-stat"><div class="billing-stat-val">${fmtMoney(totalThisMonth)}</div><div class="billing-stat-label">${months[nowMonth]} (החודש)</div></div>
+    <div class="billing-stat"><div class="billing-stat-val">${fmtMoney(totalLastMonth)}</div><div class="billing-stat-label">${months[nowMonth>0?nowMonth-1:11]} (חודש קודם)</div></div>`;
+
+  // Bar chart
+  const maxVal = Math.max(...byMonth, 1);
+  const chartEl = document.getElementById('billing-chart');
+  if (chartEl) chartEl.innerHTML = byMonth.map((v,i) => {
+    const pct = Math.round((v/maxVal)*100);
+    return `<div class="billing-bar-wrap">
+      <div class="billing-bar-val">${v>0?fmtMoney(v).replace(' ₪',''):''}</div>
+      <div class="billing-bar" style="height:${Math.max(pct,v>0?4:1)}%" title="${months[i]}: ${fmtMoney(v)}"></div>
+      <div class="billing-bar-label">${months[i]}</div>
+    </div>`;
+  }).join('');
+
+  // Records list
+  const sorted = [...yearRecs].sort((a,b) => (b.date||'').localeCompare(a.date||''));
+  const recEl = document.getElementById('billing-records');
+  const cntEl = document.getElementById('billing-count');
+  if (cntEl) cntEl.textContent = sorted.length + ' רשומות';
+  if (recEl) recEl.innerHTML = sorted.length ? sorted.map(r => {
+    const supplierStr = (r.suppliers||[]).filter(s=>s.name).map(s=>`${s.name} ${fmtMoney(s.amount)}`).join(' · ');
+    const dateStr = r.date ? r.date.slice(8)+'/'+r.date.slice(5,7) : '';
+    return `<div class="billing-record">
+      <div class="billing-record-date">${dateStr}</div>
+      <div style="flex:1;min-width:0;">
+        <div class="billing-record-client">${r.client||'—'} ${r.project?'· '+r.project:''}</div>
+        ${r.designerFee>0||supplierStr?`<div class="billing-record-sub">${r.designerFee>0?'מעצבת '+fmtMoney(r.designerFee):''}${r.designerFee>0&&supplierStr?' · ':''}${supplierStr}</div>`:''}
+      </div>
+      <div class="billing-record-amount">${fmtMoney(r.total)}</div>
+      <button class="billing-record-edit" onclick="openBillingModal(${r.id})">✏️</button>
+    </div>`;
+  }).join('') : '<div style="color:var(--text3);font-size:13px;padding:16px 0;text-align:center;">אין רשומות לשנה זו</div>';
+}
+
+function setBillingYear(y) { billingYear = y; renderBillingPage(); }
+
+function openBillingModal(id) {
+  editingBillingId = id || null;
+  const modal = document.getElementById('billing-modal');
+  const rec = id ? getBillingRecords().find(r=>r.id===id) : null;
+  document.getElementById('bm-title').textContent = id ? 'עריכת הכנסה' : 'הכנסה חדשה';
+  document.getElementById('bm-date').value = rec?.date || todayStr().replace(/(\d+)-(\d+)-(\d+)/, (_,y,m,d)=>y+'-'+m.padStart(2,'0')+'-'+d.padStart(2,'0'));
+  document.getElementById('bm-client').value = rec?.client || '';
+  document.getElementById('bm-project').value = rec?.project || '';
+  document.getElementById('bm-location').value = rec?.location || '';
+  document.getElementById('bm-designer').value = rec?.designerFee || '';
+  document.getElementById('bm-delete-btn').style.display = id ? '' : 'none';
+  // suppliers
+  const suppEl = document.getElementById('bm-suppliers');
+  suppEl.innerHTML = '';
+  const suppliers = rec?.suppliers || [];
+  if (suppliers.length === 0) addBillingSupplier();
+  else suppliers.forEach(s => addBillingSupplier(s.name, s.amount));
+  updateBillingTotal();
+  modal.style.display = 'flex';
+}
+
+function closeBillingModal() { document.getElementById('billing-modal').style.display='none'; }
+
+function addBillingSupplier(name='', amount='') {
+  const idx = document.getElementById('bm-suppliers').children.length;
+  const row = document.createElement('div');
+  row.className = 'bm-supplier-row';
+  row.innerHTML = `
+    <input type="text" placeholder="שם ספק" value="${name}" oninput="updateBillingTotal()"/>
+    <input type="number" min="0" placeholder="סכום" value="${amount||''}" oninput="updateBillingTotal()"/>
+    <button class="bm-remove" onclick="this.parentElement.remove();updateBillingTotal()">×</button>`;
+  document.getElementById('bm-suppliers').appendChild(row);
+}
+
+function updateBillingTotal() {
+  const designer = parseFloat(document.getElementById('bm-designer').value)||0;
+  let suppTotal = 0;
+  document.querySelectorAll('#bm-suppliers .bm-supplier-row').forEach(row => {
+    suppTotal += parseFloat(row.querySelectorAll('input')[1].value)||0;
+  });
+  document.getElementById('bm-total').textContent = fmtMoney(designer + suppTotal);
+}
+
+function saveBillingRecord() {
+  const date = document.getElementById('bm-date').value;
+  const client = document.getElementById('bm-client').value.trim();
+  const project = document.getElementById('bm-project').value.trim();
+  const location = document.getElementById('bm-location').value.trim();
+  const designerFee = parseFloat(document.getElementById('bm-designer').value)||0;
+  const suppliers = [];
+  document.querySelectorAll('#bm-suppliers .bm-supplier-row').forEach(row => {
+    const name = row.querySelectorAll('input')[0].value.trim();
+    const amount = parseFloat(row.querySelectorAll('input')[1].value)||0;
+    if (name || amount) suppliers.push({name, amount});
+  });
+  const total = designerFee + suppliers.reduce((s,x)=>s+x.amount,0);
+  if (!state.billing) state.billing = [];
+  if (editingBillingId) {
+    const idx = state.billing.findIndex(r=>r.id===editingBillingId);
+    if (idx>=0) state.billing[idx] = {...state.billing[idx], date, client, project, location, designerFee, suppliers, total};
+  } else {
+    state.billing.push({id:Date.now(), date, client, project, location, designerFee, suppliers, total});
+  }
+  save(); closeBillingModal(); renderBillingPage();
+}
+
+function deleteBillingRecord() {
+  if (!editingBillingId) return;
+  if (!confirm('למחוק רשומה זו?')) return;
+  state.billing = (state.billing||[]).filter(r=>r.id!==editingBillingId);
+  save(); closeBillingModal(); renderBillingPage();
+}
+
+function importBillingCSV(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const lines = e.target.result.split(/\r?\n/).filter(l=>l.trim());
+    const records = [];
+    // skip header row
+    for (let i = 1; i < lines.length; i++) {
+      const cols = parseCSVLine(lines[i]);
+      if (!cols[0]?.trim()) continue;
+      // date: "6.1.2024" → "2024-01-06"
+      const dp = cols[0].trim().split('.');
+      let date = '';
+      if (dp.length===3) date = dp[2]+'-'+dp[1].padStart(2,'0')+'-'+dp[0].padStart(2,'0');
+      const client = cols[1]?.trim()||'';
+      const project = cols[2]?.trim()||'';
+      const location = cols[3]?.trim()||'';
+      const designerFee = parseMoney(cols[4]);
+      const suppliers = [];
+      for (let s=0; s<10; s++) {
+        const name = cols[5+s*2]?.trim();
+        const amount = parseMoney(cols[6+s*2]);
+        if (name) suppliers.push({name, amount});
+      }
+      // last col is total
+      const lastCol = cols[cols.length-1];
+      const total = parseMoney(lastCol) || designerFee + suppliers.reduce((s,x)=>s+x.amount,0);
+      if (date||client) records.push({id:Date.now()+i, date, client, project, location, designerFee, suppliers, total});
+    }
+    if (!state.billing) state.billing = [];
+    // avoid duplicates by date+client
+    const existing = new Set(state.billing.map(r=>r.date+'|'+r.client));
+    const newRecs = records.filter(r=>!existing.has(r.date+'|'+r.client));
+    state.billing.push(...newRecs);
+    save(); renderBillingPage();
+    alert(`יובאו ${newRecs.length} רשומות חדשות (${records.length-newRecs.length} כפולות דולגו)`);
+  };
+  reader.readAsText(file, 'UTF-8');
+  event.target.value = '';
+}
+
+function parseCSVLine(line) {
+  const res=[]; let cur=''; let inQ=false;
+  for(let i=0;i<line.length;i++){
+    if(line[i]==='"'){inQ=!inQ;}
+    else if(line[i]===','&&!inQ){res.push(cur);cur='';}
+    else cur+=line[i];
+  }
+  res.push(cur); return res;
+}
+
+function parseMoney(s) { return parseFloat((s||'').replace(/[,\s₪]/g,''))||0; }
 
 /* ===== Dashboard Customize ===== */
 const THEMES = [
