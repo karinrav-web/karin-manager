@@ -2161,13 +2161,11 @@ function updateVendorAmount(projId, idx, val) {
   save(); renderProjects(); renderBillingSummaryMorning();
 }
 function recalcClientShare(p) {
+  // המעצבת משלמת: בסיס + תוספת - הנחה (ספקים לא מורידים מהמעצבת)
   const base = Number(p.billingBase) || 0;
   const adj = Number(p.billingAdj) || 0;
   const discount = Number(p.billingDiscount) || 0;
-  const total = base + adj - discount;
-  const vendors = (p.payers || []).filter(x => x.type === 'vendor');
-  const vendorTotal = vendors.reduce((s, x) => s + (Number(x.amount) || 0), 0);
-  const clientShare = Math.max(0, total - vendorTotal);
+  const clientShare = Math.max(0, base + adj - discount);
   const client = (p.payers || []).find(x => x.type === 'client');
   if (client) client.amount = clientShare;
 }
@@ -2178,11 +2176,12 @@ function renderBillingSection(p) {
   const base = Number(p.billingBase) || 0;
   const adj = Number(p.billingAdj) || 0;
   const discount = Number(p.billingDiscount) || 0;
-  const totalBeforeVat = base + adj - discount;
   const vendors = payers.filter(x => x.type === 'vendor');
   const client = payers.find(x => x.type === 'client');
   const vendorTotal = vendors.reduce((s, x) => s + (Number(x.amount) || 0), 0);
-  const clientShare = client ? (Number(client.amount) || 0) : Math.max(0, totalBeforeVat - vendorTotal);
+  const clientShare = client ? (Number(client.amount) || 0) : Math.max(0, base + adj - discount);
+  // סה"כ = מעצבת + ספקים (ספקים לא מורידים מהמעצבת)
+  const totalBeforeVat = clientShare + vendorTotal;
 
   const paidAmount = payers.filter(x => x.paid).reduce((s, x) => s + Math.round(Number(x.amount) * VAT_RATE), 0);
   const totalWithVat = Math.round(totalBeforeVat * VAT_RATE);
@@ -2275,7 +2274,8 @@ function renderBillingSummaryMorning() {
 
   state.projects.forEach(p => {
     if (p.status === 'done') return;
-    const base = (Number(p.billingBase)||0) + (Number(p.billingAdj)||0) - (Number(p.billingDiscount)||0);
+    const vendorSum = (p.payers||[]).filter(x=>x.type==='vendor').reduce((s,x)=>s+(Number(x.amount)||0),0);
+    const base = (Number(p.billingBase)||0) + (Number(p.billingAdj)||0) - (Number(p.billingDiscount)||0) + vendorSum;
     const payers = p.payers || [];
     const unpaid = payers.filter(x => !x.paid);
     if (unpaid.length > 0) {
@@ -2351,15 +2351,13 @@ function addPayer(projId) {
 function addVendor(projId) {
   const p = state.projects.find(p => p.id === projId); if (!p) return;
   const name = document.getElementById('bname-' + projId).value.trim();
-  const amount = parseFloat(document.getElementById('bamount-' + projId).value) || 0;
+  const amount = parseFloat(document.getElementById('bamount-' + projId).value) || 500;
   if (!name) return;
   if (!p.payers) p.payers = [];
   p.payers.push({ name, amount, type: 'vendor', paid: false });
-  // כל ספק מוסיף 500 לבסיס אוטומטית
-  p.billingAdj = (Number(p.billingAdj) || 0) + 500;
   recalcClientShare(p);
   document.getElementById('bname-' + projId).value = '';
-  document.getElementById('bamount-' + projId).value = '0';
+  document.getElementById('bamount-' + projId).value = '500';
   save(); renderProjects(); renderBillingSummaryMorning();
 }
 function addClient(projId) {
