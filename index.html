@@ -711,11 +711,11 @@
 
 <script>
 /* ===== Password Lock ===== */
-const SETUP_CODE = '151284'; // קוד הגדרה — נדרש כדי להגדיר סיסמה חדשה
+// BOOTSTRAP_HASH: hash של הסיסמה הראשית — נטען אם הענן ריק לגמרי
+const BOOTSTRAP_HASH = '03817dec5715d4da022c124c42163d55d410e0da520d699d5a93ce73b112ebb3';
+
 let cloudPinHash = null;
 let prefetchedState = null;
-let pinMode = 'enter'; // 'enter' | 'owner' | 'set' | 'confirm'
-let pinFirst = '';
 
 async function hashPin(pw) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw + 'karin2026'));
@@ -727,17 +727,7 @@ function toggleLockVis() {
   inp.type = inp.type === 'password' ? 'text' : 'password';
 }
 
-function setLockUI(sub, btnText, placeholder, isNew) {
-  document.getElementById('lock-sub').textContent = sub;
-  document.getElementById('lock-submit-btn').textContent = btnText;
-  const inp = document.getElementById('lock-input');
-  inp.placeholder = placeholder; inp.value = '';
-  inp.autocomplete = isNew ? 'new-password' : 'current-password';
-  inp.focus();
-}
-
 async function pinInit() {
-  // נסי למלא אוטומטית מהדפדפן
   if (window.PasswordCredential && navigator.credentials?.get) {
     try {
       const cred = await navigator.credentials.get({ password: true, mediation: 'optional' });
@@ -753,35 +743,22 @@ async function pinInit() {
     setTimeout(()=>ctrl.abort(), 6000);
     const r = await fetch(API+'?t='+Date.now(), {signal:ctrl.signal});
     const d = await r.json();
-    if (d.ok && d.state) {
-      prefetchedState = d.state;
-      cloudPinHash = d.state.settings?.pinHash || null;
-      cloudLoaded = true;
-    }
+    if (d.ok && d.state) { prefetchedState = d.state; cloudPinHash = d.state.settings?.pinHash || null; cloudLoaded = true; }
   } catch(e) {}
-  // fallback לסיסמה שמורה מקומית (אצל המשתמש שהגדיר — לא אצל אחרים)
+  // fallback: localStorage (למקרה שהענן לא עודכן עדיין)
   if (!cloudPinHash) {
-    try {
-      const local = JSON.parse(localStorage.getItem('karin_pm')||'{}');
-      if (local.settings?.pinHash) cloudPinHash = local.settings.pinHash;
-    } catch(e) {}
+    try { const l=JSON.parse(localStorage.getItem('karin_pm')||'{}'); if(l.settings?.pinHash) cloudPinHash=l.settings.pinHash; } catch(e) {}
   }
+  // fallback אחרון: bootstrap hash (אם גם הענן וגם localStorage ריקים)
+  if (!cloudPinHash && cloudLoaded) { cloudPinHash = BOOTSTRAP_HASH; sessionStorage.setItem('karin_pin_pending', BOOTSTRAP_HASH); }
   document.getElementById('pin-pad').style.opacity = '';
   document.getElementById('pin-pad').style.pointerEvents = '';
-  if (!cloudPinHash && !cloudLoaded) {
-    // הענן לא נטען — חסום גישה לגמרי
+  if (!cloudPinHash) {
+    document.getElementById('lock-sub').textContent = 'שגיאת חיבור — נסי לרענן';
     document.getElementById('pin-pad').style.opacity = '0.4';
     document.getElementById('pin-pad').style.pointerEvents = 'none';
-    setLockUI('שגיאת חיבור — נסי לרענן', '', 'סיסמה');
-    document.getElementById('lock-submit-btn').style.display = 'none';
-  } else if (!cloudPinHash && cloudLoaded) {
-    // ענן נטען בהצלחה וממש אין סיסמה — מצב הגדרה ראשונית
-    pinMode = 'set';
-    // דרוש קוד הגדרה לפני שמגדירים סיסמה
-    pinMode = 'owner';
-    setLockUI('הכנסי קוד הגדרה', 'המשך', 'קוד הגדרה');
   } else {
-    setLockUI('ניהול פרויקטים 2026', 'כניסה', 'סיסמה');
+    document.getElementById('lock-sub').textContent = 'ניהול פרויקטים 2026';
   }
 }
 
@@ -790,37 +767,17 @@ async function pinSubmit() {
   const pw = inp.value.trim();
   if (!pw) return;
   const h = await hashPin(pw);
-  if (pinMode === 'owner') {
-    if (pw !== SETUP_CODE) { pinError('קוד שגוי'); inp.classList.add('error'); setTimeout(()=>inp.classList.remove('error'),800); inp.select(); return; }
-    pinMode = 'set';
-    setLockUI('בחרי סיסמה', 'המשך', 'סיסמה חדשה', true);
-    return;
+  if (h === cloudPinHash) {
+    pinUnlock();
+  } else {
+    document.getElementById('lock-msg').textContent = 'סיסמה שגויה';
+    inp.classList.add('error');
+    setTimeout(() => { inp.classList.remove('error'); }, 800);
+    inp.select();
   }
-  if (pinMode === 'set') {
-    pinFirst = pw;
-    setLockUI('הזיני שוב לאישור', 'אשרי', 'אישור סיסמה', true);
-    pinMode = 'confirm'; return;
-  }
-  if (pinMode === 'confirm') {
-    if (pw === pinFirst) {
-      cloudPinHash = h;
-      sessionStorage.setItem('karin_pin_pending', h);
-      pinUnlock();
-    } else {
-      pinError('הסיסמאות לא תואמות — נסי שוב');
-      setLockUI('בחרי סיסמה', 'המשך', 'סיסמה חדשה', true);
-      pinMode = 'set'; pinFirst = '';
-    }
-    return;
-  }
-  if (h === cloudPinHash) { pinUnlock(); }
-  else { pinError('סיסמה שגויה'); inp.classList.add('error'); setTimeout(()=>inp.classList.remove('error'),800); inp.select(); }
 }
 
-function pinError(msg) { document.getElementById('lock-msg').textContent = msg; }
-
 async function pinUnlock() {
-  // שמור סיסמה במנהל הסיסמאות של הדפדפן
   if (window.PasswordCredential) {
     try {
       const cred = new PasswordCredential({ id: 'karin', password: document.getElementById('lock-input').value });
@@ -830,12 +787,6 @@ async function pinUnlock() {
   const ls = document.getElementById('lock-screen');
   ls.style.opacity = '0'; ls.style.transition = 'opacity 0.3s';
   setTimeout(() => { ls.style.display = 'none'; document.getElementById('app-shell').style.display = ''; }, 300);
-}
-
-function changePin() {
-  cloudPinHash = null;
-  sessionStorage.setItem('karin_clear_pin', '1');
-  location.reload();
 }
 
 pinInit();
@@ -1081,19 +1032,29 @@ function dedup(arr) {
 }
 
 function applyPinToState() {
-  // שמור PIN חדש לענן אחרי הגדרה
   const pending = sessionStorage.getItem('karin_pin_pending');
   if (pending) {
     state.settings = {...(state.settings||{}), pinHash: pending};
     sessionStorage.removeItem('karin_pin_pending');
     save();
   }
-  // מחק PIN מהענן אם ביקשו
-  if (sessionStorage.getItem('karin_clear_pin')) {
-    state.settings = {...(state.settings||{}), pinHash: ''};
-    sessionStorage.removeItem('karin_clear_pin');
-    save();
-  }
+}
+
+// שינוי סיסמה — מתוך האפליקציה בלבד (דורש ידיעת הסיסמה הנוכחית)
+async function changePin() {
+  const oldPw = prompt('סיסמה נוכחית:');
+  if (!oldPw) return;
+  const oldH = await hashPin(oldPw);
+  if (oldH !== cloudPinHash) { alert('סיסמה שגויה'); return; }
+  const newPw = prompt('סיסמה חדשה:');
+  if (!newPw) return;
+  const newPw2 = prompt('הזיני שוב לאישור:');
+  if (newPw !== newPw2) { alert('הסיסמאות לא תואמות'); return; }
+  const newH = await hashPin(newPw);
+  cloudPinHash = newH;
+  state.settings = {...(state.settings||{}), pinHash: newH};
+  save();
+  alert('הסיסמה עודכנה');
 }
 
 function mergeCloudState(d) {
