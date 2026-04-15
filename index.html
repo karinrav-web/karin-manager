@@ -2269,34 +2269,74 @@ function renderBillingSection(p) {
 
 function renderBillingSummaryMorning() {
   const el = document.getElementById('billing-summary-morning'); if (!el) return;
-  const unpaidRows = []; let totalUnpaid = 0;
+  const activeRows = [];   // פתוח לגביה — יש משלמים שלא שילמו
+  const pendingRows = [];  // ממתין — יש מחיר אבל עוד לא בשלב גביה
+  let totalActive = 0, totalPending = 0;
+
   state.projects.forEach(p => {
-    (p.payers || []).forEach((pay, idx) => {
-      if (!pay.paid) {
-        unpaidRows.push({projId: p.id, payerIdx: idx, project: p.client + ' — ' + p.title, name: pay.name, type: pay.type, amount: Number(pay.amount) || 0});
-        totalUnpaid += Math.round((Number(pay.amount) || 0) * 1.18);
-      }
-    });
+    if (p.status === 'done') return;
+    const base = (Number(p.billingBase)||0) + (Number(p.billingAdj)||0) - (Number(p.billingDiscount)||0);
+    const payers = p.payers || [];
+    const unpaid = payers.filter(x => !x.paid);
+    if (unpaid.length > 0) {
+      unpaid.forEach((pay, _) => {
+        const idx = payers.indexOf(pay);
+        const amt = Math.round((Number(pay.amount)||0) * 1.18);
+        activeRows.push({projId:p.id, payerIdx:idx, label:p.client+(p.title?' · '+p.title:''), name:pay.name, type:pay.type, amt});
+        totalActive += amt;
+      });
+    } else if (base > 0 && payers.filter(x=>x.paid).length === 0) {
+      // יש מחיר, אין משלמים מוגדרים עדיין
+      pendingRows.push({label:p.client+(p.title?' · '+p.title:''), stage:STAGES[p.status]||p.status, amt:Math.round(base*1.18)});
+      totalPending += Math.round(base*1.18);
+    }
   });
-  if (!unpaidRows.length) { el.innerHTML = '<p style="font-size:13px;color:var(--accent)">✓ אין חובות פתוחים</p>'; return; }
-  const rows = unpaidRows.map(r => `
-    <div class="urgency-row">
-      <div class="urgency-days danger" style="min-width:52px;text-align:center;">
-        <div style="font-size:15px;font-weight:700;">₪${Math.round(r.amount*1.18).toLocaleString()}</div>
-        <div style="font-size:9px;opacity:0.7;">כולל מעמ</div>
-        <div style="font-size:10px;opacity:0.75;">${r.type === 'client' ? 'לקוח' : 'ספק'}</div>
-      </div>
-      <div class="urgency-info">
-        <div class="urgency-name">${r.name}</div>
-        <div class="urgency-sub">${r.project}</div>
-      </div>
-      <button class="billing-paid-btn" onclick="togglePaid(${r.projId},${r.payerIdx})" title="סמן כשולם">✓</button>
-    </div>
-  `).join('');
-  el.innerHTML = rows + `<div style="margin-top:10px;padding:10px 14px;background:var(--urgent-light);border-radius:var(--radius-sm);display:flex;justify-content:space-between;align-items:center;">
-    <span style="font-size:13px;color:var(--urgent);font-weight:500;">סה״כ לגביה</span>
-    <span style="font-size:20px;font-weight:700;color:var(--urgent);">₪${totalUnpaid.toLocaleString()}</span>
-  </div>`;
+
+  if (!activeRows.length && !pendingRows.length) {
+    el.innerHTML = '<p style="font-size:13px;color:var(--accent)">✓ הכל מסודר</p>'; return;
+  }
+
+  let html = '';
+
+  if (activeRows.length) {
+    html += activeRows.map(r => `
+      <div class="urgency-row">
+        <div class="urgency-days danger" style="min-width:52px;text-align:center;">
+          <div style="font-size:14px;font-weight:700;">₪${r.amt.toLocaleString()}</div>
+          <div style="font-size:9px;opacity:0.75;">${r.type==='client'?'לקוח':'ספק'}</div>
+        </div>
+        <div class="urgency-info">
+          <div class="urgency-name">${r.name}</div>
+          <div class="urgency-sub">${r.label}</div>
+        </div>
+        <button class="billing-paid-btn" onclick="togglePaid(${r.projId},${r.payerIdx})" title="סמן כשולם">✓</button>
+      </div>`).join('');
+    html += `<div style="padding:8px 12px;background:var(--urgent-light);border-radius:var(--radius-sm);display:flex;justify-content:space-between;margin-bottom:${pendingRows.length?'10px':'0'}">
+      <span style="font-size:12px;color:var(--urgent);font-weight:500;">לגביה עכשיו</span>
+      <span style="font-size:16px;font-weight:700;color:var(--urgent);">₪${totalActive.toLocaleString()}</span>
+    </div>`;
+  }
+
+  if (pendingRows.length) {
+    html += `<div style="font-size:11px;color:var(--text3);margin-bottom:5px;margin-top:${activeRows.length?'4px':'0'}">ממתינים לגביה עתידית</div>`;
+    html += pendingRows.map(r => `
+      <div class="urgency-row" style="opacity:0.75;">
+        <div class="urgency-days" style="min-width:52px;text-align:center;background:var(--surface2);border-radius:6px;padding:4px;">
+          <div style="font-size:13px;font-weight:600;color:var(--text2);">₪${r.amt.toLocaleString()}</div>
+          <div style="font-size:9px;color:var(--text3);">צפוי</div>
+        </div>
+        <div class="urgency-info">
+          <div class="urgency-name">${r.label}</div>
+          <div class="urgency-sub">${r.stage}</div>
+        </div>
+      </div>`).join('');
+    html += `<div style="padding:8px 12px;background:var(--surface2);border-radius:var(--radius-sm);display:flex;justify-content:space-between;margin-top:4px;">
+      <span style="font-size:12px;color:var(--text3);font-weight:500;">צפוי עתידי</span>
+      <span style="font-size:16px;font-weight:600;color:var(--text2);">₪${totalPending.toLocaleString()}</span>
+    </div>`;
+  }
+
+  el.innerHTML = html;
 }
 
 function addPayer(projId) {
