@@ -441,7 +441,7 @@
   @media(max-width:700px){ .report-grid { grid-template-columns:repeat(2,1fr); } }
 
   /* Billing / Revenue */
-  .billing-summary { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:20px; }
+  .billing-summary { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
   .billing-stat { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; text-align:center; }
   .billing-stat-val { font-size:26px; font-weight:600; color:var(--accent); }
   .billing-stat-label { font-size:12px; color:var(--text3); margin-top:4px; }
@@ -467,7 +467,7 @@
   .bm-supplier-row input[type=number] { width:100px; flex:none; }
   .bm-remove { background:none; border:none; cursor:pointer; color:var(--text3); font-size:16px; padding:0 4px; }
   .bm-remove:hover { color:var(--urgent); }
-  @media(max-width:700px){ .billing-summary { grid-template-columns:repeat(2,1fr); } }
+  @media(max-width:900px){ .billing-summary { grid-template-columns:repeat(2,1fr); } }
 </style>
 </head>
 <body>
@@ -503,6 +503,7 @@
     <div class="nav-item" id="nav-calendar" onclick="showPage('calendar',this)"><span class="nav-icon">📅</span><span>לוח עריכה</span></div>
     <div class="nav-item" id="nav-report" onclick="showPage('report',this)"><span class="nav-icon">📊</span><span>דוח יומי</span></div>
     <div class="nav-item" id="nav-billing" onclick="showPage('billing',this)"><span class="nav-icon">💰</span><span>הכנסות</span></div>
+    <div class="nav-item" id="nav-scheduler" onclick="showPage('scheduler',this)"><span class="nav-icon">📸</span><span>תאריכים</span></div>
     <div class="sub-nav">
       <div class="sub-item active" onclick="filterStage(null,this)"><div class="sub-dot" style="background:var(--text3)"></div>הכל</div>
       <div class="sub-item" onclick="filterStage('edit',this)"><div class="sub-dot" style="background:var(--s-edit-b)"></div>עריכה</div>
@@ -673,6 +674,15 @@
       <div id="report-content"></div>
     </div>
 
+    <!-- SCHEDULER -->
+    <div id="page-scheduler" class="page">
+      <iframe
+        src="https://photo-scheduler-wine.vercel.app"
+        style="width:100%;height:calc(100vh - 64px);border:none;"
+        allow="identity-credentials-get"
+      ></iframe>
+    </div>
+
     <!-- BILLING -->
     <div id="page-billing" class="page">
       <div class="page-header">
@@ -738,6 +748,7 @@
   <button class="mobile-nav-item" id="mnav-calendar" onclick="showPageMobile('calendar',this)"><span class="mobile-nav-icon">📅</span>לוח</button>
   <button class="mobile-nav-item" id="mnav-report" onclick="showPageMobile('report',this)"><span class="mobile-nav-icon">📊</span>דוח</button>
   <button class="mobile-nav-item" id="mnav-billing" onclick="showPageMobile('billing',this)"><span class="mobile-nav-icon">💰</span>הכנסות</button>
+  <button class="mobile-nav-item" id="mnav-scheduler" onclick="showPageMobile('scheduler',this)"><span class="mobile-nav-icon">📸</span>תאריכים</button>
 </nav>
 
 <div class="modal-bg" id="edit-modal">
@@ -975,7 +986,7 @@ function restoreAutoBackup(dateStr) {
     const p = JSON.parse(data);
     if (!p.projects) { alert('גיבוי לא תקין'); return; }
     if (!confirm(`לשחזר גיבוי מ-${dateStr}?\n${p.projects.length} פרויקטים, ${(p.tasks||[]).length} משימות.\n\nהנתונים הנוכחיים יוחלפו.`)) return;
-    state = {projects:p.projects||[],tasks:p.tasks||[],settings:p.settings||state.settings,editDays:p.editDays||{},lastReset:p.lastReset||''};
+    state = {projects:p.projects||[],tasks:p.tasks||[],settings:p.settings||state.settings,editDays:p.editDays||{},lastReset:p.lastReset||'',billing:p.billing||[]};
     blockCloudLoad = true;
     setTimeout(()=>{ blockCloudLoad=false; },30000);
     save(); render();
@@ -989,6 +1000,11 @@ function save() {
   clearTimeout(saveTimer);
   setSyncStatus('שומר...','var(--text3)');
   saveTimer=setTimeout(()=>{
+    // הגנה: לא שולחים לענן state ריק — זה ימחק את הנתונים בענן
+    if (!state.projects || state.projects.length === 0) {
+      setSyncStatus('מקומי בלבד','var(--text3)');
+      return;
+    }
     const cloudState = {
       lastReset: state.lastReset,
       tasks: state.tasks,
@@ -997,7 +1013,9 @@ function save() {
       billing: state.billing||[],
       projects: state.projects.map(p=>({...p, goalDone:0, editedToday:0}))
     };
-    fetch(API,{method:'POST',body:JSON.stringify({action:'save',state:cloudState})})
+    const ctrl = new AbortController();
+    setTimeout(()=>ctrl.abort(), 15000);
+    fetch(API,{method:'POST',body:JSON.stringify({action:'save',state:cloudState}),signal:ctrl.signal})
     .then(r=>r.json())
     .then(d=>setSyncStatus(d.ok?'✓ נשמר':'שגיאה',d.ok?'var(--accent)':'var(--urgent)'))
     .catch(()=>setSyncStatus('מקומי בלבד','var(--high)'));
@@ -1171,7 +1189,7 @@ function mergeCloudState(d) {
           goalDone: lp.goalDone||0,
           editedToday: lp.editedToday||0,
           goalDaily: lp.goalDaily||0,
-          payers: lp.payers||cp.payers||[],
+          payers: (lp.payers&&lp.payers.length>0) ? lp.payers : (cp.payers||[]),
           order: lp.order!==undefined?lp.order:(cp.order!==undefined?cp.order:9999),
           seconds: lp.seconds||cp.seconds||0,
           sessions: lp.sessions||cp.sessions||0,
@@ -1200,6 +1218,23 @@ function mergeCloudState(d) {
       return true;
 }
 
+function loadFallback() {
+  applyPinToState();
+  if (!state.projects || state.projects.length === 0) {
+    // גם localStorage וגם הענן לא החזירו נתונים — נסה שוב מהענן
+    setSyncStatus('⚠ מנסה שוב...','var(--high)');
+    setTimeout(() => {
+      fetch(API+'?t='+Date.now())
+      .then(r=>r.json())
+      .then(d=>{ if(!mergeCloudState(d)){ setSyncStatus('⚠ אין חיבור לענן — רענני','var(--urgent)'); render(); } })
+      .catch(()=>{ setSyncStatus('⚠ אין חיבור לענן — רענני','var(--urgent)'); render(); });
+    }, 5000);
+  } else {
+    setSyncStatus('עובד מקומית','var(--text3)');
+    render();
+  }
+}
+
 function load() {
   try {
     const s = localStorage.getItem('karin_pm');
@@ -1214,15 +1249,15 @@ function load() {
   // אם כבר מושך state ב-PIN init — השתמש בו
   if (prefetchedState) {
     const done = mergeCloudState({ok:true, state:prefetchedState});
-    if (!done) { setSyncStatus('עובד מקומית','var(--text3)'); applyPinToState(); render(); }
+    if (!done) { loadFallback(); }
     return;
   }
   const controller=new AbortController();
-  setTimeout(()=>controller.abort(),6000);
+  setTimeout(()=>controller.abort(),12000);
   fetch(API+'?t='+Date.now(),{signal:controller.signal})
   .then(r=>r.json())
-  .then(d=>{ if(!mergeCloudState(d)){ setSyncStatus('עובד מקומית','var(--text3)'); applyPinToState(); render(); } })
-  .catch(e=>{ setSyncStatus(e.name==='AbortError'?'פג זמן':'עובד מקומית','var(--high)'); applyPinToState(); render(); });
+  .then(d=>{ if(!mergeCloudState(d)){ loadFallback(); } })
+  .catch(e=>{ loadFallback(); });
 }
 
 function showPage(p, el) {
@@ -1231,6 +1266,8 @@ function showPage(p, el) {
   document.getElementById('page-'+p).classList.add('active');
   el.classList.add('active');
   document.querySelector('.main').classList.toggle('dashboard-mode', p==='morning');
+  if (p==='report') renderReport();
+  if (p==='billing') renderBillingPage();
 }
 function showPageMobile(p, el) {
   document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));
@@ -1240,6 +1277,8 @@ function showPageMobile(p, el) {
   document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
   const dn = document.getElementById('nav-'+p); if(dn) dn.classList.add('active');
   document.querySelector('.main').classList.toggle('dashboard-mode', p==='morning');
+  if (p==='report') renderReport();
+  if (p==='billing') renderBillingPage();
 }
 function filterStage(stage, el, isMobile) {
   stageFilter = stage;
@@ -1390,15 +1429,21 @@ function renderBillingPage() {
     if (m >= 0) byMonth[m] += r.total || 0;
   });
 
+  const nowYear = new Date().getFullYear();
   const nowMonth = new Date().getMonth();
   const totalYear = yearRecs.reduce((s,r) => s + (r.total||0), 0);
   const totalThisMonth = byMonth[nowMonth];
   const totalLastMonth = byMonth[nowMonth > 0 ? nowMonth-1 : 11];
 
+  // Monthly average: for current year divide by months elapsed, for past years divide by 12
+  const monthsDivisor = billingYear == nowYear ? (nowMonth + 1) : 12;
+  const monthlyAvg = Math.round(totalYear / monthsDivisor);
+
   // Summary cards
   const sumEl = document.getElementById('billing-summary');
   if (sumEl) sumEl.innerHTML = `
     <div class="billing-stat"><div class="billing-stat-val">${fmtMoney(totalYear)}</div><div class="billing-stat-label">סה"כ ${billingYear}</div></div>
+    <div class="billing-stat"><div class="billing-stat-val">${fmtMoney(monthlyAvg)}</div><div class="billing-stat-label">ממוצע חודשי${billingYear==nowYear?' (עד כה)':''}</div></div>
     <div class="billing-stat"><div class="billing-stat-val">${fmtMoney(totalThisMonth)}</div><div class="billing-stat-label">${months[nowMonth]} (החודש)</div></div>
     <div class="billing-stat"><div class="billing-stat-val">${fmtMoney(totalLastMonth)}</div><div class="billing-stat-label">${months[nowMonth>0?nowMonth-1:11]} (חודש קודם)</div></div>`;
 
@@ -1774,7 +1819,7 @@ function toggleTimer(id) {
   activeTimer.iv = setInterval(()=>{
     const p = state.projects.find(p=>p.id===id); if (!p) { clearInterval(activeTimer.iv); return; }
     const el = document.getElementById('ptv-'+id);
-    if (el) el.textContent = fmtTime((p.seconds||0)+Math.floor((Date.now()-activeTimer.startTs)/1000));
+    if (el) el.textContent = fmtTime(Math.floor((Date.now()-activeTimer.startTs)/1000));
     // עדכן דוח יומי בזמן אמת אם הדף פתוח
     if (document.getElementById('page-report')?.classList.contains('active')) renderReport();
   },1000);
@@ -1785,6 +1830,7 @@ function toggleTimer(id) {
 function stopTimer() {
   if(!activeTimer.projId) return;
   const elapsed=Math.floor((Date.now()-activeTimer.startTs)/1000);
+  const startDate = new Date(activeTimer.startTs).toISOString().slice(0,10);
   const p=state.projects.find(p=>p.id===activeTimer.projId);
   if(p){
     if(!p.timeLogs) p.timeLogs=[];
@@ -1793,7 +1839,8 @@ function stopTimer() {
     if((p.seconds||0)>loggedSecs){
       p.timeLogs.unshift({id:Date.now()-1, date:'', seconds:(p.seconds||0)-loggedSecs, migrated:true});
     }
-    p.timeLogs.push({id:Date.now(), date:todayStr(), seconds:elapsed});
+    // שמור עם תאריך ההתחלה — לא תאריך הסיום
+    p.timeLogs.push({id:Date.now(), date:startDate, seconds:elapsed});
     recalcTimer(p);
   }
   clearInterval(activeTimer.iv);
@@ -2369,11 +2416,8 @@ function addVendor(projId) {
 function addClient(projId) {
   const p = state.projects.find(p => p.id === projId); if (!p) return;
   if (!p.payers) p.payers = [];
-  const base = Number(p.billingBase) || 0;
-  const adj = Number(p.billingAdj) || 0;
-  const vendorTotal = p.payers.filter(x=>x.type==='vendor').reduce((s,x)=>s+(Number(x.amount)||0),0);
-  const clientShare = Math.max(0, base + adj - vendorTotal);
-  p.payers.push({ name: p.client, amount: clientShare, type: 'client', paid: false });
+  p.payers.push({ name: p.client || '', amount: 0, type: 'client', paid: false });
+  recalcClientShare(p);
   save(); renderProjects(); renderBillingSummaryMorning();
 }
 function togglePaid(projId, idx) {
