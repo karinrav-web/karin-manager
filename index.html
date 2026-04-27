@@ -1117,12 +1117,15 @@ function renderCalendar(){
   for(let i=0;i<firstDay;i++) html+=`<div></div>`;
   for(let d=1;d<=daysInMonth;d++){
     const key=calKey(calYear,calMonth,d);
+    const dateStr=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const isEdit=!!editDays[key];
+    const isShoot=shootDays.has(dateStr);
     const isToday=today.getFullYear()===calYear&&today.getMonth()===calMonth&&today.getDate()===d;
-    const bg=isEdit?'var(--accent)':(isToday?'var(--urgent-light)':'var(--surface2)');
-    const color=isEdit?'#fff':(isToday?'var(--urgent)':'var(--text2)');
-    const border=isToday&&!isEdit?'1px solid var(--urgent)':'1px solid transparent';
-    html+=`<div onclick="toggleCalDay('${key}')" style="padding:6px 2px;text-align:center;border-radius:6px;cursor:pointer;background:${bg};color:${color};border:${border};font-size:13px;font-weight:${isEdit?600:400};">${d}</div>`;
+    const bg=isShoot?'#7c3aed':(isEdit?'var(--accent)':(isToday?'var(--urgent-light)':'var(--surface2)'));
+    const color=isShoot||isEdit?'#fff':(isToday?'var(--urgent)':'var(--text2)');
+    const border=isToday&&!isEdit&&!isShoot?'1px solid var(--urgent)':'1px solid transparent';
+    const label=isShoot?`📸${d}`:d;
+    html+=`<div onclick="toggleCalDay('${key}')" style="padding:6px 2px;text-align:center;border-radius:6px;cursor:pointer;background:${bg};color:${color};border:${border};font-size:13px;font-weight:${isEdit||isShoot?600:400};">${label}</div>`;
   }
   gridEl.innerHTML=html;
   if(summaryEl){
@@ -1313,7 +1316,39 @@ function setGreeting() {
   const d = new Date(), days=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
   document.getElementById('today-date').textContent = 'יום '+days[d.getDay()]+', '+d.toLocaleDateString('he-IL');
 }
-function render() { setGreeting(); renderTasks(); renderProjects(); refreshSelects(); renderUrgency(); renderCalendar(); loadSettings(); renderBillingSummaryMorning(); renderReport(); renderBillingPage(); document.querySelector('.main').classList.add('dashboard-mode'); initThemeSwatches(); loadDashboardSettings(); }
+let shootDays = new Set();
+
+async function syncShootDates() {
+  try {
+    const res = await fetch('https://photo-scheduler-wine.vercel.app/api/shoots-public?token=karin-sync-2026-photo');
+    if (!res.ok) return;
+    const { shootDates } = await res.json();
+    shootDays = new Set(shootDates);
+
+    // Auto-mark future working days (Sun-Thu) as edit days if not shoot days
+    const today = new Date(); today.setHours(0,0,0,0);
+    const end = new Date(today); end.setDate(today.getDate() + 70);
+    if (!state.editDays) state.editDays = {};
+    const cur = new Date(today);
+    while (cur <= end) {
+      const dow = cur.getDay();
+      const key = calKey(cur.getFullYear(), cur.getMonth(), cur.getDate());
+      const dateStr = `${cur.getFullYear()}-${String(cur.getMonth()+1).padStart(2,'0')}-${String(cur.getDate()).padStart(2,'0')}`;
+      if (dow >= 0 && dow <= 4) { // Sun-Thu
+        if (shootDays.has(dateStr)) {
+          delete state.editDays[key]; // shoot day = not edit day
+        } else {
+          state.editDays[key] = 1; // working day = edit day
+        }
+      }
+      cur.setDate(cur.getDate() + 1);
+    }
+    save();
+    renderCalendar();
+  } catch(e) { /* silent fail */ }
+}
+
+function render() { setGreeting(); renderTasks(); renderProjects(); refreshSelects(); renderUrgency(); renderCalendar(); loadSettings(); renderBillingSummaryMorning(); renderReport(); renderBillingPage(); document.querySelector('.main').classList.add('dashboard-mode'); initThemeSwatches(); loadDashboardSettings(); syncShootDates(); }
 
 function renderReport() {
   const today = todayStr();
