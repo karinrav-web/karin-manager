@@ -1129,8 +1129,10 @@ function renderCalendar(){
   }
   gridEl.innerHTML=html;
   if(summaryEl){
-    const totalEdit=Object.keys(editDays).filter(k=>k.startsWith(`${calYear}-${String(calMonth+1).padStart(2,'0')}`)).length;
-    summaryEl.innerHTML=`<strong>${totalEdit}</strong> ימי עריכה מסומנים החודש · <strong>${daysInMonth-totalEdit}</strong> ימים ללא עריכה`;
+    const monthPrefix=`${calYear}-${String(calMonth+1).padStart(2,'0')}`;
+    const totalEdit=Object.keys(editDays).filter(k=>k.startsWith(monthPrefix)).length;
+    const totalShoot=[...shootDays].filter(d=>d.startsWith(monthPrefix)).length;
+    summaryEl.innerHTML=`<strong>${totalEdit}</strong> ימי עריכה · <strong style="color:#7c3aed">📸 ${totalShoot}</strong> ימי צילום · <strong>${daysInMonth-totalEdit-totalShoot}</strong> ימים פנויים`;
   }
 }
 function countEditDaysUntil(deadline){
