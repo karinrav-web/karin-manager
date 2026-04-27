@@ -504,7 +504,7 @@
     <div class="nav-item" id="nav-report" onclick="showPage('report',this)"><span class="nav-icon">📊</span><span>דוח יומי</span></div>
     <div class="nav-item" id="nav-billing" onclick="showPage('billing',this)"><span class="nav-icon">💰</span><span>הכנסות</span></div>
     <div class="nav-item" id="nav-scheduler" onclick="showPage('scheduler',this)"><span class="nav-icon">📸</span><span>תאריכים</span></div>
-    <div class="sub-nav">
+    <div class="sub-nav" style="display:none">
       <div class="sub-item active" onclick="filterStage(null,this)"><div class="sub-dot" style="background:var(--text3)"></div>הכל</div>
       <div class="sub-item" onclick="filterStage('edit',this)"><div class="sub-dot" style="background:var(--s-edit-b)"></div>עריכה</div>
       <div class="sub-item" onclick="filterStage('send',this)"><div class="sub-dot" style="background:var(--s-send-b)"></div>לשלוח לסינון</div>
@@ -1269,6 +1269,7 @@ function showPage(p, el) {
   document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
   document.getElementById('page-'+p).classList.add('active');
   el.classList.add('active');
+  document.querySelector('.sub-nav').style.display = (p === 'projects') ? 'block' : 'none';
   document.querySelector('.main').classList.toggle('dashboard-mode', p==='morning');
   if (p==='report') renderReport();
   if (p==='billing') renderBillingPage();
