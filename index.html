@@ -1924,6 +1924,11 @@ function renderProjects() {
   const el = document.getElementById('projects-list'); if (!el) return;
   const list = [...state.projects].filter(p => stageFilter === null || p.stage === stageFilter)
     .sort((a, b) => { const ao = a.order!==undefined?a.order:9999; const bo = b.order!==undefined?b.order:9999; if (ao !== bo) return ao - bo; return (STAGE_ORDER[a.stage]??5)-(STAGE_ORDER[b.stage]??5); });
+  const titleEl = document.getElementById('proj-page-title');
+  if (titleEl) {
+    const baseName = stageFilter ? STAGES[stageFilter] : 'פרויקטים';
+    titleEl.textContent = list.length > 0 ? `${baseName} (${list.length})` : baseName;
+  }
   if (!list.length) { el.innerHTML = `<p style="font-size:13px;color:var(--text3);padding:16px 0">${stageFilter ? 'אין פרויקטים בשלב זה' : 'עוד אין פרויקטים — הוסיפי את הראשון למטה'}</p>`; return; }
   el.innerHTML = list.map(p => {
     const pct = p.total ? Math.min(100, Math.round(p.edited / p.total * 100)) : 0;
