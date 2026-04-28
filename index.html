@@ -717,10 +717,23 @@
         <div class="billing-chart" id="billing-chart"></div>
       </div>
       <div class="card">
-        <div class="card-title" style="display:flex;justify-content:space-between;">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
           <span>רשומות</span>
-          <span id="billing-count" style="font-weight:400;color:var(--text3);"></span>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <select id="billing-filter-client" onchange="renderBillingPage()" style="padding:5px 10px;font-size:12px;font-family:'Heebo',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">
+              <option value="">כל הלקוחות</option>
+            </select>
+            <select id="billing-sort" onchange="renderBillingPage()" style="padding:5px 10px;font-size:12px;font-family:'Heebo',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">
+              <option value="date-desc">לפי תאריך (חדש)</option>
+              <option value="date-asc">לפי תאריך (ישן)</option>
+              <option value="amount-desc">לפי סכום (גבוה)</option>
+              <option value="amount-asc">לפי סכום (נמוך)</option>
+            </select>
+            <button onclick="toggleBillingClientView()" id="billing-client-view-btn" style="padding:5px 12px;font-size:12px;font-family:'Heebo',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">לפי לקוח</button>
+            <span id="billing-count" style="font-weight:400;color:var(--text3);font-size:13px;"></span>
+          </div>
         </div>
+        <div id="billing-client-summary" style="display:none;margin-bottom:12px;"></div>
         <div id="billing-records"></div>
       </div>
     </div>
@@ -1491,6 +1504,7 @@ function renderReport() {
 /* ===== Billing / Revenue ===== */
 let billingYear = new Date().getFullYear();
 let editingBillingId = null;
+let billingClientView = false;
 
 function fmtMoney(n) { return Math.round(n).toLocaleString('he-IL') + ' ₪'; }
 
@@ -1554,24 +1568,91 @@ function renderBillingPage() {
     </div>`;
   }).join('');
 
-  // Records list
-  const sorted = [...yearRecs].sort((a,b) => (b.date||'').localeCompare(a.date||''));
+  // Populate client filter dropdown
+  const clientFilterEl = document.getElementById('billing-filter-client');
+  if (clientFilterEl) {
+    const selectedClient = clientFilterEl.value;
+    const allClients = [...new Set(yearRecs.map(r => r.client).filter(Boolean))].sort();
+    clientFilterEl.innerHTML = '<option value="">כל הלקוחות</option>' +
+      allClients.map(c => `<option value="${c}"${c===selectedClient?' selected':''}>${c}</option>`).join('');
+  }
+
+  const selectedClient = clientFilterEl?.value || '';
+  const sortMode = document.getElementById('billing-sort')?.value || 'date-desc';
+
+  // Filter
+  let filtered = selectedClient ? yearRecs.filter(r => r.client === selectedClient) : [...yearRecs];
+
+  // Sort
+  if (sortMode === 'date-desc') filtered.sort((a,b) => (b.date||'').localeCompare(a.date||''));
+  else if (sortMode === 'date-asc') filtered.sort((a,b) => (a.date||'').localeCompare(b.date||''));
+  else if (sortMode === 'amount-desc') filtered.sort((a,b) => (b.total||0) - (a.total||0));
+  else if (sortMode === 'amount-asc') filtered.sort((a,b) => (a.total||0) - (b.total||0));
+
   const recEl = document.getElementById('billing-records');
   const cntEl = document.getElementById('billing-count');
-  if (cntEl) cntEl.textContent = sorted.length + ' רשומות';
-  if (recEl) recEl.innerHTML = sorted.length ? sorted.map(r => {
-    const supplierStr = (r.suppliers||[]).filter(s=>s.name).map(s=>`${s.name} ${fmtMoney(s.amount)}`).join(' · ');
-    const dateStr = r.date ? r.date.slice(8)+'/'+r.date.slice(5,7) : '';
-    return `<div class="billing-record">
-      <div class="billing-record-date">${dateStr}</div>
-      <div style="flex:1;min-width:0;">
-        <div class="billing-record-client">${r.client||'—'} ${r.project?'· '+r.project:''}</div>
-        ${r.designerFee>0||supplierStr?`<div class="billing-record-sub">${r.designerFee>0?'מעצבת '+fmtMoney(r.designerFee):''}${r.designerFee>0&&supplierStr?' · ':''}${supplierStr}</div>`:''}
-      </div>
-      <div class="billing-record-amount">${fmtMoney(r.total)}</div>
-      <button class="billing-record-edit" onclick="openBillingModal(${r.id})">✏️</button>
-    </div>`;
-  }).join('') : '<div style="color:var(--text3);font-size:13px;padding:16px 0;text-align:center;">אין רשומות לשנה זו</div>';
+  const clientSumEl = document.getElementById('billing-client-summary');
+
+  // Per-client summary view
+  if (billingClientView) {
+    if (document.getElementById('billing-client-view-btn')) document.getElementById('billing-client-view-btn').style.background = 'var(--accent)';
+    if (document.getElementById('billing-client-view-btn')) document.getElementById('billing-client-view-btn').style.color = '#fff';
+    const byClient = {};
+    yearRecs.forEach(r => {
+      const key = r.client || '—';
+      if (!byClient[key]) byClient[key] = { count: 0, total: 0 };
+      byClient[key].count++;
+      byClient[key].total += r.total || 0;
+    });
+    const clientRows = Object.entries(byClient).sort((a,b) => b[1].total - a[1].total);
+    if (clientSumEl) {
+      clientSumEl.style.display = '';
+      clientSumEl.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead><tr style="color:var(--text3);border-bottom:1px solid var(--border);">
+          <th style="text-align:right;padding:6px 4px;font-weight:500;">לקוח / מעצבת</th>
+          <th style="text-align:center;padding:6px 4px;font-weight:500;">פרויקטים</th>
+          <th style="text-align:left;padding:6px 4px;font-weight:500;">סה"כ</th>
+        </tr></thead>
+        <tbody>${clientRows.map(([name, d]) =>
+          `<tr style="border-bottom:1px solid var(--border);cursor:pointer;" onclick="setClientFilter('${name.replace(/'/g,"\\'")}')">
+            <td style="padding:8px 4px;font-weight:500;">${name}</td>
+            <td style="padding:8px 4px;text-align:center;color:var(--text2);">${d.count}</td>
+            <td style="padding:8px 4px;text-align:left;color:var(--accent);font-weight:600;">${fmtMoney(d.total)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+    }
+    if (cntEl) cntEl.textContent = clientRows.length + ' לקוחות';
+    if (recEl) recEl.innerHTML = '';
+  } else {
+    if (document.getElementById('billing-client-view-btn')) { document.getElementById('billing-client-view-btn').style.background = ''; document.getElementById('billing-client-view-btn').style.color = ''; }
+    if (clientSumEl) clientSumEl.style.display = 'none';
+    if (cntEl) cntEl.textContent = filtered.length + ' רשומות' + (selectedClient ? ` · ${selectedClient}` : '');
+    if (recEl) recEl.innerHTML = filtered.length ? filtered.map(r => {
+      const supplierStr = (r.suppliers||[]).filter(s=>s.name).map(s=>`${s.name} ${fmtMoney(s.amount)}`).join(' · ');
+      const dateStr = r.date ? r.date.slice(8)+'/'+r.date.slice(5,7) : '';
+      return `<div class="billing-record">
+        <div class="billing-record-date">${dateStr}</div>
+        <div style="flex:1;min-width:0;">
+          <div class="billing-record-client">${r.client||'—'} ${r.project?'· '+r.project:''}</div>
+          ${r.designerFee>0||supplierStr?`<div class="billing-record-sub">${r.designerFee>0?'מעצבת '+fmtMoney(r.designerFee):''}${r.designerFee>0&&supplierStr?' · ':''}${supplierStr}</div>`:''}
+        </div>
+        <div class="billing-record-amount">${fmtMoney(r.total)}</div>
+        <button class="billing-record-edit" onclick="openBillingModal(${r.id})">✏️</button>
+      </div>`;
+    }).join('') : '<div style="color:var(--text3);font-size:13px;padding:16px 0;text-align:center;">אין רשומות</div>';
+  }
+}
+
+function toggleBillingClientView() {
+  billingClientView = !billingClientView;
+  renderBillingPage();
+}
+
+function setClientFilter(clientName) {
+  billingClientView = false;
+  const el = document.getElementById('billing-filter-client');
+  if (el) { el.value = clientName; renderBillingPage(); }
 }
 
 function setBillingYear(y) { billingYear = y; renderBillingPage(); }
