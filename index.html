@@ -1503,6 +1503,7 @@ function renderReport() {
 
 /* ===== Billing / Revenue ===== */
 let billingYear = new Date().getFullYear();
+let billingAllYears = false;
 let editingBillingId = null;
 let billingClientView = false;
 
@@ -1524,11 +1525,13 @@ function renderBillingPage() {
   // Year tabs
   const years = billingYears();
   const tabsEl = document.getElementById('billing-year-tabs');
-  if (tabsEl) tabsEl.innerHTML = years.map(y =>
-    `<button class="billing-year-tab${y==billingYear?' active':''}" onclick="setBillingYear(${y})">${y}</button>`
-  ).join('');
+  if (tabsEl) tabsEl.innerHTML =
+    `<button class="billing-year-tab${billingAllYears?' active':''}" onclick="setBillingAllYears()">כל השנים</button>` +
+    years.map(y =>
+      `<button class="billing-year-tab${!billingAllYears&&y==billingYear?' active':''}" onclick="setBillingYear(${y})">${y}</button>`
+    ).join('');
 
-  const yearRecs = records.filter(r => r.date?.startsWith(String(billingYear)));
+  const yearRecs = billingAllYears ? [...records] : records.filter(r => r.date?.startsWith(String(billingYear)));
   const months = ['ינו','פבר','מרץ','אפר','מאי','יוני','יולי','אוג','ספט','אוק','נוב','דצמ'];
 
   // Monthly totals
@@ -1550,23 +1553,53 @@ function renderBillingPage() {
 
   // Summary cards
   const sumEl = document.getElementById('billing-summary');
-  if (sumEl) sumEl.innerHTML = `
-    <div class="billing-stat"><div class="billing-stat-val">${fmtMoney(totalYear)}</div><div class="billing-stat-label">סה"כ ${billingYear}</div></div>
-    <div class="billing-stat"><div class="billing-stat-val">${fmtMoney(monthlyAvg)}</div><div class="billing-stat-label">ממוצע חודשי${billingYear==nowYear?' (עד כה)':''}</div></div>
-    <div class="billing-stat"><div class="billing-stat-val">${fmtMoney(totalThisMonth)}</div><div class="billing-stat-label">${months[nowMonth]} (החודש)</div></div>
-    <div class="billing-stat"><div class="billing-stat-val">${fmtMoney(totalLastMonth)}</div><div class="billing-stat-label">${months[nowMonth>0?nowMonth-1:11]} (חודש קודם)</div></div>`;
+  if (billingAllYears) {
+    const byYear = {};
+    records.forEach(r => {
+      const y = r.date?.slice(0,4); if (!y) return;
+      byYear[y] = (byYear[y]||0) + (r.total||0);
+    });
+    const yearEntries = Object.entries(byYear).sort((a,b)=>b[0]-a[0]);
+    const grandTotal = yearEntries.reduce((s,[,v])=>s+v,0);
+    const avgPerYear = yearEntries.length ? Math.round(grandTotal/yearEntries.length) : 0;
+    if (sumEl) sumEl.innerHTML =
+      `<div class="billing-stat"><div class="billing-stat-val">${fmtMoney(grandTotal)}</div><div class="billing-stat-label">סה"כ כל הזמנים</div></div>` +
+      `<div class="billing-stat"><div class="billing-stat-val">${fmtMoney(avgPerYear)}</div><div class="billing-stat-label">ממוצע שנתי</div></div>` +
+      yearEntries.map(([y,v]) => `<div class="billing-stat"><div class="billing-stat-val">${fmtMoney(v)}</div><div class="billing-stat-label">${y}</div></div>`).join('');
+  } else {
+    if (sumEl) sumEl.innerHTML = `
+      <div class="billing-stat"><div class="billing-stat-val">${fmtMoney(totalYear)}</div><div class="billing-stat-label">סה"כ ${billingYear}</div></div>
+      <div class="billing-stat"><div class="billing-stat-val">${fmtMoney(monthlyAvg)}</div><div class="billing-stat-label">ממוצע חודשי${billingYear==nowYear?' (עד כה)':''}</div></div>
+      <div class="billing-stat"><div class="billing-stat-val">${fmtMoney(totalThisMonth)}</div><div class="billing-stat-label">${months[nowMonth]} (החודש)</div></div>
+      <div class="billing-stat"><div class="billing-stat-val">${fmtMoney(totalLastMonth)}</div><div class="billing-stat-label">${months[nowMonth>0?nowMonth-1:11]} (חודש קודם)</div></div>`;
+  }
 
   // Bar chart
-  const maxVal = Math.max(...byMonth, 1);
   const chartEl = document.getElementById('billing-chart');
-  if (chartEl) chartEl.innerHTML = byMonth.map((v,i) => {
-    const pct = Math.round((v/maxVal)*100);
-    return `<div class="billing-bar-wrap">
-      <div class="billing-bar-val">${v>0?fmtMoney(v).replace(' ₪',''):''}</div>
-      <div class="billing-bar" style="height:${Math.max(pct,v>0?4:1)}%" title="${months[i]}: ${fmtMoney(v)}"></div>
-      <div class="billing-bar-label">${months[i]}</div>
-    </div>`;
-  }).join('');
+  if (billingAllYears) {
+    const byYear = {};
+    records.forEach(r => { const y=r.date?.slice(0,4); if(y) byYear[y]=(byYear[y]||0)+(r.total||0); });
+    const yearEntries = Object.entries(byYear).sort((a,b)=>a[0]-b[0]);
+    const maxYVal = Math.max(...yearEntries.map(([,v])=>v), 1);
+    if (chartEl) chartEl.innerHTML = yearEntries.map(([y,v]) => {
+      const pct = Math.round((v/maxYVal)*100);
+      return `<div class="billing-bar-wrap">
+        <div class="billing-bar-val">${fmtMoney(v).replace(' ₪','')}</div>
+        <div class="billing-bar" style="height:${Math.max(pct,4)}%" title="${y}: ${fmtMoney(v)}"></div>
+        <div class="billing-bar-label">${y}</div>
+      </div>`;
+    }).join('');
+  } else {
+    const maxVal = Math.max(...byMonth, 1);
+    if (chartEl) chartEl.innerHTML = byMonth.map((v,i) => {
+      const pct = Math.round((v/maxVal)*100);
+      return `<div class="billing-bar-wrap">
+        <div class="billing-bar-val">${v>0?fmtMoney(v).replace(' ₪',''):''}</div>
+        <div class="billing-bar" style="height:${Math.max(pct,v>0?4:1)}%" title="${months[i]}: ${fmtMoney(v)}"></div>
+        <div class="billing-bar-label">${months[i]}</div>
+      </div>`;
+    }).join('');
+  }
 
   // Populate client filter dropdown
   const clientFilterEl = document.getElementById('billing-filter-client');
@@ -1655,7 +1688,8 @@ function setClientFilter(clientName) {
   if (el) { el.value = clientName; renderBillingPage(); }
 }
 
-function setBillingYear(y) { billingYear = y; renderBillingPage(); }
+function setBillingYear(y) { billingYear = y; billingAllYears = false; renderBillingPage(); }
+function setBillingAllYears() { billingAllYears = true; renderBillingPage(); }
 
 function openBillingModal(id) {
   editingBillingId = id || null;
