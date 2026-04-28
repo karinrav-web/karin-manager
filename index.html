@@ -514,6 +514,7 @@
     <div class="nav-item" id="nav-report" onclick="showPage('report',this)"><span class="nav-icon">📊</span><span>דוח יומי</span></div>
     <div class="nav-item" id="nav-billing" onclick="showPage('billing',this)"><span class="nav-icon">💰</span><span>הכנסות</span></div>
     <div class="nav-item" id="nav-scheduler" onclick="showPage('scheduler',this)"><span class="nav-icon">📸</span><span>תאריכים</span></div>
+    <div class="nav-item" id="nav-expenses" onclick="showPage('expenses',this)"><span class="nav-icon">🧾</span><span>הוצאות</span></div>
     <div style="margin-top:auto;padding:16px 24px;border-top:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">סנכרון ענן</div>
       <div id="sync-status" style="font-size:12px;color:var(--text3);margin-bottom:10px">מתחבר...</div>
@@ -674,6 +675,16 @@
       <div id="report-content"></div>
     </div>
 
+    <!-- EXPENSES -->
+    <div id="page-expenses" class="page">
+      <div class="page-header">
+        <div class="page-title">🧾 הוצאות מהמייל</div>
+        <button onclick="loadExpenses()" style="padding:8px 16px;background:var(--accent);color:white;border:none;border-radius:8px;cursor:pointer;font-family:'Heebo',sans-serif;font-size:13px;">רענן מהמייל</button>
+      </div>
+      <div id="expenses-summary" style="margin-bottom:16px;font-size:14px;color:var(--text2);"></div>
+      <div id="expenses-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+    </div>
+
     <!-- SCHEDULER -->
     <div id="page-scheduler" class="page">
       <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:calc(100vh - 64px);gap:16px;">
@@ -753,6 +764,7 @@
   <button class="mobile-nav-item" id="mnav-report" onclick="showPageMobile('report',this)"><span class="mobile-nav-icon">📊</span>דוח</button>
   <button class="mobile-nav-item" id="mnav-billing" onclick="showPageMobile('billing',this)"><span class="mobile-nav-icon">💰</span>הכנסות</button>
   <button class="mobile-nav-item" id="mnav-scheduler" onclick="showPageMobile('scheduler',this)"><span class="mobile-nav-icon">📸</span>תאריכים</button>
+  <button class="mobile-nav-item" id="mnav-expenses" onclick="showPageMobile('expenses',this)"><span class="mobile-nav-icon">🧾</span>הוצאות</button>
 </nav>
 
 <div class="modal-bg" id="edit-modal">
@@ -1319,6 +1331,47 @@ function setGreeting() {
   document.getElementById('today-date').textContent = 'יום '+days[d.getDay()]+', '+d.toLocaleDateString('he-IL');
 }
 let shootDays = new Set();
+let expensesData = [];
+
+async function loadExpenses() {
+  const listEl = document.getElementById('expenses-list');
+  const summaryEl = document.getElementById('expenses-summary');
+  if (!listEl) return;
+  listEl.innerHTML = '<div style="color:var(--text3);font-size:13px;">טוען חשבוניות...</div>';
+  try {
+    const res = await fetch('https://photo-scheduler-wine.vercel.app/api/invoices-public?token=karin-sync-2026-photo');
+    if (!res.ok) throw new Error();
+    const { invoices } = await res.json();
+    expensesData = invoices || [];
+    renderExpenses();
+  } catch {
+    listEl.innerHTML = '<div style="color:var(--urgent);font-size:13px;">לא הצלחתי לטעון. פתחי את מתזמן הצילומים תחילה כדי לרענן את הנתונים.</div>';
+  }
+}
+
+function renderExpenses() {
+  const listEl = document.getElementById('expenses-list');
+  const summaryEl = document.getElementById('expenses-summary');
+  if (!listEl || !expensesData.length) {
+    if (listEl) listEl.innerHTML = '<div style="color:var(--text3);font-size:13px;">אין חשבוניות. לחצי "רענן מהמייל" ואז פתחי את מתזמן הצילומים להפעלת הסנכרון.</div>';
+    return;
+  }
+  const total = expensesData.reduce((s, i) => s + (i.amount || 0), 0);
+  const withAmount = expensesData.filter(i => i.amount).length;
+  if (summaryEl) summaryEl.innerHTML = `<strong>${expensesData.length}</strong> חשבוניות · סה״כ מזוהה: <strong>₪${total.toLocaleString('he-IL')}</strong>`;
+  listEl.innerHTML = expensesData.map(inv => `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;gap:12px;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:500;font-size:14px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${inv.vendor || '—'}</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${inv.subject}</div>
+      </div>
+      <div style="text-align:left;flex-shrink:0;">
+        <div style="font-weight:600;font-size:15px;color:var(--accent);">${inv.amount ? (inv.currency === 'ILS' ? '₪' : inv.currency) + inv.amount.toLocaleString() : '—'}</div>
+        <div style="font-size:11px;color:var(--text3);">${inv.date || ''}</div>
+      </div>
+    </div>
+  `).join('');
+}
 
 async function syncShootDates() {
   try {
