@@ -703,6 +703,10 @@
       <div class="billing-year-tabs" id="billing-year-tabs"></div>
       <div class="billing-summary" id="billing-summary"></div>
       <div class="card" style="margin-bottom:18px;">
+        <div class="card-title">🏆 טופ 10 לקוחות (כל הזמנים)</div>
+        <div id="billing-top10"></div>
+      </div>
+      <div class="card" style="margin-bottom:18px;">
         <div class="card-title">לפי חודש</div>
         <div class="billing-chart" id="billing-chart"></div>
       </div>
@@ -1520,6 +1524,37 @@ function renderBillingPage() {
       <div class="billing-stat"><div class="billing-stat-val">${fmtMoney(monthlyAvg)}</div><div class="billing-stat-label">ממוצע חודשי${billingYear==nowYear?' (עד כה)':''}</div></div>
       <div class="billing-stat"><div class="billing-stat-val">${fmtMoney(totalThisMonth)}</div><div class="billing-stat-label">${months[nowMonth]} (החודש)</div></div>
       <div class="billing-stat"><div class="billing-stat-val">${fmtMoney(totalLastMonth)}</div><div class="billing-stat-label">${months[nowMonth>0?nowMonth-1:11]} (חודש קודם)</div></div>`;
+  }
+
+  // Top 10 clients (all time)
+  const top10El = document.getElementById('billing-top10');
+  if (top10El) {
+    const allByClient = {};
+    records.forEach(r => {
+      const key = r.client || '—';
+      if (!allByClient[key]) allByClient[key] = { total: 0, count: 0 };
+      allByClient[key].total += r.total || 0;
+      allByClient[key].count++;
+    });
+    const top10 = Object.entries(allByClient).sort((a,b) => b[1].total - a[1].total).slice(0, 10);
+    const medals = ['🥇','🥈','🥉'];
+    const maxTotal = top10[0]?.[1].total || 1;
+    top10El.innerHTML = top10.map(([name, d], i) => {
+      const barPct = Math.round((d.total / maxTotal) * 100);
+      return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer;" onclick="setClientFilter('${name.replace(/'/g,"\\'")}')">
+        <div style="width:24px;text-align:center;font-size:${i<3?'16':'13'}px;color:var(--text3);font-weight:600;flex-shrink:0;">${medals[i]||i+1}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
+            <span style="font-size:13px;font-weight:500;">${name}</span>
+            <span style="font-size:12px;color:var(--text3);margin-right:8px;">${d.count} פרויקטים</span>
+          </div>
+          <div style="height:5px;background:var(--border);border-radius:3px;overflow:hidden;">
+            <div style="height:100%;width:${barPct}%;background:var(--accent);border-radius:3px;"></div>
+          </div>
+        </div>
+        <div style="font-size:14px;font-weight:600;color:var(--accent);white-space:nowrap;flex-shrink:0;">${fmtMoney(d.total)}</div>
+      </div>`;
+    }).join('') || '<div style="color:var(--text3);font-size:13px;padding:8px 0;">אין נתונים</div>';
   }
 
   // Bar chart
