@@ -2322,7 +2322,7 @@ function refreshSelects(){
   if(cl) cl.innerHTML='<option value="">לקוח</option>'+[...new Set(state.projects.map(p=>p.client))].map(c=>`<option>${c}</option>`).join('');
 }
 
-function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); }
+function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 
 function applyDayReset(s){
   const today = todayStr();
@@ -2340,7 +2340,7 @@ function newDay(){
   state.projects.forEach(p=>{ p.goalDone=0; p.editedToday=0; p.goalDaily=0; });
   state.tasks.forEach(t=>{ t.done=0; });
   blockCloudLoad = true;
-  setTimeout(()=>{ blockCloudLoad = false; }, 8000);
+  setTimeout(()=>{ blockCloudLoad = false; }, 30000);
   save();render();
 }
 
@@ -2361,7 +2361,7 @@ function importBackup(e){
       const p=JSON.parse(ev.target.result);
       if(!p.projects){alert('קובץ לא תקין');return;}
       if(!confirm('לייבא גיבוי? הנתונים הנוכחיים יוחלפו.'))return;
-      state={projects:p.projects||[],tasks:p.tasks||[],settings:p.settings||state.settings,editDays:p.editDays||{},lastReset:p.lastReset||''};
+      state={projects:p.projects||[],tasks:p.tasks||[],settings:p.settings||state.settings,editDays:p.editDays||{},lastReset:p.lastReset||'',billing:p.billing||[]};
       blockCloudLoad = true;
       setTimeout(()=>{ blockCloudLoad = false; }, 30000);
       save();render();
