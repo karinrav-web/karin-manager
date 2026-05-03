@@ -1249,7 +1249,7 @@ function load() {
     if (s) {
       const p = JSON.parse(s);
       if (p.projects) p.projects = dedup(p.projects.map(normalizeProject));
-      if (p.tasks) p.tasks = dedup(p.tasks.map(x=>({...x,done:Number(x.done)||0})));
+      if (p.tasks) p.tasks = dedup(p.tasks.map(x=>({...x,done:Number(x.done)||0}))).filter(t=>t.text&&t.text.trim());
       state = applyDayReset({projects:p.projects||[],tasks:p.tasks||[],settings:p.settings||{hoursPerDay:6,photosPerDay:20,workDays:[0,1,2,3,4]},editDays:p.editDays||{},billing:p.billing||[],lastReset:p.lastReset||''});
     }
   } catch(e) {}
