@@ -2486,7 +2486,10 @@ function renderBillingSection(p) {
       <div class="proj-section-label">💰 גביה</div>
 
       <div style="margin-bottom:10px;padding:10px 12px;background:var(--surface2);border-radius:var(--radius-sm);">
-        <div style="font-size:11px;color:var(--text3);margin-bottom:6px;">מחיר בסיס (לפני מעמ)</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <div style="font-size:11px;color:var(--text3);">מחיר בסיס (לפני מעמ)</div>
+          ${base ? `<div style="font-size:14px;font-weight:700;color:var(--accent);">₪${base.toLocaleString()} <span style="font-size:11px;font-weight:400;color:var(--text3);">נבחר</span></div>` : '<div style="font-size:12px;color:var(--text3);">לא נבחר</div>'}
+        </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">${baseButtons}
           <input type="number" placeholder="אחר..." value="${base && ![2700,3700,5000].includes(base)?base:''}" style="width:90px;padding:4px 8px;font-size:12px;border:1px solid var(--border2);border-radius:20px;font-family:'Heebo',sans-serif;" onchange="updateBillingBase(${p.id},this.value)" />
         </div>
