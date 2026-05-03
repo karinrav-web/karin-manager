@@ -500,16 +500,6 @@
     </div>
     <div class="nav-item active" id="nav-morning" onclick="showPage('morning',this)"><span class="nav-icon">☀</span><span>בוקר טוב</span></div>
     <div class="nav-item" id="nav-projects" onclick="showPage('projects',this)"><span class="nav-icon">📁</span><span>פרויקטים</span></div>
-    <div class="sub-nav" style="display:none">
-      <div class="sub-item active" onclick="filterStage(null,this)"><div class="sub-dot" style="background:var(--text3)"></div>הכל</div>
-      <div class="sub-item" onclick="filterStage('edit',this)"><div class="sub-dot" style="background:var(--s-edit-b)"></div>עריכה</div>
-      <div class="sub-item" onclick="filterStage('send',this)"><div class="sub-dot" style="background:var(--s-send-b)"></div>לשלוח לסינון</div>
-      <div class="sub-item" onclick="filterStage('wait',this)"><div class="sub-dot" style="background:var(--s-wait-b)"></div>מחכה לסינון</div>
-      <div class="sub-item" onclick="filterStage('deliver',this)"><div class="sub-dot" style="background:var(--s-deliver-b)"></div>שליחה ללקוח</div>
-      <div class="sub-item" onclick="filterStage('notes',this)"><div class="sub-dot" style="background:var(--s-notes-b)"></div>הערות</div>
-      <div class="sub-item" onclick="filterStage('billing',this)"><div class="sub-dot" style="background:var(--s-billing-b)"></div>גביה</div>
-      <div class="sub-item" onclick="filterStage('done',this)"><div class="sub-dot" style="background:var(--s-done-b)"></div>הסתיים</div>
-    </div>
     <div class="nav-item" id="nav-calendar" onclick="showPage('calendar',this)"><span class="nav-icon">📅</span><span>לוח עריכה</span></div>
     <div class="nav-item" id="nav-report" onclick="showPage('report',this)"><span class="nav-icon">📊</span><span>דוח יומי</span></div>
     <div class="nav-item" id="nav-billing" onclick="showPage('billing',this)"><span class="nav-icon">💰</span><span>הכנסות</span></div>
@@ -738,16 +728,7 @@
         <div class="page-title" id="proj-page-title">פרויקטים</div>
         <button onclick="collapseAll()" style="padding:7px 16px;font-size:12px;font-family:'Heebo',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">▲ קפל הכל</button>
       </div>
-      <div class="mobile-filter" id="mobile-filter">
-        <button class="mobile-filter-btn active" onclick="filterStage(null,this,true)"><div class="sub-dot" style="background:var(--text3);width:7px;height:7px;border-radius:50%"></div>הכל</button>
-        <button class="mobile-filter-btn" onclick="filterStage('edit',this,true)"><div class="sub-dot" style="background:var(--s-edit-b);width:7px;height:7px;border-radius:50%"></div>עריכה</button>
-        <button class="mobile-filter-btn" onclick="filterStage('send',this,true)"><div class="sub-dot" style="background:var(--s-send-b);width:7px;height:7px;border-radius:50%"></div>לשלוח לסינון</button>
-        <button class="mobile-filter-btn" onclick="filterStage('wait',this,true)"><div class="sub-dot" style="background:var(--s-wait-b);width:7px;height:7px;border-radius:50%"></div>מחכה לסינון</button>
-        <button class="mobile-filter-btn" onclick="filterStage('deliver',this,true)"><div class="sub-dot" style="background:var(--s-deliver-b);width:7px;height:7px;border-radius:50%"></div>שליחה ללקוח</button>
-        <button class="mobile-filter-btn" onclick="filterStage('notes',this,true)"><div class="sub-dot" style="background:var(--s-notes-b);width:7px;height:7px;border-radius:50%"></div>הערות</button>
-        <button class="mobile-filter-btn" onclick="filterStage('billing',this,true)"><div class="sub-dot" style="background:var(--s-billing-b);width:7px;height:7px;border-radius:50%"></div>גביה</button>
-        <button class="mobile-filter-btn" onclick="filterStage('done',this,true)"><div class="sub-dot" style="background:var(--s-done-b);width:7px;height:7px;border-radius:50%"></div>הסתיים</button>
-      </div>
+      <div id="proj-stage-tabs" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px;"></div>
       <div id="projects-list"></div>
       <button class="add-btn" onclick="toggleEl('add-proj-form')">+ פרויקט חדש</button>
       <div id="add-proj-form" class="hidden" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin-top:10px">
@@ -1292,10 +1273,10 @@ function showPage(p, el) {
   document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
   document.getElementById('page-'+p).classList.add('active');
   el.classList.add('active');
-  document.querySelector('.sub-nav').style.display = (p === 'projects') ? 'block' : 'none';
   document.querySelector('.main').classList.toggle('dashboard-mode', p==='morning');
   if (p==='report') renderReport();
   if (p==='billing') renderBillingPage();
+  if (p==='projects') renderProjects();
 }
 function showPageMobile(p, el) {
   document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));
@@ -1307,14 +1288,11 @@ function showPageMobile(p, el) {
   document.querySelector('.main').classList.toggle('dashboard-mode', p==='morning');
   if (p==='report') renderReport();
   if (p==='billing') renderBillingPage();
+  if (p==='projects') renderProjects();
 }
-function filterStage(stage, el, isMobile) {
+function filterStage(stage) {
   stageFilter = stage;
-  if (isMobile) document.querySelectorAll('.mobile-filter-btn').forEach(e=>e.classList.remove('active'));
-  else document.querySelectorAll('.sub-item').forEach(e=>e.classList.remove('active'));
-  el.classList.add('active');
   showPage('projects', document.getElementById('nav-projects'));
-  document.getElementById('proj-page-title').textContent = stage ? STAGES[stage] : 'פרויקטים';
   renderProjects();
 }
 function toggleEl(id) { document.getElementById(id).classList.toggle('hidden'); }
@@ -2112,6 +2090,34 @@ function renderProjects() {
   const el = document.getElementById('projects-list'); if (!el) return;
   const list = [...state.projects].filter(p => stageFilter === null || p.stage === stageFilter)
     .sort((a, b) => { const ao = a.order!==undefined?a.order:9999; const bo = b.order!==undefined?b.order:9999; if (ao !== bo) return ao - bo; return (STAGE_ORDER[a.stage]??5)-(STAGE_ORDER[b.stage]??5); });
+
+  // Render stage tabs with counts
+  const tabsEl = document.getElementById('proj-stage-tabs');
+  if (tabsEl) {
+    const stageDefs = [
+      { key: null,      label: 'הכל',           color: 'var(--text3)' },
+      { key: 'edit',    label: 'עריכה',          color: 'var(--s-edit-b)' },
+      { key: 'send',    label: 'לשלוח לסינון',  color: 'var(--s-send-b)' },
+      { key: 'wait',    label: 'מחכה לסינון',   color: 'var(--s-wait-b)' },
+      { key: 'deliver', label: 'שליחה ללקוח',   color: 'var(--s-deliver-b)' },
+      { key: 'notes',   label: 'הערות',          color: 'var(--s-notes-b)' },
+      { key: 'billing', label: 'גביה',           color: 'var(--s-billing-b)' },
+      { key: 'done',    label: 'הסתיים',         color: 'var(--s-done-b)' },
+    ];
+    tabsEl.innerHTML = stageDefs.map(s => {
+      const count = s.key === null ? state.projects.length : state.projects.filter(p => p.stage === s.key).length;
+      const isActive = stageFilter === s.key;
+      return `<button onclick="filterStage(${s.key===null?'null':`'${s.key}'`})"
+        style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;font-size:13px;font-family:'Heebo',sans-serif;border-radius:20px;cursor:pointer;transition:all 0.15s;
+          border:1px solid ${isActive ? s.color : 'var(--border2)'};
+          background:${isActive ? s.color : 'var(--surface2)'};
+          color:${isActive ? '#fff' : 'var(--text2)'};font-weight:${isActive?'600':'400'};">
+        <span style="width:7px;height:7px;border-radius:50%;background:${isActive?'rgba(255,255,255,0.7)':s.color};flex-shrink:0;display:inline-block;"></span>
+        ${s.label}${count > 0 ? ` <span style="opacity:0.85;font-size:12px;">(${count})</span>` : ''}
+      </button>`;
+    }).join('');
+  }
+
   const titleEl = document.getElementById('proj-page-title');
   if (titleEl) {
     const baseName = stageFilter ? STAGES[stageFilter] : 'פרויקטים';
