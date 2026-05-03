@@ -1930,16 +1930,18 @@ function renderTasks() {
   document.getElementById('m-goal-left').textContent = Math.max(0, totalGoal - totalEditedToday);
   document.getElementById('tasks-list').innerHTML = sorted.map(t=>`
     <div class="task-row">
-      <div class="priority-strip ${PSTRIP[t.priority]}"></div>
+      <div class="priority-strip ${PSTRIP[t.priority]||''}"></div>
       <div class="task-check ${t.done?'done':''}" onclick="toggleTask(${t.id})">${t.done?'✓':''}</div>
       <div class="task-body">
         <div class="task-text ${t.done?'done':''}">${t.text}</div>
-        <div class="task-meta">${t.client?t.client+' · ':''}${t.stage||''}<span class="badge ${PBADGE[t.priority]}">${PLABEL[t.priority]}</span></div>
+        <div class="task-meta">${t.client?t.client+' · ':''}${t.stage||''}${PLABEL[t.priority]?`<span class="badge ${PBADGE[t.priority]||''}">${PLABEL[t.priority]}</span>`:''}</div>
       </div>
+      <button onclick="deleteTask(${t.id})" style="margin-right:auto;flex-shrink:0;width:24px;height:24px;border-radius:50%;border:1px solid var(--border);background:transparent;cursor:pointer;font-size:12px;color:var(--text3);display:flex;align-items:center;justify-content:center;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--urgent)';this.style.color='var(--urgent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text3)'">✕</button>
     </div>`).join('');
 }
 
 function toggleTask(id) { const t=state.tasks.find(t=>t.id===id); if(t){t.done=t.done?0:1;save();renderTasks();} }
+function deleteTask(id) { state.tasks=state.tasks.filter(t=>t.id!==id); save(); renderTasks(); refreshSelects(); }
 function addTask() {
   const text=document.getElementById('nt-text').value.trim(); if(!text) return;
   state.tasks.push({id:Date.now(),text,client:document.getElementById('nt-client').value,stage:document.getElementById('nt-stage').value,priority:document.getElementById('nt-priority').value,done:0});
