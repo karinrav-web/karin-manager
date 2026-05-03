@@ -2564,7 +2564,7 @@ function renderBillingSummaryMorning() {
         <div style="font-size:9px;opacity:0.75;">${r.type==='client'?'לקוח':'ספק'}</div>
       </div>
       <div class="urgency-info">
-        <div class="urgency-name">${r.name}</div>
+        <div class="urgency-name">${r.name || r.label}</div>
         <div class="urgency-sub">${r.label}</div>
       </div>
       <button class="billing-paid-btn" onclick="togglePaid(${r.projId},${r.payerIdx})" title="סמן כשולם">✓</button>
