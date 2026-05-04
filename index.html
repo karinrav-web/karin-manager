@@ -1346,7 +1346,30 @@ async function syncShootDates() {
   } catch(e) { /* silent fail */ }
 }
 
-function render() { setGreeting(); renderTasks(); renderProjects(); refreshSelects(); renderUrgency(); renderCalendar(); loadSettings(); renderBillingSummaryMorning(); renderReport(); renderBillingPage(); document.querySelector('.main').classList.add('dashboard-mode'); initThemeSwatches(); loadDashboardSettings(); syncShootDates(); }
+function render() { setGreeting(); renderTasks(); renderProjects(); refreshSelects(); renderUrgency(); renderCalendar(); loadSettings(); renderBillingSummaryMorning(); renderReport(); renderBillingPage(); document.querySelector('.main').classList.add('dashboard-mode'); initThemeSwatches(); loadDashboardSettings(); syncShootDates(); restoreTimer(); }
+
+function restoreTimer() {
+  try {
+    const saved = localStorage.getItem('karin_timer');
+    if (!saved) return;
+    const {projId, startTs} = JSON.parse(saved);
+    if (!projId || !startTs) return;
+    const p = state.projects.find(p => p.id === projId);
+    if (!p) { localStorage.removeItem('karin_timer'); return; }
+    // שחזר את הטיימר עם זמן ההתחלה המקורי
+    if (activeTimer.iv) clearInterval(activeTimer.iv);
+    activeTimer = {projId, startTs, iv:null};
+    activeTimer.iv = setInterval(()=>{
+      const el = document.getElementById('ptv-'+projId);
+      if (el) el.textContent = fmtTime(Math.floor((Date.now()-activeTimer.startTs)/1000));
+      if (document.getElementById('page-report')?.classList.contains('active')) renderReport();
+    }, 1000);
+    const btn = document.getElementById('ptb-'+projId);
+    const val = document.getElementById('ptv-'+projId);
+    if (btn) { btn.textContent='⏹ עצור'; btn.classList.add('running'); }
+    if (val) val.classList.add('running');
+  } catch(e) {}
+}
 
 function renderReport() {
   const today = todayStr();
@@ -1987,10 +2010,11 @@ function toggleTimer(id) {
   if (activeTimer.projId===id) { stopTimer(); return; }
   if (activeTimer.iv) stopTimer();
   activeTimer = {projId:id, startTs:Date.now(), iv:null};
+  try { localStorage.setItem('karin_timer', JSON.stringify({projId:id, startTs:activeTimer.startTs})); } catch(e) {}
   activeTimer.iv = setInterval(()=>{
     const p = state.projects.find(p=>p.id===id); if (!p) { clearInterval(activeTimer.iv); return; }
     const el = document.getElementById('ptv-'+id);
-    if (el) el.textContent = fmtTime((p.seconds||0) + Math.floor((Date.now()-activeTimer.startTs)/1000));
+    if (el) el.textContent = fmtTime(Math.floor((Date.now()-activeTimer.startTs)/1000));
     // עדכן דוח יומי בזמן אמת אם הדף פתוח
     if (document.getElementById('page-report')?.classList.contains('active')) renderReport();
   },1000);
@@ -2016,6 +2040,7 @@ function stopTimer() {
   }
   clearInterval(activeTimer.iv);
   activeTimer={projId:null,startTs:null,iv:null};
+  try { localStorage.removeItem('karin_timer'); } catch(e) {}
   save(); renderProjects();
 }
 
