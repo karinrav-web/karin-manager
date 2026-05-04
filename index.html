@@ -1990,7 +1990,7 @@ function toggleTimer(id) {
   activeTimer.iv = setInterval(()=>{
     const p = state.projects.find(p=>p.id===id); if (!p) { clearInterval(activeTimer.iv); return; }
     const el = document.getElementById('ptv-'+id);
-    if (el) el.textContent = fmtTime(Math.floor((Date.now()-activeTimer.startTs)/1000));
+    if (el) el.textContent = fmtTime((p.seconds||0) + Math.floor((Date.now()-activeTimer.startTs)/1000));
     // עדכן דוח יומי בזמן אמת אם הדף פתוח
     if (document.getElementById('page-report')?.classList.contains('active')) renderReport();
   },1000);
