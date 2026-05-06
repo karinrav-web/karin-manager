@@ -771,7 +771,7 @@
     </div>
     <div class="modal-row">
       <div class="modal-field"><label>📅 דדליין שליחה ללקוח</label><input id="e-deadline" type="date" /></div>
-      <div class="modal-field"></div>
+      <div class="modal-field"><label>📷 שעות צילום</label><input id="e-shoot-hours" type="number" min="0" step="0.5" placeholder="למשל 3.5" /></div>
     </div>
     <div class="modal-actions">
       <button class="btn-delete" onclick="deleteProject()">🗑 מחק פרויקט</button>
@@ -2296,6 +2296,21 @@ function renderProjects() {
         </div>
         <button class="timer-btn ${isRunning ? 'running' : ''}" id="ptb-${p.id}" onclick="toggleTimer(${p.id})">${isRunning ? '⏹ עצור' : '▶ התחל'}</button>
       </div>
+      ${(() => {
+        const editHours = secs / 3600;
+        const shootHours = p.shootHours || 0;
+        const totalHours = editHours + shootHours;
+        const income = (p.payers||[]).filter(x=>x.paid).reduce((s,x)=>s+Math.round((Number(x.amount)||0)*1.18),0);
+        if (totalHours < 0.1 || income === 0) return '';
+        const rate = Math.round(income / totalHours);
+        return `<div style="display:flex;align-items:center;gap:16px;padding:10px 0;border-top:1px solid var(--border);margin-top:2px;flex-wrap:wrap;">
+          <div style="font-size:11px;color:var(--text3);">💡 רווחיות</div>
+          ${shootHours>0?`<span style="font-size:12px;color:var(--text2);">📷 ${shootHours} שע׳ צילום</span>`:''}
+          <span style="font-size:12px;color:var(--text2);">✂️ ${editHours.toFixed(1)} שע׳ עריכה</span>
+          <span style="font-size:12px;color:var(--text2);">סה״כ ${totalHours.toFixed(1)} שע׳</span>
+          <span style="font-size:14px;font-weight:700;color:var(--accent);">₪${rate.toLocaleString()} לשעה</span>
+        </div>`;
+      })()}
       ${renderBillingSection(p)}
       ` : ''}
     </div>`;
@@ -2357,6 +2372,7 @@ function openEdit(id) {
   document.getElementById('e-total').value=p.total||'';
   document.getElementById('e-goal').value=p.goalDaily||'';
   document.getElementById('e-deadline').value=p.deadline||'';
+  document.getElementById('e-shoot-hours').value=p.shootHours||'';
   document.getElementById('e-stage').innerHTML=Object.keys(STAGES).map(s=>`<option value="${s}" ${p.stage===s?'selected':''}>${STAGES[s]}</option>`).join('');
   document.getElementById('edit-modal').classList.add('open');
 }
@@ -2369,6 +2385,7 @@ function saveEdit(){
   p.total=parseInt(document.getElementById('e-total').value)||p.total;
   p.goalDaily=parseInt(document.getElementById('e-goal').value)||0;
   p.deadline=document.getElementById('e-deadline').value||'';
+  p.shootHours=parseFloat(document.getElementById('e-shoot-hours').value)||0;
   p.stage=document.getElementById('e-stage').value;
   closeModal(); save(); render();
 }
