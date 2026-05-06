@@ -2300,15 +2300,23 @@ function renderProjects() {
         const editHours = secs / 3600;
         const shootHours = p.shootHours || 0;
         const totalHours = editHours + shootHours;
-        const income = (p.payers||[]).filter(x=>x.paid).reduce((s,x)=>s+Math.round((Number(x.amount)||0)*1.18),0);
-        if (totalHours < 0.1 || income === 0) return '';
+        const paidIncome = (p.payers||[]).filter(x=>x.paid).reduce((s,x)=>s+Math.round((Number(x.amount)||0)*1.18),0);
+        const billingTotal = (() => {
+          const vendors = (p.payers||[]).filter(x=>x.type==='vendor');
+          const vendorBonus = vendors.length*500;
+          const vendorPaid = vendors.reduce((s,x)=>s+(Number(x.amount)||0),0);
+          const base = Math.max(0,(Number(p.billingBase)||0)+vendorBonus+(Number(p.billingAdj)||0)-(Number(p.billingDiscount)||0)-vendorPaid);
+          return Math.round(base*1.18);
+        })();
+        const income = paidIncome || billingTotal;
+        if (totalHours < 0.1) return '';
         const rate = Math.round(income / totalHours);
         return `<div style="display:flex;align-items:center;gap:16px;padding:10px 0;border-top:1px solid var(--border);margin-top:2px;flex-wrap:wrap;">
           <div style="font-size:11px;color:var(--text3);">💡 רווחיות</div>
           ${shootHours>0?`<span style="font-size:12px;color:var(--text2);">📷 ${shootHours} שע׳ צילום</span>`:''}
           <span style="font-size:12px;color:var(--text2);">✂️ ${editHours.toFixed(1)} שע׳ עריכה</span>
           <span style="font-size:12px;color:var(--text2);">סה״כ ${totalHours.toFixed(1)} שע׳</span>
-          <span style="font-size:14px;font-weight:700;color:var(--accent);">₪${rate.toLocaleString()} לשעה</span>
+          ${income>0?`<span style="font-size:14px;font-weight:700;color:var(--accent);">₪${rate.toLocaleString()} לשעה</span>`:`<span style="font-size:12px;color:var(--text3);">הכנסה לא הוגדרה</span>`}
         </div>`;
       })()}
       ${renderBillingSection(p)}
