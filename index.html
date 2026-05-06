@@ -2300,15 +2300,14 @@ function renderProjects() {
         const editHours = secs / 3600;
         const shootHours = p.shootHours || 0;
         const totalHours = editHours + shootHours;
-        const paidIncome = (p.payers||[]).filter(x=>x.paid).reduce((s,x)=>s+Math.round((Number(x.amount)||0)*1.18),0);
-        const billingTotal = (() => {
-          const vendors = (p.payers||[]).filter(x=>x.type==='vendor');
-          const vendorBonus = vendors.length*500;
-          const vendorPaid = vendors.reduce((s,x)=>s+(Number(x.amount)||0),0);
-          const base = Math.max(0,(Number(p.billingBase)||0)+vendorBonus+(Number(p.billingAdj)||0)-(Number(p.billingDiscount)||0)-vendorPaid);
-          return Math.round(base*1.18);
-        })();
-        const income = paidIncome || billingTotal;
+        const _vendors = (p.payers||[]).filter(x=>x.type==='vendor');
+        const _vendorBonus = _vendors.length*500;
+        const _vendorPaid = _vendors.reduce((s,x)=>s+(Number(x.amount)||0),0);
+        const _base = Number(p.billingBase)||0;
+        const _adj = Number(p.billingAdj)||0;
+        const _disc = Number(p.billingDiscount)||0;
+        const clientShare = Math.max(0, _base + _vendorBonus + _adj - _disc - _vendorPaid);
+        const income = Math.round(clientShare * 1.18);
         if (totalHours < 0.1) return '';
         const rate = Math.round(income / totalHours);
         return `<div style="display:flex;align-items:center;gap:16px;padding:10px 0;border-top:1px solid var(--border);margin-top:2px;flex-wrap:wrap;">
