@@ -1520,11 +1520,40 @@ function renderBillingPage() {
       `<div class="billing-stat"><div class="billing-stat-val">${fmtMoney(avgPerYear)}</div><div class="billing-stat-label">ממוצע שנתי</div></div>` +
       yearEntries.map(([y,v]) => `<div class="billing-stat"><div class="billing-stat-val">${fmtMoney(v)}</div><div class="billing-stat-label">${y}</div></div>`).join('');
   } else {
+    // השוואה לשנה שעברה עד אותו תאריך
+    const todayMMDD = todayStr().slice(5); // MM-DD
+    const prevYear = String(billingYear - 1);
+    const cutoff = prevYear + '-' + todayMMDD;
+    const prevYearToDate = records
+      .filter(r => r.date?.startsWith(prevYear) && r.date <= cutoff)
+      .reduce((s,r) => s+(r.total||0), 0);
+    const currentToDate = billingYear == nowYear
+      ? totalYear  // already filtered to current year up to today
+      : null;
+    const diff = currentToDate !== null ? currentToDate - prevYearToDate : null;
+    const diffPct = prevYearToDate > 0 && diff !== null ? Math.round((diff/prevYearToDate)*100) : null;
+
     if (sumEl) sumEl.innerHTML = `
       <div class="billing-stat"><div class="billing-stat-val">${fmtMoney(totalYear)}</div><div class="billing-stat-label">סה"כ ${billingYear}</div></div>
       <div class="billing-stat"><div class="billing-stat-val">${fmtMoney(monthlyAvg)}</div><div class="billing-stat-label">ממוצע חודשי${billingYear==nowYear?' (עד כה)':''}</div></div>
       <div class="billing-stat"><div class="billing-stat-val">${fmtMoney(totalThisMonth)}</div><div class="billing-stat-label">${months[nowMonth]} (החודש)</div></div>
-      <div class="billing-stat"><div class="billing-stat-val">${fmtMoney(totalLastMonth)}</div><div class="billing-stat-label">${months[nowMonth>0?nowMonth-1:11]} (חודש קודם)</div></div>`;
+      <div class="billing-stat"><div class="billing-stat-val">${fmtMoney(totalLastMonth)}</div><div class="billing-stat-label">${months[nowMonth>0?nowMonth-1:11]} (חודש קודם)</div></div>
+      ${billingYear==nowYear && prevYearToDate>0 ? `
+      <div class="billing-stat" style="grid-column:1/-1;background:${diff>=0?'var(--accent-light)':'var(--urgent-light)'};border-color:${diff>=0?'var(--accent)':'var(--urgent)'};">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+          <div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">השוואה לאותו תאריך ב-${prevYear}</div>
+            <div style="display:flex;gap:24px;align-items:baseline;">
+              <span style="font-size:13px;color:var(--text2);">${prevYear}: <strong>${fmtMoney(prevYearToDate)}</strong></span>
+              <span style="font-size:13px;color:var(--text2);">${billingYear}: <strong>${fmtMoney(currentToDate)}</strong></span>
+            </div>
+          </div>
+          <div style="font-size:22px;font-weight:700;color:${diff>=0?'var(--accent)':'var(--urgent)'};">
+            ${diff>=0?'▲':'▼'} ${fmtMoney(Math.abs(diff))}
+            ${diffPct!==null?`<span style="font-size:13px;font-weight:400;margin-right:4px;">(${diff>=0?'+':''}${diffPct}%)</span>`:''}
+          </div>
+        </div>
+      </div>` : ''}`;
   }
 
   // Top 10 clients (all time)
