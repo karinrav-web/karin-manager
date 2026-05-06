@@ -2300,14 +2300,16 @@ function renderProjects() {
         const editHours = secs / 3600;
         const shootHours = p.shootHours || 0;
         const totalHours = editHours + shootHours;
+        const clientPayer = (p.payers||[]).find(x=>x.type==='client');
+        const clientAmount = clientPayer ? (Number(clientPayer.amount)||0) : 0;
         const _vendors = (p.payers||[]).filter(x=>x.type==='vendor');
         const _vendorBonus = _vendors.length*500;
         const _vendorPaid = _vendors.reduce((s,x)=>s+(Number(x.amount)||0),0);
         const _base = Number(p.billingBase)||0;
         const _adj = Number(p.billingAdj)||0;
         const _disc = Number(p.billingDiscount)||0;
-        const clientShare = Math.max(0, _base + _vendorBonus + _adj - _disc - _vendorPaid);
-        const income = Math.round(clientShare * 1.18);
+        const formulaShare = Math.max(0, _base + _vendorBonus + _adj - _disc - _vendorPaid);
+        const income = Math.round((clientAmount || formulaShare) * 1.18);
         if (totalHours < 0.1) return '';
         const rate = Math.round(income / totalHours);
         return `<div style="display:flex;align-items:center;gap:16px;padding:10px 0;border-top:1px solid var(--border);margin-top:2px;flex-wrap:wrap;">
