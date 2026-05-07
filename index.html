@@ -2557,8 +2557,8 @@ function renderBillingSection(p) {
   const totalBeforeVat = Math.max(0, base + vendorBonus + adj - discount);
   const clientShare = client ? (Number(client.amount) || 0) : Math.max(0, totalBeforeVat - vendorPaid - creditTotal);
 
-  const paidAmount = payers.filter(x => x.paid || x.type === 'credit').reduce((s, x) => s + Math.round(Number(x.amount) * VAT_RATE), 0);
-  const totalWithVat = Math.round(totalBeforeVat * VAT_RATE);
+  const paidAmount = payers.filter(x => x.paid && x.type !== 'credit').reduce((s, x) => s + Math.round(Number(x.amount) * VAT_RATE), 0);
+  const totalWithVat = Math.round((totalBeforeVat - creditTotal) * VAT_RATE);
   const remainAmount = totalWithVat - paidAmount;
 
   const baseButtons = [2700, 3700, 5000].map(v =>
