@@ -1235,7 +1235,12 @@ function mergeCloudState(d) {
           seconds: lp.seconds||cp.seconds||0,
           sessions: lp.sessions||cp.sessions||0,
           timeLogs: lp.timeLogs||cp.timeLogs||[],
-          notes: lp.notes||cp.notes||''
+          notes: lp.notes||cp.notes||'',
+          shootHours: lp.shootHours||cp.shootHours||0,
+          billingBase: lp.billingBase||cp.billingBase||0,
+          billingAdj: lp.billingAdj||cp.billingAdj||0,
+          billingDiscount: lp.billingDiscount||cp.billingDiscount||0,
+          billingDiscountType: lp.billingDiscountType||cp.billingDiscountType||'amount'
         };
       });
       const localIds = new Set((local.projects||[]).map(x=>x.id));
