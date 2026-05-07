@@ -2502,21 +2502,39 @@ function updateBillingDiscount(projId, val) {
   recalcClientShare(p);
   save(); renderProjects(); renderBillingSummaryMorning();
 }
+function toggleDiscountType(projId) {
+  const p = state.projects.find(p => p.id === projId); if (!p) return;
+  p.billingDiscountType = (p.billingDiscountType === 'pct') ? 'amount' : 'pct';
+  p.billingDiscount = 0;
+  recalcClientShare(p);
+  save(); renderProjects(); renderBillingSummaryMorning();
+}
 function updateVendorAmount(projId, idx, val) {
   const p = state.projects.find(p => p.id === projId); if (!p || !p.payers) return;
   p.payers[idx].amount = Number(val) || 0;
   recalcClientShare(p);
   save(); renderProjects(); renderBillingSummaryMorning();
 }
+function calcDiscount(p) {
+  const base = Number(p.billingBase) || 0;
+  const adj = Number(p.billingAdj) || 0;
+  const vendors = (p.payers || []).filter(x => x.type === 'vendor');
+  const vendorBonus = vendors.length * 500;
+  const raw = Number(p.billingDiscount) || 0;
+  if (p.billingDiscountType === 'pct') {
+    return Math.round((base + vendorBonus + adj) * raw / 100);
+  }
+  return raw;
+}
 function recalcClientShare(p) {
   const base = Number(p.billingBase) || 0;
   const adj = Number(p.billingAdj) || 0;
-  const discount = Number(p.billingDiscount) || 0;
   const vendors = (p.payers || []).filter(x => x.type === 'vendor');
   const creditsUsed = (p.payers || []).filter(x => x.type === 'credit');
   const vendorBonus = vendors.length * 500;
   const vendorPaid = vendors.reduce((s, x) => s + (Number(x.amount) || 0), 0);
   const creditTotal = creditsUsed.reduce((s, x) => s + (Number(x.amount) || 0), 0);
+  const discount = calcDiscount(p);
   const clientShare = Math.max(0, base + vendorBonus + adj - discount - vendorPaid - creditTotal);
   const client = (p.payers || []).find(x => x.type === 'client');
   if (client) client.amount = clientShare;
@@ -2527,7 +2545,9 @@ function renderBillingSection(p) {
   const payers = p.payers || [];
   const base = Number(p.billingBase) || 0;
   const adj = Number(p.billingAdj) || 0;
-  const discount = Number(p.billingDiscount) || 0;
+  const discountRaw = Number(p.billingDiscount) || 0;
+  const discountType = p.billingDiscountType || 'amount';
+  const discount = calcDiscount(p);
   const vendors = payers.filter(x => x.type === 'vendor');
   const credits = payers.filter(x => x.type === 'credit');
   const client = payers.find(x => x.type === 'client');
@@ -2611,7 +2631,9 @@ function renderBillingSection(p) {
           </div>
           <div style="display:flex;align-items:center;gap:6px;">
             <span style="font-size:12px;color:var(--urgent);">− הנחה:</span>
-            <input type="number" value="${discount||''}" placeholder="0" min="0" style="width:75px;padding:4px 8px;font-size:12px;border:1px solid var(--urgent);border-radius:var(--radius-sm);font-family:'Heebo',sans-serif;text-align:center;" onchange="updateBillingDiscount(${p.id},this.value)" />
+            <input type="number" value="${discountRaw||''}" placeholder="0" min="0" max="${discountType==='pct'?100:''}" style="width:65px;padding:4px 8px;font-size:12px;border:1px solid var(--urgent);border-radius:var(--radius-sm);font-family:'Heebo',sans-serif;text-align:center;" onchange="updateBillingDiscount(${p.id},this.value)" />
+            <button onclick="toggleDiscountType(${p.id})" title="החלף בין ₪ לאחוז" style="padding:3px 8px;font-size:12px;font-family:'Heebo',sans-serif;border:1px solid var(--urgent);border-radius:var(--radius-sm);background:${discountType==='pct'?'var(--urgent)':'var(--surface2)'};color:${discountType==='pct'?'#fff':'var(--urgent)'};cursor:pointer;font-weight:600;">${discountType==='pct'?'%':'₪'}</button>
+            ${discountType==='pct' && discountRaw ? `<span style="font-size:11px;color:var(--urgent);">(${fmtILS(discount)})</span>` : ''}
           </div>
           ${totalBeforeVat ? `<span style="font-size:13px;font-weight:600;color:var(--text);">סה״כ: ${fmtILS(totalBeforeVat)} <span style="font-size:11px;color:var(--text3);font-weight:400;">(${fmtILS(totalBeforeVat*VAT_RATE)} כולל מעמ)</span></span>` : ''}
         </div>
@@ -2650,7 +2672,7 @@ function renderBillingSummaryMorning() {
     const vendors = (p.payers||[]).filter(x=>x.type==='vendor');
     const vendorBonus = vendors.length * 500;
     const vendorPaid = vendors.reduce((s,x)=>s+(Number(x.amount)||0),0);
-    const base = Math.max(0, (Number(p.billingBase)||0) + vendorBonus + (Number(p.billingAdj)||0) - (Number(p.billingDiscount)||0) - vendorPaid);
+    const base = Math.max(0, (Number(p.billingBase)||0) + vendorBonus + (Number(p.billingAdj)||0) - calcDiscount(p) - vendorPaid);
     const payers = p.payers || [];
     const unpaid = payers.filter(x => !x.paid);
     if (unpaid.length > 0) {
