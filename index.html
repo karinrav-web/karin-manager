@@ -2518,11 +2518,10 @@ function updateVendorAmount(projId, idx, val) {
 function calcDiscount(p) {
   const base = Number(p.billingBase) || 0;
   const adj = Number(p.billingAdj) || 0;
-  const vendors = (p.payers || []).filter(x => x.type === 'vendor');
-  const vendorBonus = vendors.length * 500;
   const raw = Number(p.billingDiscount) || 0;
   if (p.billingDiscountType === 'pct') {
-    return Math.round((base + vendorBonus + adj) * raw / 100);
+    // הנחה באחוזים — רק על מחיר הבסיס ותוספת, לא על תוספת הספקים
+    return Math.round((base + adj) * raw / 100);
   }
   return raw;
 }
