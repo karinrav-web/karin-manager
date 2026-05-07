@@ -1250,7 +1250,8 @@ function mergeCloudState(d) {
         lastReset:local.lastReset||p.lastReset||'',
         settings:mergedSettings,
         editDays:local.editDays||p.editDays||{},
-        billing: mergeBilling(local.billing||[], p.billing||[])
+        billing: mergeBilling(local.billing||[], p.billing||[]),
+        credits: mergeBilling(local.credits||[], p.credits||[])
       });
       try{localStorage.setItem('karin_pm',JSON.stringify(state));}catch(e){}
       setSyncStatus('✓ סונכרן','var(--accent)');
