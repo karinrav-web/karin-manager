@@ -696,6 +696,18 @@
         <div class="card-title">🏆 טופ 10 לקוחות (כל הזמנים)</div>
         <div id="billing-top10"></div>
       </div>
+      <div class="card" style="margin-bottom:18px;border-color:#c4b5fd;">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+          <span>💜 זיכויים ללקוחות</span>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+          <input id="credit-client" placeholder="שם לקוח" style="flex:1;min-width:100px;padding:6px 10px;font-size:13px;border:1px solid #c4b5fd;border-radius:var(--radius-sm);font-family:'Heebo',sans-serif;" />
+          <input id="credit-amount" type="number" placeholder="סכום ₪" style="width:90px;padding:6px 10px;font-size:13px;border:1px solid #c4b5fd;border-radius:var(--radius-sm);font-family:'Heebo',sans-serif;" />
+          <input id="credit-note" placeholder="הערה (אופציונלי)" style="flex:1;min-width:100px;padding:6px 10px;font-size:13px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-family:'Heebo',sans-serif;" />
+          <button onclick="addGlobalCredit()" style="padding:6px 14px;font-size:13px;font-family:'Heebo',sans-serif;background:#7c3aed;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;">+ הוסף זיכוי</button>
+        </div>
+        <div id="credits-list"></div>
+      </div>
       <div class="card" style="margin-bottom:18px;">
         <div class="card-title">לפי חודש</div>
         <div class="billing-chart" id="billing-chart"></div>
@@ -1014,6 +1026,7 @@ function save() {
       settings: state.settings,
       editDays: state.editDays||{},
       billing: state.billing||[],
+      credits: state.credits||[],
       projects: state.projects.map(p=>({...p, goalDone:0, editedToday:0}))
     };
     const ctrl = new AbortController();
@@ -1250,7 +1263,7 @@ function load() {
       const p = JSON.parse(s);
       if (p.projects) p.projects = dedup(p.projects.map(normalizeProject));
       if (p.tasks) p.tasks = dedup(p.tasks.map(x=>({...x,done:Number(x.done)||0}))).filter(t=>t.text&&t.text.trim());
-      state = applyDayReset({projects:p.projects||[],tasks:p.tasks||[],settings:p.settings||{hoursPerDay:6,photosPerDay:20,workDays:[0,1,2,3,4]},editDays:p.editDays||{},billing:p.billing||[],lastReset:p.lastReset||''});
+      state = applyDayReset({projects:p.projects||[],tasks:p.tasks||[],settings:p.settings||{hoursPerDay:6,photosPerDay:20,workDays:[0,1,2,3,4]},editDays:p.editDays||{},billing:p.billing||[],credits:p.credits||[],lastReset:p.lastReset||''});
     }
   } catch(e) {}
   setSyncStatus('טוען...','var(--text3)');
@@ -1473,6 +1486,7 @@ function billingYears() {
 
 function renderBillingPage() {
   if (!document.getElementById('page-billing')) return;
+  renderCreditsSection();
   const records = getBillingRecords();
 
   // Year tabs
@@ -2499,10 +2513,11 @@ function recalcClientShare(p) {
   const adj = Number(p.billingAdj) || 0;
   const discount = Number(p.billingDiscount) || 0;
   const vendors = (p.payers || []).filter(x => x.type === 'vendor');
-  // כל ספק מוסיף 500 לסכום, תשלום הספק יורד מהסכום הכולל
+  const creditsUsed = (p.payers || []).filter(x => x.type === 'credit');
   const vendorBonus = vendors.length * 500;
   const vendorPaid = vendors.reduce((s, x) => s + (Number(x.amount) || 0), 0);
-  const clientShare = Math.max(0, base + vendorBonus + adj - discount - vendorPaid);
+  const creditTotal = creditsUsed.reduce((s, x) => s + (Number(x.amount) || 0), 0);
+  const clientShare = Math.max(0, base + vendorBonus + adj - discount - vendorPaid - creditTotal);
   const client = (p.payers || []).find(x => x.type === 'client');
   if (client) client.amount = clientShare;
 }
@@ -2514,12 +2529,13 @@ function renderBillingSection(p) {
   const adj = Number(p.billingAdj) || 0;
   const discount = Number(p.billingDiscount) || 0;
   const vendors = payers.filter(x => x.type === 'vendor');
+  const credits = payers.filter(x => x.type === 'credit');
   const client = payers.find(x => x.type === 'client');
   const vendorPaid = vendors.reduce((s, x) => s + (Number(x.amount) || 0), 0);
   const vendorBonus = vendors.length * 500;
-  // סה"כ פרויקט: בסיס + תוספת ספקים (לפני ניכוי תשלומי ספקים)
+  const creditTotal = credits.reduce((s, x) => s + (Number(x.amount) || 0), 0);
   const totalBeforeVat = Math.max(0, base + vendorBonus + adj - discount);
-  const clientShare = client ? (Number(client.amount) || 0) : Math.max(0, totalBeforeVat - vendorPaid);
+  const clientShare = client ? (Number(client.amount) || 0) : Math.max(0, totalBeforeVat - vendorPaid - creditTotal);
 
   const paidAmount = payers.filter(x => x.paid).reduce((s, x) => s + Math.round(Number(x.amount) * VAT_RATE), 0);
   const totalWithVat = Math.round(totalBeforeVat * VAT_RATE);
@@ -2545,6 +2561,20 @@ function renderBillingSection(p) {
       </div>
       <button class="billing-paid-btn ${pay.paid ? 'paid' : ''}" onclick="togglePaid(${p.id},${realIdx})">${pay.paid ? '✓' : ''}</button>
       <button class="billing-delete-btn" onclick="deletePayer(${p.id},${realIdx})">✕</button>
+    </div>`;
+  }).join('');
+
+  const creditRows = credits.map((pay) => {
+    const realIdx = payers.indexOf(pay);
+    const amt = Number(pay.amount) || 0;
+    return `<div class="billing-row" style="background:#f5f0ff;border-radius:var(--radius-sm);padding:6px 10px;">
+      <span class="billing-type" style="background:#7c3aed;color:#fff;">זיכוי</span>
+      <span class="billing-name" style="color:#5b21b6;">${pay.name}</span>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <input type="number" value="${amt}" style="width:75px;padding:4px 8px;font-size:13px;border:1px solid #c4b5fd;border-radius:var(--radius-sm);font-family:'Heebo',sans-serif;text-align:center;" onchange="updateCreditAmount(${p.id},${realIdx},this.value)" />
+        <span style="font-size:11px;color:#7c3aed;">(${fmtILS(amt*VAT_RATE)} כולל מעמ)</span>
+      </div>
+      <button class="billing-delete-btn" onclick="deletePayer(${p.id},${realIdx})" style="margin-right:auto;">✕</button>
     </div>`;
   }).join('');
 
@@ -2588,12 +2618,14 @@ function renderBillingSection(p) {
       </div>
 
       ${vendorRows}
+      ${creditRows}
       ${clientRow}
 
       <div class="billing-add-row" style="margin-top:8px;">
         <input type="text" id="bname-${p.id}" placeholder="שם ספק" style="width:130px" />
         <input type="number" id="bamount-${p.id}" placeholder="סכום ₪ (0 אם שילם למעצבת)" value="0" style="width:80px" />
         <button class="btn-save" style="font-size:12px;padding:6px 14px" onclick="addVendor(${p.id})">+ הוסף ספק</button>
+        <button class="edit-btn" style="font-size:12px;border-color:#c4b5fd;color:#7c3aed;" onclick="openAddCreditModal(${p.id})">+ זיכוי לקוח</button>
         ${!client ? `<button class="edit-btn" onclick="addClient(${p.id})">+ הוסף לקוח</button>` : ''}
       </div>
 
@@ -2742,7 +2774,70 @@ function togglePaid(projId, idx) {
 function deletePayer(projId, idx) {
   const p = state.projects.find(p => p.id === projId); if (!p || !p.payers) return;
   p.payers.splice(idx, 1);
+  recalcClientShare(p);
   save(); renderProjects(); renderBillingSummaryMorning();
+}
+
+function updateCreditAmount(projId, idx, val) {
+  const p = state.projects.find(p => p.id === projId); if (!p || !p.payers) return;
+  p.payers[idx].amount = Number(val) || 0;
+  recalcClientShare(p);
+  save(); renderProjects(); renderBillingSummaryMorning();
+}
+
+// ── זיכויים גלובליים ──────────────────────────────
+function openAddCreditModal(projId) {
+  const p = state.projects.find(p => p.id === projId); if (!p) return;
+  if (!state.credits) state.credits = [];
+  const clientName = p.client || '';
+  const available = getClientCredit(clientName);
+  const hint = available > 0 ? ` (זיכוי זמין: ${fmtILS(available)})` : '';
+  const name = prompt(`שם לקוח לזיכוי:${hint}`, clientName);
+  if (!name) return;
+  const amt = parseFloat(prompt(`סכום זיכוי ₪ (לפני מעמ):`, available > 0 ? available : ''));
+  if (!amt || amt <= 0) return;
+  if (!p.payers) p.payers = [];
+  p.payers.push({ name, amount: amt, type: 'credit', paid: false });
+  recalcClientShare(p);
+  save(); renderProjects(); renderBillingSummaryMorning();
+}
+
+function getClientCredit(clientName) {
+  if (!state.credits) return 0;
+  return state.credits.filter(c => c.client === clientName).reduce((s, c) => s + (Number(c.amount) || 0), 0);
+}
+
+function addGlobalCredit() {
+  const client = document.getElementById('credit-client')?.value?.trim();
+  const amount = parseFloat(document.getElementById('credit-amount')?.value) || 0;
+  const note = document.getElementById('credit-note')?.value?.trim() || '';
+  if (!client || !amount) return;
+  if (!state.credits) state.credits = [];
+  state.credits.push({ id: Date.now(), client, amount, note, date: todayStr() });
+  save(); renderCreditsSection();
+  document.getElementById('credit-client').value = '';
+  document.getElementById('credit-amount').value = '';
+  document.getElementById('credit-note').value = '';
+}
+
+function deleteCredit(id) {
+  if (!confirm('למחוק זיכוי זה?')) return;
+  state.credits = (state.credits || []).filter(c => c.id !== id);
+  save(); renderCreditsSection();
+}
+
+function renderCreditsSection() {
+  const el = document.getElementById('credits-list'); if (!el) return;
+  const credits = state.credits || [];
+  if (!credits.length) { el.innerHTML = '<div style="font-size:13px;color:var(--text3);padding:8px 0;">אין זיכויים רשומים</div>'; return; }
+  el.innerHTML = credits.map(c => `
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
+      <span style="font-size:11px;background:#7c3aed;color:#fff;padding:1px 8px;border-radius:10px;">זיכוי</span>
+      <span style="flex:1;font-size:13px;font-weight:500;">${c.client}</span>
+      <span style="font-size:14px;font-weight:700;color:#7c3aed;">${fmtILS(c.amount)}</span>
+      ${c.note ? `<span style="font-size:11px;color:var(--text3);">${c.note}</span>` : ''}
+      <button onclick="deleteCredit(${c.id})" style="width:20px;height:20px;border-radius:50%;border:1px solid var(--border);background:transparent;cursor:pointer;font-size:10px;color:var(--text3);">✕</button>
+    </div>`).join('');
 }
 // ===== END גביה =====
 
