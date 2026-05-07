@@ -2693,7 +2693,7 @@ function renderBillingSummaryMorning() {
     const vendorPaid = vendors.reduce((s,x)=>s+(Number(x.amount)||0),0);
     const base = Math.max(0, (Number(p.billingBase)||0) + vendorBonus + (Number(p.billingAdj)||0) - calcDiscount(p) - vendorPaid);
     const payers = p.payers || [];
-    const unpaid = payers.filter(x => !x.paid);
+    const unpaid = payers.filter(x => !x.paid && x.type !== 'credit');
     if (unpaid.length > 0) {
       unpaid.forEach((pay, _) => {
         const idx = payers.indexOf(pay);
