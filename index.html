@@ -793,6 +793,26 @@
   </div>
 </div>
 
+<!-- Credit Modal -->
+<div class="modal-bg" id="credit-modal" style="display:none;z-index:200">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-title">💜 זיכוי לקוח</div>
+    <div id="credit-modal-available" style="margin-bottom:14px;"></div>
+    <div class="modal-field">
+      <label>סכום זיכוי לניכוי ₪ (לפני מעמ)</label>
+      <input id="credit-modal-amount" type="number" min="0" placeholder="0" />
+    </div>
+    <div class="modal-field">
+      <label>הערה (אופציונלי)</label>
+      <input id="credit-modal-note" type="text" placeholder="" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeCreditModal()">ביטול</button>
+      <button class="btn-confirm" style="background:#7c3aed;border-color:#7c3aed;" onclick="confirmAddCredit()">הוסף זיכוי</button>
+    </div>
+  </div>
+</div>
+
 <!-- Billing Modal -->
 <div class="modal-bg" id="billing-modal" style="display:none">
   <div class="modal" style="max-width:540px">
@@ -2807,19 +2827,61 @@ function updateCreditAmount(projId, idx, val) {
 }
 
 // ── זיכויים גלובליים ──────────────────────────────
+let _creditModalProjId = null;
+
 function openAddCreditModal(projId) {
   const p = state.projects.find(p => p.id === projId); if (!p) return;
+  _creditModalProjId = projId;
   if (!state.credits) state.credits = [];
+
   const clientName = p.client || '';
-  const available = getClientCredit(clientName);
-  const hint = available > 0 ? ` (זיכוי זמין: ${fmtILS(available)})` : '';
-  const name = prompt(`שם לקוח לזיכוי:${hint}`, clientName);
-  if (!name) return;
-  const amt = parseFloat(prompt(`סכום זיכוי ₪ (לפני מעמ):`, available > 0 ? available : ''));
-  if (!amt || amt <= 0) return;
+  const clientCredits = (state.credits || []).filter(c => c.client === clientName);
+  const totalAvailable = clientCredits.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+
+  const availEl = document.getElementById('credit-modal-available');
+  if (clientCredits.length > 0) {
+    availEl.innerHTML = `
+      <div style="background:#f5f0ff;border-radius:8px;padding:10px 12px;">
+        <div style="font-size:12px;color:#7c3aed;font-weight:600;margin-bottom:6px;">זיכויים זמינים ל${clientName}:</div>
+        ${clientCredits.map(c => `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:4px 0;cursor:pointer;" onclick="applyCreditSuggestion(${c.amount})">
+            <span style="font-size:13px;">${c.note || c.date || ''}</span>
+            <span style="font-size:14px;font-weight:700;color:#7c3aed;">${fmtILS(c.amount)}</span>
+          </div>`).join('')}
+        <div style="border-top:1px solid #c4b5fd;margin-top:6px;padding-top:6px;font-size:12px;font-weight:600;color:#5b21b6;">
+          סה"כ זמין: ${fmtILS(totalAvailable)}
+        </div>
+      </div>`;
+  } else if (clientName) {
+    availEl.innerHTML = `<div style="font-size:13px;color:var(--text3);">אין זיכויים רשומים עבור ${clientName}</div>`;
+  } else {
+    availEl.innerHTML = '';
+  }
+
+  document.getElementById('credit-modal-amount').value = totalAvailable > 0 ? totalAvailable : '';
+  document.getElementById('credit-modal-note').value = clientName;
+  document.getElementById('credit-modal').style.display = 'flex';
+}
+
+function applyCreditSuggestion(amount) {
+  document.getElementById('credit-modal-amount').value = amount;
+}
+
+function closeCreditModal() {
+  document.getElementById('credit-modal').style.display = 'none';
+  _creditModalProjId = null;
+}
+
+function confirmAddCredit() {
+  const projId = _creditModalProjId; if (!projId) return;
+  const p = state.projects.find(p => p.id === projId); if (!p) return;
+  const amt = parseFloat(document.getElementById('credit-modal-amount').value) || 0;
+  const note = document.getElementById('credit-modal-note').value.trim() || (p.client || '');
+  if (amt <= 0) return;
   if (!p.payers) p.payers = [];
-  p.payers.push({ name, amount: amt, type: 'credit', paid: false });
+  p.payers.push({ name: note, amount: amt, type: 'credit', paid: false });
   recalcClientShare(p);
+  closeCreditModal();
   save(); renderProjects(); renderBillingSummaryMorning();
 }
 
