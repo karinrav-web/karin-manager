@@ -2841,7 +2841,7 @@ function openAddCreditModal(projId) {
   if (!state.credits) state.credits = [];
 
   const clientName = p.client || '';
-  const clientCredits = (state.credits || []).filter(c => c.client === clientName);
+  const clientCredits = (state.credits || []).filter(c => c.client === clientName && !c.used);
   const totalAvailable = clientCredits.reduce((s, c) => s + (Number(c.amount) || 0), 0);
 
   const availEl = document.getElementById('credit-modal-available');
@@ -2887,13 +2887,26 @@ function confirmAddCredit() {
   if (!p.payers) p.payers = [];
   p.payers.push({ name: note, amount: amt, type: 'credit', paid: false });
   recalcClientShare(p);
+
+  // סמן זיכויים ששומשו
+  const clientCredits = (state.credits || []).filter(c => c.client === (p.client || '') && !c.used);
+  let remaining = amt;
+  for (const c of clientCredits) {
+    if (remaining <= 0) break;
+    c.used = true;
+    c.usedInProject = projId;
+    c.usedProjectTitle = (p.client || '') + (p.title ? ' · ' + p.title : '');
+    c.usedDate = todayStr();
+    remaining -= Number(c.amount) || 0;
+  }
+
   closeCreditModal();
-  save(); renderProjects(); renderBillingSummaryMorning();
+  save(); renderProjects(); renderBillingSummaryMorning(); renderCreditsSection();
 }
 
 function getClientCredit(clientName) {
   if (!state.credits) return 0;
-  return state.credits.filter(c => c.client === clientName).reduce((s, c) => s + (Number(c.amount) || 0), 0);
+  return state.credits.filter(c => c.client === clientName && !c.used).reduce((s, c) => s + (Number(c.amount) || 0), 0);
 }
 
 function addGlobalCredit() {
@@ -2920,12 +2933,12 @@ function renderCreditsSection() {
   const credits = state.credits || [];
   if (!credits.length) { el.innerHTML = '<div style="font-size:13px;color:var(--text3);padding:8px 0;">אין זיכויים רשומים</div>'; return; }
   el.innerHTML = credits.map(c => `
-    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
-      <span style="font-size:11px;background:#7c3aed;color:#fff;padding:1px 8px;border-radius:10px;">זיכוי</span>
-      <span style="flex:1;font-size:13px;font-weight:500;">${c.client}</span>
-      <span style="font-size:14px;font-weight:700;color:#7c3aed;">${fmtILS(c.amount)}</span>
-      ${c.note ? `<span style="font-size:11px;color:var(--text3);">${c.note}</span>` : ''}
-      <button onclick="deleteCredit(${c.id})" style="width:20px;height:20px;border-radius:50%;border:1px solid var(--border);background:transparent;cursor:pointer;font-size:10px;color:var(--text3);">✕</button>
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);${c.used ? 'opacity:0.6;' : ''}">
+      <span style="font-size:11px;background:${c.used ? '#9ca3af' : '#7c3aed'};color:#fff;padding:1px 8px;border-radius:10px;">${c.used ? 'שומש' : 'זיכוי'}</span>
+      <span style="flex:1;font-size:13px;font-weight:500;${c.used ? 'text-decoration:line-through;color:var(--text3);' : ''}">${c.client}</span>
+      <span style="font-size:14px;font-weight:700;color:${c.used ? '#9ca3af' : '#7c3aed'};">${fmtILS(c.amount)}</span>
+      ${c.used && c.usedProjectTitle ? `<span style="font-size:11px;color:var(--text3);">← ${c.usedProjectTitle}</span>` : (c.note ? `<span style="font-size:11px;color:var(--text3);">${c.note}</span>` : '')}
+      ${!c.used ? `<button onclick="deleteCredit(${c.id})" style="width:20px;height:20px;border-radius:50%;border:1px solid var(--border);background:transparent;cursor:pointer;font-size:10px;color:var(--text3);">✕</button>` : ''}
     </div>`).join('');
 }
 // ===== END גביה =====
