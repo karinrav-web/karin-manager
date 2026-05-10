@@ -2938,8 +2938,17 @@ function renderCreditsSection() {
       <span style="flex:1;font-size:13px;font-weight:500;${c.used ? 'text-decoration:line-through;color:var(--text3);' : ''}">${c.client}</span>
       <span style="font-size:14px;font-weight:700;color:${c.used ? '#9ca3af' : '#7c3aed'};">${fmtILS(c.amount)}</span>
       ${c.used && c.usedProjectTitle ? `<span style="font-size:11px;color:var(--text3);">← ${c.usedProjectTitle}</span>` : (c.note ? `<span style="font-size:11px;color:var(--text3);">${c.note}</span>` : '')}
-      ${!c.used ? `<button onclick="deleteCredit(${c.id})" style="width:20px;height:20px;border-radius:50%;border:1px solid var(--border);background:transparent;cursor:pointer;font-size:10px;color:var(--text3);">✕</button>` : ''}
+      ${c.used ? `<button onclick="unuseCredit(${c.id})" style="font-size:11px;padding:1px 8px;border-radius:10px;border:1px solid #d1d5db;background:transparent;cursor:pointer;color:#6b7280;">בטל</button>` : `<button onclick="deleteCredit(${c.id})" style="width:20px;height:20px;border-radius:50%;border:1px solid var(--border);background:transparent;cursor:pointer;font-size:10px;color:var(--text3);">✕</button>`}
     </div>`).join('');
+}
+
+function unuseCredit(id) {
+  const c = (state.credits || []).find(c => c.id === id); if (!c) return;
+  delete c.used;
+  delete c.usedInProject;
+  delete c.usedProjectTitle;
+  delete c.usedDate;
+  save(); renderCreditsSection();
 }
 // ===== END גביה =====
 
