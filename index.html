@@ -2934,7 +2934,7 @@ function renderCreditsSection() {
   if (!credits.length) { el.innerHTML = '<div style="font-size:13px;color:var(--text3);padding:8px 0;">אין זיכויים רשומים</div>'; return; }
   el.innerHTML = credits.map(c => `
     <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);${c.used ? 'opacity:0.6;' : ''}">
-      <span style="font-size:11px;background:${c.used ? '#9ca3af' : '#7c3aed'};color:#fff;padding:1px 8px;border-radius:10px;">${c.used ? 'שומש' : 'זיכוי'}</span>
+      <span style="font-size:11px;background:${c.used ? '#9ca3af' : '#7c3aed'};color:#fff;padding:1px 8px;border-radius:10px;">${c.used ? 'מומש' : 'זיכוי'}</span>
       <span style="flex:1;font-size:13px;font-weight:500;${c.used ? 'text-decoration:line-through;color:var(--text3);' : ''}">${c.client}</span>
       <span style="font-size:14px;font-weight:700;color:${c.used ? '#9ca3af' : '#7c3aed'};">${fmtILS(c.amount)}</span>
       ${c.used && c.usedProjectTitle ? `<span style="font-size:11px;color:var(--text3);">← ${c.usedProjectTitle}</span>` : (c.note ? `<span style="font-size:11px;color:var(--text3);">${c.note}</span>` : '')}
