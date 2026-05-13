@@ -1227,6 +1227,7 @@ function mergeCloudState(d) {
         const cp = cloudProjMap[lp.id];
         if(!cp) return lp;
         return {...cp,
+          date: lp.date||cp.date||'',
           deadline: lp.deadline||cp.deadline||'',
           goalDone: lp.goalDone||0,
           editedToday: lp.editedToday||0,
