@@ -739,6 +739,7 @@
       <div class="page-header">
         <div class="page-title" id="proj-page-title">פרויקטים</div>
         <button onclick="collapseAll()" style="padding:7px 16px;font-size:12px;font-family:'Heebo',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">▲ קפל הכל</button>
+        <button id="sort-toggle-btn" onclick="toggleProjectSort()" style="padding:7px 16px;font-size:12px;font-family:'Heebo',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">📅 לפי תאריך</button>
       </div>
       <div id="proj-stage-tabs" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px;"></div>
       <div id="projects-list"></div>
@@ -2180,10 +2181,19 @@ function dragDrop(e, targetId) {
   dragSrcId = null; save(); renderProjects();
 }
 
+let projectSortMode = 'manual';
 function renderProjects() {
   const el = document.getElementById('projects-list'); if (!el) return;
   const list = [...state.projects].filter(p => stageFilter === null || p.stage === stageFilter)
-    .sort((a, b) => { const ao = a.order!==undefined?a.order:9999; const bo = b.order!==undefined?b.order:9999; if (ao !== bo) return ao - bo; return (STAGE_ORDER[a.stage]??5)-(STAGE_ORDER[b.stage]??5); });
+    .sort((a, b) => {
+      if (projectSortMode === 'date-desc') {
+        const ad = a.date || '', bd = b.date || '';
+        if (ad !== bd) return bd.localeCompare(ad);
+      }
+      const ao = a.order!==undefined?a.order:9999; const bo = b.order!==undefined?b.order:9999;
+      if (ao !== bo) return ao - bo;
+      return (STAGE_ORDER[a.stage]??5)-(STAGE_ORDER[b.stage]??5);
+    });
 
   // Render stage tabs with counts
   const tabsEl = document.getElementById('proj-stage-tabs');
@@ -2953,6 +2963,17 @@ function unuseCredit(id) {
 // ===== END גביה =====
 
 function collapseAll() { expandedProjects.clear(); renderProjects(); }
+
+function toggleProjectSort() {
+  projectSortMode = projectSortMode === 'manual' ? 'date-desc' : 'manual';
+  const btn = document.getElementById('sort-toggle-btn');
+  if (btn) {
+    btn.style.background = projectSortMode === 'date-desc' ? 'var(--accent)' : 'var(--surface2)';
+    btn.style.color = projectSortMode === 'date-desc' ? '#fff' : 'var(--text2)';
+    btn.style.borderColor = projectSortMode === 'date-desc' ? 'var(--accent)' : 'var(--border2)';
+  }
+  renderProjects();
+}
 
 load();
 render();
