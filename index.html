@@ -1228,6 +1228,10 @@ function mergeCloudState(d) {
         if(!cp) return lp;
         return {...cp,
           date: lp.date||cp.date||'',
+          client: lp.client||cp.client||'',
+          title: lp.title||cp.title||'',
+          stage: lp.stage||cp.stage||'send',
+          total: lp.total||cp.total||0,
           deadline: lp.deadline||cp.deadline||'',
           goalDone: lp.goalDone||0,
           editedToday: lp.editedToday||0,
