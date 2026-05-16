@@ -1692,10 +1692,11 @@ function renderBillingPage() {
     const byClient = {};
     yearRecs.forEach(r => {
       const key = r.client || '—';
-      if (!byClient[key]) byClient[key] = { count: 0, total: 0 };
-      byClient[key].count++;
+      if (!byClient[key]) byClient[key] = { projects: new Set(), total: 0 };
+      if (r.project) byClient[key].projects.add(r.project);
       byClient[key].total += r.total || 0;
     });
+    Object.values(byClient).forEach(d => { d.count = d.projects.size || 1; });
     const clientRows = Object.entries(byClient).sort((a,b) => b[1].total - a[1].total);
     if (clientSumEl) {
       clientSumEl.style.display = '';
