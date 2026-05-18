@@ -5,18 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>קרין רבנה — ניהול פרויקטים 2026</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600&display=swap');
 
   :root {
-    --bg:#F5F3EF; --surface:#FFFFFF; --surface2:#F0EDE8;
-    --border:#E2DDD7; --border2:#CCC8C2;
-    --text:#1A1714; --text2:#6B6560; --text3:#9E9992;
-    --accent:#2D6A4F; --accent-light:#E8F4EE;
+    --bg:#fdf9f4; --surface:#FFFFFF; --surface2:#f5ede7;
+    --border:#e8ddd6; --border2:#d4c5bb;
+    --text:#1a1210; --text2:#6b5c55; --text3:#a08c84;
+    --accent:#c05c3d; --accent-light:#fdf0ec;
     --urgent:#C0392B; --urgent-light:#FDECEA;
     --high:#D35400; --high-light:#FEF0E7;
-    --normal:#2D6A4F; --normal-light:#E8F4EE;
+    --normal:#c05c3d; --normal-light:#fdf0ec;
     --low:#7F8C8D; --low-light:#F2F3F3;
-    --radius:10px; --radius-sm:6px;
+    --radius:10px; --radius-sm:8px;
     --s-send-b:#3B5BDB; --s-send:#E8F0FE;
     --s-wait-b:#0EA5E9; --s-wait:#E0F2FE;
     --s-edit-b:#6B7280; --s-edit:#F3F4F6;
@@ -27,7 +27,7 @@
   }
 
   * { box-sizing:border-box; margin:0; padding:0; }
-  body { font-family:'Heebo',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; font-size:14px; line-height:1.5; }
+  body { font-family:'Rubik',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; font-size:14px; line-height:1.5; }
 
   .shell { display:flex; min-height:100vh; }
 
@@ -70,13 +70,13 @@
   .page-date { font-size:13px; color:var(--text3); margin-top:3px; }
 
   .metric-row { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:16px; }
-  .metric-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; }
+  .metric-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; box-shadow:0 1px 4px rgba(192,92,61,0.06); }
   .metric-val { font-size:32px; font-weight:600; }
   .metric-val.red { color:var(--urgent); }
   .metric-val.green { color:var(--accent); }
   .metric-label { font-size:12px; color:var(--text3); margin-top:4px; }
 
-  .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:20px 22px; margin-bottom:18px; }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:20px 22px; margin-bottom:18px; box-shadow:0 1px 4px rgba(192,92,61,0.06); }
   .card-title { font-size:12px; font-weight:500; color:var(--text3); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:14px; }
 
   .task-row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); }
@@ -109,21 +109,21 @@
   .add-btn {
     width:100%; padding:9px; border:1.5px dashed var(--border2); border-radius:var(--radius-sm);
     background:transparent; color:var(--text3); font-size:13px; cursor:pointer;
-    margin-top:10px; font-family:'Heebo',sans-serif; transition:all 0.15s;
+    margin-top:10px; font-family:'Rubik',sans-serif; transition:all 0.15s;
   }
   .add-btn:hover { border-color:var(--accent); color:var(--accent); background:var(--accent-light); }
 
   .form-row { display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; padding-top:12px; border-top:1px solid var(--border); }
   .form-row input, .form-row select {
     padding:8px 12px; font-size:13px; border:1px solid var(--border2); border-radius:var(--radius-sm);
-    background:var(--surface); color:var(--text); font-family:'Heebo',sans-serif; outline:none;
+    background:var(--surface); color:var(--text); font-family:'Rubik',sans-serif; outline:none;
   }
   .form-row input:focus, .form-row select:focus { border-color:var(--accent); }
   .btn-save {
     padding:8px 18px; background:var(--accent); color:#fff; border:none;
-    border-radius:var(--radius-sm); font-size:13px; cursor:pointer; font-family:'Heebo',sans-serif; font-weight:500;
+    border-radius:var(--radius-sm); font-size:13px; cursor:pointer; font-family:'Rubik',sans-serif; font-weight:500;
   }
-  .btn-save:hover { background:#245C43; }
+  .btn-save:hover { background:#a34d32; }
   .hidden { display:none !important; }
 
   .prog-bar { height:6px; background:var(--surface2); border-radius:3px; overflow:hidden; margin-top:6px; }
@@ -132,7 +132,7 @@
   .prog-fill.yellow { background:#E6B800; }
   .prog-fill.green  { background:var(--accent); }
 
-  .proj-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:12px 16px; margin-bottom:10px; border-top:4px solid var(--border); transition: opacity 0.2s; }
+  .proj-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:12px 16px; margin-bottom:10px; border-top:4px solid var(--border); transition: opacity 0.2s; box-shadow:0 1px 4px rgba(192,92,61,0.06); }
   .proj-card.s-send    { border-top-color:var(--s-send-b);    background:linear-gradient(to bottom,var(--s-send) 0%,var(--surface) 70px); }
   .proj-card.s-wait    { border-top-color:var(--s-wait-b);    background:linear-gradient(to bottom,var(--s-wait) 0%,var(--surface) 70px); }
   .proj-card.s-edit    { border-top-color:var(--s-edit-b);    background:linear-gradient(to bottom,var(--s-edit) 0%,var(--surface) 70px); }
@@ -164,7 +164,7 @@
   .stage-row { display:flex; gap:4px; margin-top:8px; flex-wrap:wrap; }
   .stage-btn {
     font-size:11px; padding:5px 12px; border:1px solid var(--border); border-radius:20px;
-    background:var(--surface2); cursor:pointer; color:var(--text2); font-family:'Heebo',sans-serif; transition:all 0.15s;
+    background:var(--surface2); cursor:pointer; color:var(--text2); font-family:'Rubik',sans-serif; transition:all 0.15s;
   }
   .stage-btn:hover { border-color:var(--accent); color:var(--accent); }
   .stage-btn.active { color:#fff; font-weight:500; }
@@ -183,7 +183,7 @@
   .num-row input {
     width:65px; padding:6px 10px; font-size:14px; font-weight:500;
     border:1px solid var(--border2); border-radius:var(--radius-sm);
-    background:var(--surface); color:var(--text); font-family:'Heebo',sans-serif; outline:none; text-align:center;
+    background:var(--surface); color:var(--text); font-family:'Rubik',sans-serif; outline:none; text-align:center;
   }
   .num-row input:focus { border-color:var(--accent); }
   .num-row span { font-size:13px; color:var(--text2); }
@@ -193,7 +193,7 @@
   .qbtn {
     padding:5px 10px; font-size:12px; font-weight:500;
     border:1px solid var(--border2); border-radius:var(--radius-sm);
-    background:var(--surface2); cursor:pointer; color:var(--text2); font-family:'Heebo',sans-serif; transition:all 0.15s;
+    background:var(--surface2); cursor:pointer; color:var(--text2); font-family:'Rubik',sans-serif; transition:all 0.15s;
   }
   .qbtn:hover { background:var(--accent-light); border-color:var(--accent); color:var(--accent); }
   .qbtn.minus:hover { background:var(--urgent-light); border-color:var(--urgent); color:var(--urgent); }
@@ -202,7 +202,7 @@
   .notes-area textarea {
     width:100%; padding:8px 12px; font-size:13px; line-height:1.5;
     border:1px solid var(--border); border-radius:var(--radius-sm);
-    background:var(--surface2); color:var(--text); font-family:'Heebo',sans-serif;
+    background:var(--surface2); color:var(--text); font-family:'Rubik',sans-serif;
     resize:none; outline:none; min-height:44px;
   }
   .notes-area textarea:focus { border-color:var(--accent); background:var(--surface); }
@@ -213,7 +213,7 @@
   .session-date { color:var(--text3); min-width:60px; }
   .session-dur { font-weight:600; color:var(--text); flex:1; }
   .session-act { display:flex; gap:4px; }
-  .session-act button { padding:2px 7px; font-size:11px; font-family:'Heebo',sans-serif; border:1px solid var(--border2); border-radius:4px; background:var(--surface2); color:var(--text3); cursor:pointer; }
+  .session-act button { padding:2px 7px; font-size:11px; font-family:'Rubik',sans-serif; border:1px solid var(--border2); border-radius:4px; background:var(--surface2); color:var(--text3); cursor:pointer; }
   .session-act button:hover { border-color:var(--accent); color:var(--accent); }
   .session-edit-row { display:flex; align-items:center; gap:6px; padding:4px 0; }
   .timer-row {
@@ -224,7 +224,7 @@
   .timer-val.running { color:var(--accent); }
   .timer-meta { font-size:11px; color:var(--text3); margin-top:2px; }
   .timer-btn {
-    padding:9px 22px; font-size:13px; font-weight:500; font-family:'Heebo',sans-serif;
+    padding:9px 22px; font-size:13px; font-weight:500; font-family:'Rubik',sans-serif;
     border:1.5px solid var(--border2); border-radius:var(--radius-sm);
     background:var(--surface2); cursor:pointer; color:var(--text2); transition:all 0.15s;
   }
@@ -234,12 +234,12 @@
   .new-day-btn {
     padding:9px 20px; background:var(--accent); color:#fff; border:none;
     border-radius:var(--radius-sm); font-size:14px; font-weight:500;
-    font-family:'Heebo',sans-serif; cursor:pointer; white-space:nowrap;
+    font-family:'Rubik',sans-serif; cursor:pointer; white-space:nowrap;
   }
   .new-day-btn:hover { background:#245C43; }
 
   .edit-btn {
-    padding:4px 10px; font-size:12px; font-family:'Heebo',sans-serif;
+    padding:4px 10px; font-size:12px; font-family:'Rubik',sans-serif;
     border:1px solid var(--border2); border-radius:var(--radius-sm);
     background:var(--surface2); cursor:pointer; color:var(--text2); transition:all 0.15s;
   }
@@ -257,17 +257,17 @@
   .modal-field input, .modal-field select {
     width:100%; padding:9px 12px; font-size:14px;
     border:1px solid var(--border2); border-radius:var(--radius-sm);
-    background:var(--surface); color:var(--text); font-family:'Heebo',sans-serif; outline:none;
+    background:var(--surface); color:var(--text); font-family:'Rubik',sans-serif; outline:none;
   }
   .modal-field input:focus, .modal-field select:focus { border-color:var(--accent); }
   .modal-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
   .modal-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:20px; padding-top:16px; border-top:1px solid var(--border); }
-  .modal-actions button { padding:8px 20px; font-size:13px; font-family:'Heebo',sans-serif; border-radius:var(--radius-sm); cursor:pointer; font-weight:500; }
+  .modal-actions button { padding:8px 20px; font-size:13px; font-family:'Rubik',sans-serif; border-radius:var(--radius-sm); cursor:pointer; font-weight:500; }
   .btn-cancel { background:transparent; border:1px solid var(--border2); color:var(--text2); }
   .btn-delete { background:transparent; border:1px solid var(--urgent); color:var(--urgent); margin-left:auto; }
 
   .wday-btn {
-    padding:4px 7px; font-size:11px; font-family:'Heebo',sans-serif;
+    padding:4px 7px; font-size:11px; font-family:'Rubik',sans-serif;
     border:1px solid var(--border2); border-radius:4px;
     background:var(--surface2); cursor:pointer; color:var(--text3);
   }
@@ -312,7 +312,7 @@
   .billing-summary-item.green strong { color:var(--accent); }
   .billing-summary-item.red strong { color:var(--urgent); }
   .billing-add-row { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; align-items:center; }
-  .billing-add-row input, .billing-add-row select { padding:6px 10px; font-size:13px; border:1px solid var(--border2); border-radius:var(--radius-sm); background:var(--surface); color:var(--text); font-family:'Heebo',sans-serif; outline:none; }
+  .billing-add-row input, .billing-add-row select { padding:6px 10px; font-size:13px; border:1px solid var(--border2); border-radius:var(--radius-sm); background:var(--surface); color:var(--text); font-family:'Rubik',sans-serif; outline:none; }
   .billing-add-row input:focus, .billing-add-row select:focus { border-color:var(--accent); }
   .billing-badge { display:inline-flex; align-items:center; gap:4px; font-size:11px; padding:2px 8px; border-radius:20px; font-weight:500; }
   .billing-badge.all-paid { background:var(--accent-light); color:var(--accent); }
@@ -321,7 +321,7 @@
 
   /* === Dashboard customize === */
   .customize-btn {
-    padding:8px 14px; font-size:13px; font-family:'Heebo',sans-serif;
+    padding:8px 14px; font-size:13px; font-family:'Rubik',sans-serif;
     border:1px solid var(--border2); border-radius:var(--radius-sm);
     background:var(--surface2); color:var(--text2); cursor:pointer; transition:all 0.15s;
   }
@@ -381,13 +381,13 @@
     .stage-btn { font-size:10px; padding:4px 8px; }
     .quick-btns { flex-wrap:wrap; }
     .mobile-nav { display:flex; position:fixed; bottom:0; left:0; right:0; background:var(--surface); border-top:1px solid var(--border); z-index:50; padding:8px 0 20px; }
-    .mobile-nav-item { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 4px; cursor:pointer; color:var(--text3); font-size:10px; border:none; background:transparent; font-family:'Heebo',sans-serif; }
+    .mobile-nav-item { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 4px; cursor:pointer; color:var(--text3); font-size:10px; border:none; background:transparent; font-family:'Rubik',sans-serif; }
     .mobile-nav-item.active { color:var(--accent); }
     .mobile-nav-icon { font-size:20px; }
     .main { padding-bottom:80px; }
     .mobile-filter { display:flex; gap:6px; overflow-x:auto; padding:0 0 12px; margin-bottom:8px; scrollbar-width:none; }
     .mobile-filter::-webkit-scrollbar { display:none; }
-    .mobile-filter-btn { display:flex; align-items:center; gap:4px; white-space:nowrap; padding:5px 12px; font-size:12px; border:1px solid var(--border); border-radius:20px; background:var(--surface2); cursor:pointer; color:var(--text2); font-family:'Heebo',sans-serif; flex-shrink:0; }
+    .mobile-filter-btn { display:flex; align-items:center; gap:4px; white-space:nowrap; padding:5px 12px; font-size:12px; border:1px solid var(--border); border-radius:20px; background:var(--surface2); cursor:pointer; color:var(--text2); font-family:'Rubik',sans-serif; flex-shrink:0; }
     .mobile-filter-btn.active { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:500; }
     .rem-badge .rem-num { font-size:18px; }
     #page-morning.active { height:auto; overflow:visible; display:block; }
@@ -412,7 +412,7 @@
   .lock-sub { font-size:13px; color:var(--text3); margin-bottom:28px; }
   .lock-input-wrap { position:relative; margin-bottom:16px; }
   .lock-input {
-    width:100%; padding:12px 44px 12px 16px; font-size:15px; font-family:'Heebo',sans-serif;
+    width:100%; padding:12px 44px 12px 16px; font-size:15px; font-family:'Rubik',sans-serif;
     border:1.5px solid var(--border2); border-radius:var(--radius); background:var(--surface2);
     color:var(--text); outline:none; text-align:right; direction:ltr;
   }
@@ -420,7 +420,7 @@
   .lock-input.error { border-color:var(--urgent); }
   .lock-toggle { position:absolute; left:12px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; font-size:16px; color:var(--text3); }
   .lock-submit {
-    width:100%; padding:12px; font-size:15px; font-weight:600; font-family:'Heebo',sans-serif;
+    width:100%; padding:12px; font-size:15px; font-weight:600; font-family:'Rubik',sans-serif;
     background:var(--accent); color:#fff; border:none; border-radius:var(--radius); cursor:pointer; transition:background 0.15s;
   }
   .lock-submit:hover { background:#245C43; }
@@ -446,7 +446,7 @@
   .billing-stat-val { font-size:26px; font-weight:600; color:var(--accent); }
   .billing-stat-label { font-size:12px; color:var(--text3); margin-top:4px; }
   .billing-year-tabs { display:flex; gap:6px; margin-bottom:18px; }
-  .billing-year-tab { padding:6px 16px; font-size:13px; font-family:'Heebo',sans-serif; border:1px solid var(--border2); border-radius:20px; background:var(--surface2); color:var(--text2); cursor:pointer; }
+  .billing-year-tab { padding:6px 16px; font-size:13px; font-family:'Rubik',sans-serif; border:1px solid var(--border2); border-radius:20px; background:var(--surface2); color:var(--text2); cursor:pointer; }
   .billing-year-tab.active { background:var(--accent); color:#fff; border-color:var(--accent); }
   .billing-chart { display:flex; align-items:flex-end; gap:4px; height:120px; margin-bottom:20px; padding:0 4px; }
   .billing-bar-wrap { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; height:100%; justify-content:flex-end; }
@@ -463,7 +463,7 @@
   .billing-record-edit { background:none; border:none; cursor:pointer; color:var(--text3); font-size:14px; padding:4px; }
   .billing-record-edit:hover { color:var(--text); }
   .bm-supplier-row { display:flex; gap:8px; align-items:center; margin-bottom:8px; }
-  .bm-supplier-row input { flex:1; padding:6px 10px; font-size:13px; border:1px solid var(--border2); border-radius:6px; font-family:'Heebo',sans-serif; }
+  .bm-supplier-row input { flex:1; padding:6px 10px; font-size:13px; border:1px solid var(--border2); border-radius:6px; font-family:'Rubik',sans-serif; }
   .bm-supplier-row input[type=number] { width:100px; flex:none; }
   .bm-remove { background:none; border:none; cursor:pointer; color:var(--text3); font-size:16px; padding:0 4px; }
   .bm-remove:hover { color:var(--urgent); }
@@ -507,15 +507,15 @@
     <div style="margin-top:auto;padding:16px 24px;border-top:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">סנכרון ענן</div>
       <div id="sync-status" style="font-size:12px;color:var(--text3);margin-bottom:10px">מתחבר...</div>
-      <button onclick="exportBackup()" style="width:100%;padding:7px;font-size:12px;font-family:'Heebo',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text2);cursor:pointer;margin-bottom:6px;">💾 ייצוא גיבוי</button>
-      <label style="width:100%;display:block;padding:7px;font-size:12px;font-family:'Heebo',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text2);cursor:pointer;text-align:center;margin-bottom:6px;">
+      <button onclick="exportBackup()" style="width:100%;padding:7px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text2);cursor:pointer;margin-bottom:6px;">💾 ייצוא גיבוי</button>
+      <label style="width:100%;display:block;padding:7px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text2);cursor:pointer;text-align:center;margin-bottom:6px;">
         📂 ייבוא גיבוי
         <input type="file" accept=".json" onchange="importBackup(event)" style="display:none" />
       </label>
-      <button onclick="showRestoreMenu()" style="width:100%;padding:7px;font-size:12px;font-family:'Heebo',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text2);cursor:pointer;margin-bottom:6px;">🔄 שחזר גיבוי אוטומטי</button>
+      <button onclick="showRestoreMenu()" style="width:100%;padding:7px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text2);cursor:pointer;margin-bottom:6px;">🔄 שחזר גיבוי אוטומטי</button>
       <div id="auto-backup-list" class="hidden" style="margin-bottom:6px;"></div>
-      <button onclick="changePin()" style="width:100%;padding:7px;font-size:12px;font-family:'Heebo',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text3);cursor:pointer;margin-bottom:6px;">🔒 שנה קוד גישה</button>
-      <button onclick="resetAll()" style="width:100%;padding:7px;font-size:12px;font-family:'Heebo',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text3);cursor:pointer;">🗑 מחק הכל</button>
+      <button onclick="changePin()" style="width:100%;padding:7px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text3);cursor:pointer;margin-bottom:6px;">🔒 שנה קוד גישה</button>
+      <button onclick="resetAll()" style="width:100%;padding:7px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text3);cursor:pointer;">🗑 מחק הכל</button>
     </div>
   </aside>
 
@@ -603,9 +603,9 @@
       <div class="card" style="margin-bottom:16px;">
         <div class="card-title">סמני את ימי העריכה שלך החודש</div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-          <button onclick="calPrevMonth()" style="padding:4px 12px;font-size:13px;font-family:'Heebo',sans-serif;border:1px solid var(--border2);border-radius:6px;background:var(--surface2);cursor:pointer;">→</button>
+          <button onclick="calPrevMonth()" style="padding:4px 12px;font-size:13px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:6px;background:var(--surface2);cursor:pointer;">→</button>
           <div id="cal-title" style="font-size:15px;font-weight:600;"></div>
-          <button onclick="calNextMonth()" style="padding:4px 12px;font-size:13px;font-family:'Heebo',sans-serif;border:1px solid var(--border2);border-radius:6px;background:var(--surface2);cursor:pointer;">←</button>
+          <button onclick="calNextMonth()" style="padding:4px 12px;font-size:13px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:6px;background:var(--surface2);cursor:pointer;">←</button>
         </div>
         <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;margin-bottom:6px;">
           <div style="font-size:11px;color:var(--text3);padding:4px;">א</div><div style="font-size:11px;color:var(--text3);padding:4px;">ב</div><div style="font-size:11px;color:var(--text3);padding:4px;">ג</div><div style="font-size:11px;color:var(--text3);padding:4px;">ד</div><div style="font-size:11px;color:var(--text3);padding:4px;">ה</div><div style="font-size:11px;color:var(--text3);padding:4px;">ו</div><div style="font-size:11px;color:var(--text3);padding:4px;">ש</div>
@@ -626,15 +626,15 @@
           <div style="display:flex;flex-direction:column;gap:8px;">
             <div style="display:flex;gap:8px;align-items:center;">
               <label style="font-size:13px;color:var(--text2);width:140px;">שעות עבודה ביום</label>
-              <input type="number" id="s-hours" min="1" max="16" value="6" style="width:56px;padding:5px 8px;font-size:13px;border:1px solid var(--border2);border-radius:6px;font-family:'Heebo',sans-serif;" oninput="saveSettings()"/>
+              <input type="number" id="s-hours" min="1" max="16" value="6" style="width:56px;padding:5px 8px;font-size:13px;border:1px solid var(--border2);border-radius:6px;font-family:'Rubik',sans-serif;" oninput="saveSettings()"/>
             </div>
             <div style="display:flex;gap:8px;align-items:center;">
               <label style="font-size:13px;color:var(--text2);width:140px;">תמונות/יום (סה״כ)</label>
-              <input type="number" id="s-rate" min="1" max="500" value="20" style="width:56px;padding:5px 8px;font-size:13px;border:1px solid var(--border2);border-radius:6px;font-family:'Heebo',sans-serif;" oninput="saveSettings()"/>
+              <input type="number" id="s-rate" min="1" max="500" value="20" style="width:56px;padding:5px 8px;font-size:13px;border:1px solid var(--border2);border-radius:6px;font-family:'Rubik',sans-serif;" oninput="saveSettings()"/>
             </div>
             <div style="display:flex;gap:8px;align-items:center;">
               <label style="font-size:13px;color:var(--text2);width:140px;">תמונות לפרויקט/יום</label>
-              <input type="number" id="s-rate-proj" min="1" max="200" value="10" style="width:56px;padding:5px 8px;font-size:13px;border:1px solid var(--border2);border-radius:6px;font-family:'Heebo',sans-serif;" oninput="saveSettings()"/>
+              <input type="number" id="s-rate-proj" min="1" max="200" value="10" style="width:56px;padding:5px 8px;font-size:13px;border:1px solid var(--border2);border-radius:6px;font-family:'Rubik',sans-serif;" oninput="saveSettings()"/>
             </div>
           </div>
           <div>
@@ -683,11 +683,11 @@
       <div class="page-header">
         <div><div class="page-title">הכנסות</div></div>
         <div style="display:flex;gap:8px;">
-          <label style="padding:8px 16px;font-size:13px;font-family:'Heebo',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">
+          <label style="padding:8px 16px;font-size:13px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">
             📥 ייבוא CSV
             <input type="file" accept=".csv" onchange="importBillingCSV(event)" style="display:none"/>
           </label>
-          <button onclick="openBillingModal()" style="padding:8px 16px;font-size:13px;font-family:'Heebo',sans-serif;border:none;border-radius:var(--radius-sm);background:var(--accent);color:#fff;cursor:pointer;">+ הוסף</button>
+          <button onclick="openBillingModal()" style="padding:8px 16px;font-size:13px;font-family:'Rubik',sans-serif;border:none;border-radius:var(--radius-sm);background:var(--accent);color:#fff;cursor:pointer;">+ הוסף</button>
         </div>
       </div>
       <div class="billing-year-tabs" id="billing-year-tabs"></div>
@@ -701,10 +701,10 @@
           <span>💜 זיכויים ללקוחות</span>
         </div>
         <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
-          <input id="credit-client" placeholder="שם לקוח" style="flex:1;min-width:100px;padding:6px 10px;font-size:13px;border:1px solid #c4b5fd;border-radius:var(--radius-sm);font-family:'Heebo',sans-serif;" />
-          <input id="credit-amount" type="number" placeholder="סכום ₪" style="width:90px;padding:6px 10px;font-size:13px;border:1px solid #c4b5fd;border-radius:var(--radius-sm);font-family:'Heebo',sans-serif;" />
-          <input id="credit-note" placeholder="הערה (אופציונלי)" style="flex:1;min-width:100px;padding:6px 10px;font-size:13px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-family:'Heebo',sans-serif;" />
-          <button onclick="addGlobalCredit()" style="padding:6px 14px;font-size:13px;font-family:'Heebo',sans-serif;background:#7c3aed;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;">+ הוסף זיכוי</button>
+          <input id="credit-client" placeholder="שם לקוח" style="flex:1;min-width:100px;padding:6px 10px;font-size:13px;border:1px solid #c4b5fd;border-radius:var(--radius-sm);font-family:'Rubik',sans-serif;" />
+          <input id="credit-amount" type="number" placeholder="סכום ₪" style="width:90px;padding:6px 10px;font-size:13px;border:1px solid #c4b5fd;border-radius:var(--radius-sm);font-family:'Rubik',sans-serif;" />
+          <input id="credit-note" placeholder="הערה (אופציונלי)" style="flex:1;min-width:100px;padding:6px 10px;font-size:13px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-family:'Rubik',sans-serif;" />
+          <button onclick="addGlobalCredit()" style="padding:6px 14px;font-size:13px;font-family:'Rubik',sans-serif;background:#7c3aed;color:#fff;border:none;border-radius:var(--radius-sm);cursor:pointer;">+ הוסף זיכוי</button>
         </div>
         <div id="credits-list"></div>
       </div>
@@ -716,16 +716,16 @@
         <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
           <span>רשומות</span>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <select id="billing-filter-client" onchange="renderBillingPage()" style="padding:5px 10px;font-size:12px;font-family:'Heebo',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">
+            <select id="billing-filter-client" onchange="renderBillingPage()" style="padding:5px 10px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">
               <option value="">כל הלקוחות</option>
             </select>
-            <select id="billing-sort" onchange="renderBillingPage()" style="padding:5px 10px;font-size:12px;font-family:'Heebo',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">
+            <select id="billing-sort" onchange="renderBillingPage()" style="padding:5px 10px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">
               <option value="date-desc">לפי תאריך (חדש)</option>
               <option value="date-asc">לפי תאריך (ישן)</option>
               <option value="amount-desc">לפי סכום (גבוה)</option>
               <option value="amount-asc">לפי סכום (נמוך)</option>
             </select>
-            <button onclick="toggleBillingClientView()" id="billing-client-view-btn" style="padding:5px 12px;font-size:12px;font-family:'Heebo',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">לפי לקוח</button>
+            <button onclick="toggleBillingClientView()" id="billing-client-view-btn" style="padding:5px 12px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">לפי לקוח</button>
             <span id="billing-count" style="font-weight:400;color:var(--text3);font-size:13px;"></span>
           </div>
         </div>
@@ -738,11 +738,11 @@
     <div id="page-projects" class="page">
       <div class="page-header">
         <div class="page-title" id="proj-page-title">פרויקטים</div>
-        <button onclick="collapseAll()" style="padding:7px 16px;font-size:12px;font-family:'Heebo',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">▲ קפל הכל</button>
-        <button id="sort-toggle-btn" onclick="toggleProjectSort()" style="padding:7px 16px;font-size:12px;font-family:'Heebo',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">📅 לפי תאריך</button>
+        <button onclick="collapseAll()" style="padding:7px 16px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">▲ קפל הכל</button>
+        <button id="sort-toggle-btn" onclick="toggleProjectSort()" style="padding:7px 16px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">📅 לפי תאריך</button>
       </div>
       <div id="deadline-alerts" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;"></div>
-      <input id="proj-search" type="text" placeholder="🔍 חיפוש לפי לקוח או שם פרויקט..." oninput="renderProjects()" style="width:100%;padding:8px 14px;font-size:13px;font-family:'Heebo',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);margin-bottom:14px;box-sizing:border-box;outline:none;" />
+      <input id="proj-search" type="text" placeholder="🔍 חיפוש לפי לקוח או שם פרויקט..." oninput="renderProjects()" style="width:100%;padding:8px 14px;font-size:13px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);margin-bottom:14px;box-sizing:border-box;outline:none;" />
       <div id="proj-stage-tabs" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px;"></div>
       <div id="projects-list"></div>
       <button class="add-btn" onclick="toggleEl('add-proj-form')">+ פרויקט חדש</button>
@@ -829,12 +829,12 @@
     <div style="margin-bottom:12px;">
       <div style="font-size:12px;color:var(--text3);margin-bottom:6px;font-weight:500;">תשלום מעצבת</div>
       <input id="bm-designer" type="number" min="0" placeholder="0 ₪" oninput="updateBillingTotal()"
-             style="width:140px;padding:7px 10px;font-size:14px;border:1px solid var(--border2);border-radius:6px;font-family:'Heebo',sans-serif;"/>
+             style="width:140px;padding:7px 10px;font-size:14px;border:1px solid var(--border2);border-radius:6px;font-family:'Rubik',sans-serif;"/>
     </div>
     <div style="margin-bottom:8px;">
       <div style="font-size:12px;color:var(--text3);margin-bottom:6px;font-weight:500;">ספקים</div>
       <div id="bm-suppliers"></div>
-      <button onclick="addBillingSupplier()" style="font-size:12px;color:var(--accent);background:none;border:1px dashed var(--accent);border-radius:6px;padding:4px 12px;cursor:pointer;font-family:'Heebo',sans-serif;">+ ספק</button>
+      <button onclick="addBillingSupplier()" style="font-size:12px;color:var(--accent);background:none;border:1px dashed var(--accent);border-radius:6px;padding:4px 12px;cursor:pointer;font-family:'Rubik',sans-serif;">+ ספק</button>
     </div>
     <div style="padding:12px 0;border-top:1px solid var(--border);margin-top:8px;display:flex;justify-content:space-between;align-items:center;">
       <span style="font-size:13px;color:var(--text2);">סה"כ</span>
@@ -1012,7 +1012,7 @@ function showRestoreMenu() {
   const dates = listAutoBackups();
   if (!dates.length) { alert('אין גיבויים אוטומטיים שמורים עדיין'); return; }
   el.innerHTML = dates.map(d =>
-    `<button onclick="restoreAutoBackup('${d}')" style="display:block;width:100%;text-align:right;padding:6px 10px;margin-bottom:4px;font-size:12px;font-family:'Heebo',sans-serif;border:1px solid var(--border);border-radius:6px;background:var(--surface2);cursor:pointer;color:var(--text2);">📅 ${d}</button>`
+    `<button onclick="restoreAutoBackup('${d}')" style="display:block;width:100%;text-align:right;padding:6px 10px;margin-bottom:4px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border);border-radius:6px;background:var(--surface2);cursor:pointer;color:var(--text2);">📅 ${d}</button>`
   ).join('');
   el.classList.toggle('hidden');
 }
@@ -2243,7 +2243,7 @@ function renderProjects() {
       const count = s.key === null ? state.projects.length : state.projects.filter(p => p.stage === s.key).length;
       const isActive = stageFilter === s.key;
       return `<button onclick="filterStage(${s.key===null?'null':`'${s.key}'`})"
-        style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;font-size:13px;font-family:'Heebo',sans-serif;border-radius:20px;cursor:pointer;transition:all 0.15s;
+        style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;font-size:13px;font-family:'Rubik',sans-serif;border-radius:20px;cursor:pointer;transition:all 0.15s;
           border:1px solid ${isActive ? s.color : 'var(--border2)'};
           background:${isActive ? s.color : 'var(--surface2)'};
           color:${isActive ? '#fff' : 'var(--text2)'};font-weight:${isActive?'600':'400'};">
@@ -2318,7 +2318,7 @@ function renderProjects() {
           <div style="margin-bottom:6px;">
             <div style="font-size:11px;color:var(--text3);margin-bottom:3px;">🎯 יעד (הגדרה)</div>
             <input type="number" value="${gt || ''}" min="0" placeholder="הגדירי יעד..." oninput="updateGoalTarget(${p.id},this.value)"
-              style="width:90px;padding:6px 10px;font-size:14px;font-weight:600;border:2px solid var(--accent);border-radius:var(--radius-sm);background:var(--accent-light);color:var(--accent);font-family:'Heebo',sans-serif;outline:none;text-align:center;" />
+              style="width:90px;padding:6px 10px;font-size:14px;font-weight:600;border:2px solid var(--accent);border-radius:var(--radius-sm);background:var(--accent-light);color:var(--accent);font-family:'Rubik',sans-serif;outline:none;text-align:center;" />
             <span style="font-size:12px;color:var(--text3);margin-right:6px;">תמונות</span>
           </div>
           <div style="margin-bottom:6px;">
@@ -2346,17 +2346,17 @@ function renderProjects() {
           <div class="proj-section-label">זמן עבודה כולל</div>
           <div style="display:flex;align-items:center;gap:8px;">
             <div class="timer-val ${isRunning ? 'running' : ''}" id="ptv-${p.id}">${fmtTime(secs)}</div>
-            <button onclick="toggleTimerEdit(${p.id})" title="הוסף רשומה ידנית" style="padding:2px 7px;font-size:11px;font-family:'Heebo',sans-serif;border:1px solid var(--border2);border-radius:4px;background:var(--surface2);color:var(--text3);cursor:pointer;">+ הוסף</button>
+            <button onclick="toggleTimerEdit(${p.id})" title="הוסף רשומה ידנית" style="padding:2px 7px;font-size:11px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:4px;background:var(--surface2);color:var(--text3);cursor:pointer;">+ הוסף</button>
           </div>
           <div id="timer-edit-${p.id}" class="hidden" style="margin-top:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
             <div style="display:flex;align-items:center;gap:4px;">
-              <input type="number" id="timer-edit-h-${p.id}" min="0" max="23" placeholder="0" style="width:52px;padding:4px 8px;font-size:13px;border:1px solid var(--border2);border-radius:4px;font-family:'Heebo',sans-serif;text-align:center;" />
+              <input type="number" id="timer-edit-h-${p.id}" min="0" max="23" placeholder="0" style="width:52px;padding:4px 8px;font-size:13px;border:1px solid var(--border2);border-radius:4px;font-family:'Rubik',sans-serif;text-align:center;" />
               <span style="font-size:12px;color:var(--text3);">שע׳</span>
-              <input type="number" id="timer-edit-m-${p.id}" min="0" max="59" placeholder="0" style="width:52px;padding:4px 8px;font-size:13px;border:1px solid var(--border2);border-radius:4px;font-family:'Heebo',sans-serif;text-align:center;" />
+              <input type="number" id="timer-edit-m-${p.id}" min="0" max="59" placeholder="0" style="width:52px;padding:4px 8px;font-size:13px;border:1px solid var(--border2);border-radius:4px;font-family:'Rubik',sans-serif;text-align:center;" />
               <span style="font-size:12px;color:var(--text3);">דק׳</span>
             </div>
-            <button onclick="saveTimerEdit(${p.id})" style="padding:4px 10px;font-size:12px;font-family:'Heebo',sans-serif;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;">שמור</button>
-            <button onclick="toggleTimerEdit(${p.id})" style="padding:4px 8px;font-size:12px;font-family:'Heebo',sans-serif;background:transparent;border:1px solid var(--border2);border-radius:4px;cursor:pointer;color:var(--text3);">ביטול</button>
+            <button onclick="saveTimerEdit(${p.id})" style="padding:4px 10px;font-size:12px;font-family:'Rubik',sans-serif;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;">שמור</button>
+            <button onclick="toggleTimerEdit(${p.id})" style="padding:4px 8px;font-size:12px;font-family:'Rubik',sans-serif;background:transparent;border:1px solid var(--border2);border-radius:4px;cursor:pointer;color:var(--text3);">ביטול</button>
           </div>
           ${(p.timeLogs||[]).length>0?`<div class="session-log">${(p.timeLogs||[]).map(l=>{
             const lh=Math.floor(l.seconds/3600), lm=Math.floor((l.seconds%3600)/60);
@@ -2370,8 +2370,8 @@ function renderProjects() {
               </div>
             </div>
             <div id="sedit-${l.id}" class="session-edit-row hidden">
-              <input id="sedit-val-${l.id}" type="text" placeholder="שע:דק" style="width:80px;padding:3px 7px;font-size:12px;border:1px solid var(--border2);border-radius:4px;font-family:'Heebo',sans-serif;" />
-              <button onclick="saveTimerSession(${p.id},${l.id})" style="padding:3px 8px;font-size:11px;font-family:'Heebo',sans-serif;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;">שמור</button>
+              <input id="sedit-val-${l.id}" type="text" placeholder="שע:דק" style="width:80px;padding:3px 7px;font-size:12px;border:1px solid var(--border2);border-radius:4px;font-family:'Rubik',sans-serif;" />
+              <button onclick="saveTimerSession(${p.id},${l.id})" style="padding:3px 8px;font-size:11px;font-family:'Rubik',sans-serif;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;">שמור</button>
             </div>`;
           }).join('')}</div>`:''}
         </div>
@@ -2628,7 +2628,7 @@ function renderBillingSection(p) {
   const remainAmount = totalWithVat - paidAmount;
 
   const baseButtons = [2700, 3700, 5000].map(v =>
-    `<button onclick="updateBillingBase(${p.id},${v})" style="padding:4px 10px;font-size:12px;font-family:'Heebo',sans-serif;border:1px solid ${base===v?'var(--accent)':'var(--border2)'};border-radius:20px;background:${base===v?'var(--accent-light)':'var(--surface2)'};color:${base===v?'var(--accent)':'var(--text2)'};cursor:pointer;font-weight:${base===v?600:400};">₪${v.toLocaleString()}</button>`
+    `<button onclick="updateBillingBase(${p.id},${v})" style="padding:4px 10px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid ${base===v?'var(--accent)':'var(--border2)'};border-radius:20px;background:${base===v?'var(--accent-light)':'var(--surface2)'};color:${base===v?'var(--accent)':'var(--text2)'};cursor:pointer;font-weight:${base===v?600:400};">₪${v.toLocaleString()}</button>`
   ).join('');
 
   const vendorRows = vendors.map((pay, i) => {
@@ -2639,7 +2639,7 @@ function renderBillingSection(p) {
       <span class="billing-type">ספק</span>
       <span class="billing-name">${pay.name}</span>
       <div style="display:flex;align-items:center;gap:6px;">
-        <input type="number" value="${amt}" style="width:75px;padding:4px 8px;font-size:13px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-family:'Heebo',sans-serif;text-align:center;" onchange="updateVendorAmount(${p.id},${realIdx},this.value)" />
+        <input type="number" value="${amt}" style="width:75px;padding:4px 8px;font-size:13px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-family:'Rubik',sans-serif;text-align:center;" onchange="updateVendorAmount(${p.id},${realIdx},this.value)" />
         ${paidToDesigner
           ? `<span style="font-size:11px;color:var(--high);font-weight:500;">שילם למעצבת</span>`
           : `<span style="font-size:11px;color:var(--text3);">(${fmtILS(amt*VAT_RATE)} כולל מעמ)</span>`
@@ -2657,7 +2657,7 @@ function renderBillingSection(p) {
       <span class="billing-type" style="background:#7c3aed;color:#fff;">זיכוי</span>
       <span class="billing-name" style="color:#5b21b6;">${pay.name}</span>
       <div style="display:flex;align-items:center;gap:6px;">
-        <input type="number" value="${amt}" style="width:75px;padding:4px 8px;font-size:13px;border:1px solid #c4b5fd;border-radius:var(--radius-sm);font-family:'Heebo',sans-serif;text-align:center;" onchange="updateCreditAmount(${p.id},${realIdx},this.value)" />
+        <input type="number" value="${amt}" style="width:75px;padding:4px 8px;font-size:13px;border:1px solid #c4b5fd;border-radius:var(--radius-sm);font-family:'Rubik',sans-serif;text-align:center;" onchange="updateCreditAmount(${p.id},${realIdx},this.value)" />
         <span style="font-size:11px;color:#7c3aed;">(${fmtILS(amt*VAT_RATE)} כולל מעמ)</span>
       </div>
       <button class="billing-delete-btn" onclick="deletePayer(${p.id},${realIdx})" style="margin-right:auto;">✕</button>
@@ -2688,17 +2688,17 @@ function renderBillingSection(p) {
           ${base ? `<div style="font-size:14px;font-weight:700;color:var(--accent);">₪${base.toLocaleString()} <span style="font-size:11px;font-weight:400;color:var(--text3);">נבחר</span></div>` : '<div style="font-size:12px;color:var(--text3);">לא נבחר</div>'}
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">${baseButtons}
-          <input type="number" placeholder="אחר..." value="${base && ![2700,3700,5000].includes(base)?base:''}" style="width:90px;padding:4px 8px;font-size:12px;border:1px solid var(--border2);border-radius:20px;font-family:'Heebo',sans-serif;" onchange="updateBillingBase(${p.id},this.value)" />
+          <input type="number" placeholder="אחר..." value="${base && ![2700,3700,5000].includes(base)?base:''}" style="width:90px;padding:4px 8px;font-size:12px;border:1px solid var(--border2);border-radius:20px;font-family:'Rubik',sans-serif;" onchange="updateBillingBase(${p.id},this.value)" />
         </div>
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
           <div style="display:flex;align-items:center;gap:6px;">
             <span style="font-size:12px;color:var(--accent);">+ תוספת:</span>
-            <input type="number" value="${adj||''}" placeholder="0" min="0" style="width:75px;padding:4px 8px;font-size:12px;border:1px solid var(--accent);border-radius:var(--radius-sm);font-family:'Heebo',sans-serif;text-align:center;" onchange="updateBillingAdj(${p.id},this.value)" />
+            <input type="number" value="${adj||''}" placeholder="0" min="0" style="width:75px;padding:4px 8px;font-size:12px;border:1px solid var(--accent);border-radius:var(--radius-sm);font-family:'Rubik',sans-serif;text-align:center;" onchange="updateBillingAdj(${p.id},this.value)" />
           </div>
           <div style="display:flex;align-items:center;gap:6px;">
             <span style="font-size:12px;color:var(--urgent);">− הנחה:</span>
-            <input type="number" value="${discountRaw||''}" placeholder="0" min="0" max="${discountType==='pct'?100:''}" style="width:65px;padding:4px 8px;font-size:12px;border:1px solid var(--urgent);border-radius:var(--radius-sm);font-family:'Heebo',sans-serif;text-align:center;" onchange="updateBillingDiscount(${p.id},this.value)" />
-            <button onclick="toggleDiscountType(${p.id})" title="החלף בין ₪ לאחוז" style="padding:3px 8px;font-size:12px;font-family:'Heebo',sans-serif;border:1px solid var(--urgent);border-radius:var(--radius-sm);background:${discountType==='pct'?'var(--urgent)':'var(--surface2)'};color:${discountType==='pct'?'#fff':'var(--urgent)'};cursor:pointer;font-weight:600;">${discountType==='pct'?'%':'₪'}</button>
+            <input type="number" value="${discountRaw||''}" placeholder="0" min="0" max="${discountType==='pct'?100:''}" style="width:65px;padding:4px 8px;font-size:12px;border:1px solid var(--urgent);border-radius:var(--radius-sm);font-family:'Rubik',sans-serif;text-align:center;" onchange="updateBillingDiscount(${p.id},this.value)" />
+            <button onclick="toggleDiscountType(${p.id})" title="החלף בין ₪ לאחוז" style="padding:3px 8px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--urgent);border-radius:var(--radius-sm);background:${discountType==='pct'?'var(--urgent)':'var(--surface2)'};color:${discountType==='pct'?'#fff':'var(--urgent)'};cursor:pointer;font-weight:600;">${discountType==='pct'?'%':'₪'}</button>
             ${discountType==='pct' && discountRaw ? `<span style="font-size:11px;color:var(--urgent);">(${fmtILS(discount)})</span>` : ''}
           </div>
           ${totalBeforeVat ? `<span style="font-size:13px;font-weight:600;color:var(--text);">סה״כ: ${fmtILS(totalBeforeVat)} <span style="font-size:11px;color:var(--text3);font-weight:400;">(${fmtILS(totalBeforeVat*VAT_RATE)} כולל מעמ)</span></span>` : ''}
