@@ -287,15 +287,6 @@
   .urgency-row { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); }
   .urgency-row:last-child { border-bottom:none; }
 
-  /* Dark terracotta billing panel */
-  #panel-billing { background:#4a1a0a; border-color:#4a1a0a; color:#fff; }
-  #panel-billing .card-title { color:rgba(255,255,255,0.65); }
-  #panel-billing .urgency-row { border-bottom-color:rgba(255,255,255,0.12); }
-  #panel-billing .urgency-name { color:#fff; }
-  #panel-billing .urgency-sub { color:rgba(255,255,255,0.6); }
-  #panel-billing .panel-handle, #panel-billing .panel-resize-handle { color:rgba(255,255,255,0.35); }
-  #panel-billing .billing-paid-btn { background:rgba(255,255,255,0.15); color:#fff; border-color:rgba(255,255,255,0.25); }
-  #panel-billing .billing-paid-btn:hover { background:rgba(255,255,255,0.28); }
   .urgency-days { font-size:22px; font-weight:600; min-width:36px; text-align:center; }
   .urgency-days.ok { color:var(--accent); }
   .urgency-days.warn { color:var(--high); }
@@ -2786,16 +2777,16 @@ function renderBillingSummaryMorning() {
   const darkPanel = !!document.getElementById('panel-billing')?.style || true; // always dark
 
   if (!activeRows.length && !pendingRows.length) {
-    el.innerHTML = '<p style="font-size:13px;color:rgba(255,255,255,0.7)">✓ הכל מסודר</p>'; return;
+    el.innerHTML = '<p style="font-size:13px;color:var(--accent)">✓ הכל מסודר</p>'; return;
   }
 
   let html = '';
 
   html += activeRows.map(r => `
     <div class="urgency-row">
-      <div style="min-width:52px;text-align:center;background:rgba(0,0,0,0.2);border-radius:6px;padding:4px 6px;">
-        <div style="font-size:14px;font-weight:700;color:#fff;">₪${r.amt.toLocaleString()}</div>
-        <div style="font-size:9px;color:rgba(255,255,255,0.6);">${r.type==='client'?'לקוח':'ספק'}</div>
+      <div class="urgency-days danger" style="min-width:52px;text-align:center;">
+        <div style="font-size:14px;font-weight:700;">₪${r.amt.toLocaleString()}</div>
+        <div style="font-size:9px;opacity:0.75;">${r.type==='client'?'לקוח':'ספק'}</div>
       </div>
       <div class="urgency-info">
         <div class="urgency-name">${r.name || r.label}</div>
@@ -2806,9 +2797,9 @@ function renderBillingSummaryMorning() {
 
   html += pendingRows.map(r => `
     <div class="urgency-row" style="opacity:0.7;">
-      <div style="min-width:52px;text-align:center;background:rgba(0,0,0,0.15);border-radius:6px;padding:4px 6px;">
-        <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,0.85);">₪${r.amt.toLocaleString()}</div>
-        <div style="font-size:9px;color:rgba(255,255,255,0.5);">צפוי</div>
+      <div class="urgency-days" style="min-width:52px;text-align:center;background:var(--surface2);border-radius:6px;padding:4px;">
+        <div style="font-size:13px;font-weight:600;color:var(--text2);">₪${r.amt.toLocaleString()}</div>
+        <div style="font-size:9px;color:var(--text3);">צפוי</div>
       </div>
       <div class="urgency-info">
         <div class="urgency-name">${r.label}</div>
@@ -2817,7 +2808,7 @@ function renderBillingSummaryMorning() {
     </div>`).join('');
 
   const grandTotal = totalActive + totalPending;
-  html += `<div style="margin-top:10px;padding:12px 14px;background:rgba(0,0,0,0.25);border-radius:var(--radius-sm);">
+  html += `<div style="margin-top:10px;padding:12px 14px;background:#4a1a0a;border-radius:var(--radius-sm);">
     <div style="display:flex;justify-content:space-between;align-items:center;">
       <span style="font-size:12px;color:rgba(255,255,255,0.6);font-weight:500;text-transform:uppercase;letter-spacing:0.05em;">סה״כ פתוח</span>
       <span style="font-size:22px;font-weight:700;color:#fff;">₪${grandTotal.toLocaleString()}</span>
