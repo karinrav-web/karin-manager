@@ -378,9 +378,12 @@
   .morning-grid { display:flex; flex:1; min-height:0; gap:0; align-items:stretch; }
   .morning-col { display:flex; flex-direction:column; gap:10px; min-height:0; overflow:hidden; flex:1; min-width:180px; }
   #mcol-right { flex:0 0 264px; }
-  .col-resizer { width:16px; cursor:col-resize; flex-shrink:0; display:flex; align-items:center; justify-content:center; border-radius:3px; transition:background 0.15s; }
-  .col-resizer:hover { background:var(--surface2); }
-  .col-resizer-bar { width:3px; height:36px; border-radius:3px; background:var(--border2); pointer-events:none; }
+  .col-resizer { width:20px; cursor:col-resize; flex-shrink:0; display:flex; align-items:center; justify-content:center; border-radius:4px; transition:background 0.15s; position:relative; }
+  .col-resizer:hover { background:var(--accent-light); }
+  .col-resizer:hover .col-resizer-bar { background:var(--accent); }
+  .col-resizer-bar { width:4px; height:48px; border-radius:4px; background:var(--border2); pointer-events:none; transition:background 0.15s; }
+  .col-resizer::before { content:'↔'; position:absolute; top:50%; transform:translateY(-50%); font-size:11px; color:var(--text3); opacity:0; transition:opacity 0.15s; }
+  .col-resizer:hover::before { opacity:1; }
   .morning-panel { flex:1; overflow-y:auto; margin-bottom:0 !important; min-height:0; }
   .morning-legend { flex-shrink:0; margin-bottom:0 !important; }
 
