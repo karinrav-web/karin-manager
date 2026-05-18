@@ -533,7 +533,7 @@
 
   <main class="main">
     <header class="app-topbar">
-      <div class="app-topbar-title" id="morning-greeting-bar">שלום קרין! 👋</div>
+      <div class="app-topbar-title" id="morning-greeting-bar">שלום שלום קרין! 👋</div>
       <div style="display:flex;align-items:center;gap:12px;">
         <span class="material-symbols-outlined" style="color:var(--text3);cursor:pointer;">notifications</span>
         <div class="logo-avatar" style="width:36px;height:36px;font-size:13px;">KR</div>
@@ -1376,7 +1376,7 @@ function openProjectFromUrgency(projId) {
 }
 function setGreeting() {
   const h = new Date().getHours();
-  document.getElementById('morning-greeting').textContent = 'שלום קרין! 👋';
+  document.getElementById('morning-greeting').textContent = 'שלום שלום קרין! 👋';
   const d = new Date(), days=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
   document.getElementById('today-date').textContent = 'יום '+days[d.getDay()]+', '+d.toLocaleDateString('he-IL');
 }
@@ -2808,7 +2808,7 @@ function renderBillingSummaryMorning() {
     </div>`).join('');
 
   const grandTotal = totalActive + totalPending;
-  html += `<div style="margin-top:10px;padding:12px 14px;background:#4a1a0a;border-radius:var(--radius-sm);">
+  html += `<div style="margin-top:10px;padding:12px 14px;background:#8a3820;border-radius:var(--radius-sm);">
     <div style="display:flex;justify-content:space-between;align-items:center;">
       <span style="font-size:12px;color:rgba(255,255,255,0.6);font-weight:500;text-transform:uppercase;letter-spacing:0.05em;">סה״כ פתוח</span>
       <span style="font-size:22px;font-weight:700;color:#fff;">₪${grandTotal.toLocaleString()}</span>
