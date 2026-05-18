@@ -375,8 +375,12 @@
   .morning-metrics { display:grid; grid-template-columns:repeat(6,1fr); gap:10px; margin-bottom:12px; flex-shrink:0; }
   .morning-metrics .metric-card { padding:10px 14px; }
   .morning-metrics .metric-val { font-size:22px; }
-  .morning-grid { display:grid; grid-template-columns:1fr 264px; gap:14px; flex:1; min-height:0; }
-  .morning-col { display:flex; flex-direction:column; gap:10px; min-height:0; overflow:hidden; }
+  .morning-grid { display:flex; flex:1; min-height:0; gap:0; align-items:stretch; }
+  .morning-col { display:flex; flex-direction:column; gap:10px; min-height:0; overflow:hidden; flex:1; min-width:180px; }
+  #mcol-right { flex:0 0 264px; }
+  .col-resizer { width:16px; cursor:col-resize; flex-shrink:0; display:flex; align-items:center; justify-content:center; border-radius:3px; transition:background 0.15s; }
+  .col-resizer:hover { background:var(--surface2); }
+  .col-resizer-bar { width:3px; height:36px; border-radius:3px; background:var(--border2); pointer-events:none; }
   .morning-panel { flex:1; overflow-y:auto; margin-bottom:0 !important; min-height:0; }
   .morning-legend { flex-shrink:0; margin-bottom:0 !important; }
 
@@ -533,7 +537,7 @@
 
   <main class="main">
     <header class="app-topbar">
-      <div class="app-topbar-title" id="morning-greeting-bar">שלום שלום קרין! 👋</div>
+      <div class="app-topbar-title" id="morning-greeting-bar">שלום קרין! 👋</div>
       <div style="display:flex;align-items:center;gap:12px;">
         <span class="material-symbols-outlined" style="color:var(--text3);cursor:pointer;">notifications</span>
         <div class="logo-avatar" style="width:36px;height:36px;font-size:13px;">KR</div>
@@ -596,6 +600,7 @@
             <div class="panel-resize-handle" onmousedown="startPanelResize(event,this)">— — —</div>
           </div>
         </div>
+        <div class="col-resizer" onmousedown="startColResize(event)" title="גרור לשינוי רוחב"><span class="col-resizer-bar"></span></div>
         <div class="morning-col" id="mcol-right"
              ondragover="colDragOver(event,this)" ondrop="colDrop(event,this)" ondragleave="colDragLeave(event,this)">
           <div class="urgency-card morning-panel" id="panel-urgency" draggable="true"
@@ -1376,7 +1381,7 @@ function openProjectFromUrgency(projId) {
 }
 function setGreeting() {
   const h = new Date().getHours();
-  document.getElementById('morning-greeting').textContent = 'שלום שלום קרין! 👋';
+  document.getElementById('morning-greeting').textContent = 'שלום קרין! 👋';
   const d = new Date(), days=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
   document.getElementById('today-date').textContent = 'יום '+days[d.getDay()]+', '+d.toLocaleDateString('he-IL');
 }
@@ -1983,6 +1988,27 @@ function colDrop(e, col) {
   saveDashboardLayout();
 }
 
+function startColResize(e) {
+  e.preventDefault();
+  const rightCol = document.getElementById('mcol-right');
+  const startX = e.clientX;
+  const startW = rightCol.getBoundingClientRect().width;
+  document.body.style.cursor = 'col-resize';
+  function onMove(e) {
+    const delta = startX - e.clientX; // RTL: drag left = grow right col
+    const newW = Math.max(180, Math.min(700, startW + delta));
+    rightCol.style.flex = '0 0 ' + newW + 'px';
+  }
+  function onUp() {
+    document.body.style.cursor = '';
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    saveDashboardLayout();
+  }
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+}
+
 function startPanelResize(e, handle) {
   e.preventDefault();
   e.stopPropagation();
@@ -2009,10 +2035,12 @@ function startPanelResize(e, handle) {
 function saveDashboardLayout() {
   const cols = {};
   document.querySelectorAll('.morning-col').forEach(col => {
-    cols[col.id] = [...col.querySelectorAll('.morning-panel')].map(p => {
-      const el = document.getElementById(p.id);
-      return { id: p.id, flexBasis: el.style.flexBasis || '' };
-    });
+    cols[col.id] = {
+      colFlex: col.style.flex || '',
+      panels: [...col.querySelectorAll('.morning-panel')].map(p => ({
+        id: p.id, flexBasis: p.style.flexBasis || ''
+      }))
+    };
   });
   state.settings.dashboard = {...(state.settings.dashboard || {}), cols};
   save();
@@ -2023,9 +2051,12 @@ function loadDashboardSettings() {
   if (!d) return;
   if (d.theme) applyTheme(d.theme, d.themeLight || '#E8F4EE');
   if (d.cols) {
-    Object.entries(d.cols).forEach(([colId, panels]) => {
+    Object.entries(d.cols).forEach(([colId, data]) => {
       const col = document.getElementById(colId);
       if (!col) return;
+      const panels = Array.isArray(data) ? data : (data.panels || []);
+      const colFlex = Array.isArray(data) ? '' : (data.colFlex || '');
+      if (colFlex) col.style.flex = colFlex;
       panels.forEach(entry => {
         const pid = typeof entry === 'string' ? entry : entry.id;
         const fb  = typeof entry === 'object' ? entry.flexBasis : '';
