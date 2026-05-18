@@ -65,8 +65,11 @@
   .sub-item.active { color:var(--accent); font-weight:500; border-right-color:var(--accent); background:var(--accent-light); }
   .sub-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
 
-  .main { margin-right:240px; flex:1; padding:32px 36px; }
-  .main.dashboard-mode { max-width:100%; padding:24px 28px; }
+  .main { margin-right:240px; flex:1; padding:0; }
+  .main.dashboard-mode { max-width:100%; }
+  .app-topbar { position:sticky; top:0; z-index:40; background:rgba(253,249,244,0.85); backdrop-filter:blur(8px); border-bottom:1px solid var(--border); padding:12px 28px; display:flex; justify-content:space-between; align-items:center; }
+  .app-topbar-title { font-size:20px; font-weight:700; color:var(--text); }
+  .page { padding:24px 28px; }
   .page { display:none; }
   .page.active { display:block; }
 
@@ -75,11 +78,13 @@
   .page-date { font-size:13px; color:var(--text3); margin-top:3px; }
 
   .metric-row { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:16px; }
-  .metric-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; box-shadow:0 1px 4px rgba(192,92,61,0.06); }
-  .metric-val { font-size:32px; font-weight:600; }
+  .metric-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; box-shadow:0 2px 8px rgba(192,92,61,0.07); }
+  .metric-card-icon { display:flex; align-items:center; gap:14px; padding:16px 18px; }
+  .metric-icon-circle { width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .metric-val { font-size:32px; font-weight:700; line-height:1.1; }
   .metric-val.red { color:var(--urgent); }
-  .metric-val.green { color:var(--accent); }
-  .metric-label { font-size:12px; color:var(--text3); margin-top:4px; }
+  .metric-val.green { color:#2D6A4F; }
+  .metric-label { font-size:12px; color:var(--text3); margin-top:3px; }
 
   .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:20px 22px; margin-bottom:18px; box-shadow:0 1px 4px rgba(192,92,61,0.06); }
   .card-title { font-size:12px; font-weight:500; color:var(--text3); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:14px; }
@@ -526,6 +531,13 @@
   </aside>
 
   <main class="main">
+    <header class="app-topbar">
+      <div class="app-topbar-title" id="morning-greeting-bar">שלום קרין! 👋</div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span class="material-symbols-outlined" style="color:var(--text3);cursor:pointer;">notifications</span>
+        <div class="logo-avatar" style="width:36px;height:36px;font-size:13px;">KR</div>
+      </div>
+    </header>
     <!-- MORNING -->
     <div id="page-morning" class="page active">
       <div class="page-header" style="margin-bottom:10px">
@@ -544,12 +556,12 @@
         <span class="dash-label" style="margin-right:16px">גרור פאנלים לסידור רצוי ↕</span>
       </div>
       <div class="morning-metrics">
-        <div class="metric-card"><div class="metric-val" id="m-projects">0</div><div class="metric-label">פרויקטים פעילים</div></div>
-        <div class="metric-card"><div class="metric-val" id="m-remaining">0</div><div class="metric-label">תמונות לעריכה</div></div>
-        <div class="metric-card"><div class="metric-val" id="m-edited-today">0</div><div class="metric-label">נערכו היום</div></div>
-        <div class="metric-card"><div class="metric-val" id="m-goal-total">0</div><div class="metric-label">יעד יומי (סה"כ)</div></div>
-        <div class="metric-card"><div class="metric-val green" id="m-goal-done">0</div><div class="metric-label">הושלמו מהיעד</div></div>
-        <div class="metric-card"><div class="metric-val red" id="m-goal-left">0</div><div class="metric-label">נשאר מהיעד</div></div>
+        <div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#fdf0ec;"><span class="material-symbols-outlined" style="color:var(--accent);">camera_alt</span></div><div><div class="metric-val" id="m-projects">0</div><div class="metric-label">פרויקטים פעילים</div></div></div>
+        <div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#fdf0ec;"><span class="material-symbols-outlined" style="color:var(--accent);">photo_library</span></div><div><div class="metric-val" id="m-remaining">0</div><div class="metric-label">תמונות לעריכה</div></div></div>
+        <div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#e8f4ee;"><span class="material-symbols-outlined" style="color:#2D6A4F;">check_circle</span></div><div><div class="metric-val" id="m-edited-today">0</div><div class="metric-label">נערכו היום</div></div></div>
+        <div class="metric-card metric-card-icon" style="border:2px dashed var(--border2);"><div class="metric-icon-circle" style="background:#fdf0ec;"><span class="material-symbols-outlined" style="color:var(--accent);">flag</span></div><div><div class="metric-val" id="m-goal-total">0</div><div class="metric-label">יעד יומי</div></div></div>
+        <div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#e8f4ee;"><span class="material-symbols-outlined" style="color:#2D6A4F;">done_all</span></div><div><div class="metric-val green" id="m-goal-done">0</div><div class="metric-label">הושלמו מהיעד</div></div></div>
+        <div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#fdecea;"><span class="material-symbols-outlined" style="color:var(--urgent);">hourglass_bottom</span></div><div><div class="metric-val red" id="m-goal-left">0</div><div class="metric-label">נשאר מהיעד</div></div></div>
       </div>
       <div class="morning-grid">
         <div class="morning-col" id="mcol-left"
