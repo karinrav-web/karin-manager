@@ -2083,19 +2083,56 @@ function renderTasks() {
   document.getElementById('m-goal-done').textContent = totalEditedToday;
   document.getElementById('m-goal-left').textContent = Math.max(0, totalGoal - totalEditedToday);
   document.getElementById('tasks-list').innerHTML = sorted.map(t=>`
-    <div class="task-row">
+    <div class="task-row" data-task-id="${t.id}">
       <div class="priority-strip ${PSTRIP[t.priority]||''}"></div>
       <div class="task-check ${t.done?'done':''}" onclick="toggleTask(${t.id})">${t.done?'✓':''}</div>
       <div class="task-body">
         <div class="task-text ${t.done?'done':''}">${t.text}</div>
         <div class="task-meta">${t.client?t.client+' · ':''}${t.stage||''}${PLABEL[t.priority]?`<span class="badge ${PBADGE[t.priority]||''}">${PLABEL[t.priority]}</span>`:''}</div>
       </div>
-      <button onclick="deleteTask(${t.id})" style="margin-right:auto;flex-shrink:0;width:24px;height:24px;border-radius:50%;border:1px solid var(--border);background:transparent;cursor:pointer;font-size:12px;color:var(--text3);display:flex;align-items:center;justify-content:center;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--urgent)';this.style.color='var(--urgent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text3)'">✕</button>
+      <button onclick="editTask(${t.id})" title="ערוך" style="flex-shrink:0;width:24px;height:24px;border-radius:50%;border:1px solid var(--border);background:transparent;cursor:pointer;font-size:13px;color:var(--text3);display:flex;align-items:center;justify-content:center;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text3)'">✎</button>
+      <button onclick="deleteTask(${t.id})" style="flex-shrink:0;width:24px;height:24px;border-radius:50%;border:1px solid var(--border);background:transparent;cursor:pointer;font-size:12px;color:var(--text3);display:flex;align-items:center;justify-content:center;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--urgent)';this.style.color='var(--urgent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text3)'">✕</button>
     </div>`).join('');
 }
 
 function toggleTask(id) { const t=state.tasks.find(t=>t.id===id); if(t){t.done=t.done?0:1;save();renderTasks();} }
 function deleteTask(id) { state.tasks=state.tasks.filter(t=>t.id!==id); save(); renderTasks(); refreshSelects(); }
+
+function editTask(id) {
+  const t = state.tasks.find(t => t.id === id); if (!t) return;
+  const row = document.querySelector(`.task-row[data-task-id="${id}"]`); if (!row) return;
+  const clientOpts = ['', ...new Set(state.projects.map(p => p.client).filter(Boolean))].map(c => `<option value="${c}" ${t.client===c?'selected':''}>${c||'— ללא לקוח —'}</option>`).join('');
+  row.innerHTML = `
+    <div class="priority-strip ${PSTRIP[t.priority]||''}"></div>
+    <div style="flex:1;display:flex;flex-direction:column;gap:5px;">
+      <input id="et-text-${id}" type="text" value="${t.text.replace(/"/g,'&quot;')}" style="font-size:13px;padding:4px 8px;border:1px solid var(--border2);border-radius:6px;font-family:'Rubik',sans-serif;width:100%;box-sizing:border-box;" />
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <select id="et-client-${id}" style="font-size:12px;padding:3px 6px;border:1px solid var(--border2);border-radius:6px;">${clientOpts}</select>
+        <input id="et-stage-${id}" type="text" value="${t.stage||''}" placeholder="קטגוריה" style="font-size:12px;padding:3px 6px;border:1px solid var(--border2);border-radius:6px;width:100px;" />
+        <select id="et-priority-${id}" style="font-size:12px;padding:3px 6px;border:1px solid var(--border2);border-radius:6px;">
+          <option value="urgent" ${t.priority==='urgent'?'selected':''}>דחוף</option>
+          <option value="high" ${t.priority==='high'?'selected':''}>גבוה</option>
+          <option value="normal" ${t.priority==='normal'?'selected':''}>רגיל</option>
+          <option value="low" ${t.priority==='low'?'selected':''}>נמוך</option>
+        </select>
+      </div>
+    </div>
+    <button onclick="saveTaskEdit(${id})" class="btn-save" style="flex-shrink:0;font-size:12px;padding:4px 10px;">שמור</button>
+    <button onclick="renderTasks()" style="flex-shrink:0;font-size:12px;padding:4px 10px;border:1px solid var(--border2);border-radius:6px;background:transparent;cursor:pointer;color:var(--text3);">ביטול</button>`;
+  document.getElementById(`et-text-${id}`).focus();
+}
+
+function saveTaskEdit(id) {
+  const t = state.tasks.find(t => t.id === id); if (!t) return;
+  const text = document.getElementById(`et-text-${id}`)?.value.trim();
+  if (!text) return;
+  t.text     = text;
+  t.client   = document.getElementById(`et-client-${id}`)?.value || '';
+  t.stage    = document.getElementById(`et-stage-${id}`)?.value || '';
+  t.priority = document.getElementById(`et-priority-${id}`)?.value || 'normal';
+  save(); renderTasks(); refreshSelects();
+}
+
 function addTask() {
   const text=document.getElementById('nt-text').value.trim(); if(!text) return;
   state.tasks.push({id:Date.now(),text,client:document.getElementById('nt-client').value,stage:document.getElementById('nt-stage').value,priority:document.getElementById('nt-priority').value,done:0});
