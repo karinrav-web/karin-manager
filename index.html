@@ -1420,7 +1420,7 @@ async function syncShootDates() {
   } catch(e) { /* silent fail */ }
 }
 
-function render() { setGreeting(); renderTasks(); renderProjects(); refreshSelects(); renderUrgency(); renderCalendar(); loadSettings(); renderBillingSummaryMorning(); renderReport(); renderBillingPage(); document.querySelector('.main').classList.add('dashboard-mode'); initThemeSwatches(); loadDashboardSettings(); syncShootDates(); restoreTimer(); }
+function render() { setGreeting(); state.projects.forEach(p => recalcClientShare(p)); renderTasks(); renderProjects(); refreshSelects(); renderUrgency(); renderCalendar(); loadSettings(); renderBillingSummaryMorning(); renderReport(); renderBillingPage(); document.querySelector('.main').classList.add('dashboard-mode'); initThemeSwatches(); loadDashboardSettings(); syncShootDates(); restoreTimer(); }
 
 function restoreTimer() {
   try {
@@ -2656,7 +2656,10 @@ function recalcClientShare(p) {
   const discount = calcDiscount(p);
   const clientShare = Math.max(0, base + vendorBonus + adj - discount - vendorPaid - creditTotal);
   const client = (p.payers || []).find(x => x.type === 'client');
-  if (client) client.amount = clientShare;
+  if (client) {
+    client.amount = clientShare;
+    if (clientShare <= 0 && creditTotal > 0) client.paid = true;
+  }
 }
 
 function renderBillingSection(p) {
