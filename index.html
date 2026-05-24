@@ -2189,15 +2189,19 @@ function saveTaskEdit(id) {
 
 function refreshDailyTasks() {
   _dailyTasksDone = false;
-  if (generateDailyTasks()) save();
+  generateDailyTasks();
+  save();
   renderTasks();
 }
 
 function generateDailyTasks() {
   const today = todayStr();
-  // הסר את כל המשימות האוטומטיות שלא הושלמו וצור מחדש
-  // הסר כל משימה אוטומטית שלא הושלמה — גם אם חסר הדגל auto (משימות ישנות מזוהות לפי projId)
-  state.tasks = state.tasks.filter(t => (!t.auto && !t.projId) || t.done);
+  const AUTO_PREFIXES = ['שלחי סינון ל','עקבי אחרי סינון מ','ערכי תמונות —','שלחי קובץ מוכן ל','טפלי בהערות של','גבי תשלום מ','סיימי גביה'];
+  state.tasks = state.tasks.filter(t => {
+    if (t.done) return true;
+    if (t.auto || t.projId) return false;
+    return !AUTO_PREFIXES.some(p => t.text && t.text.startsWith(p));
+  });
 
   const now = new Date(); now.setHours(0,0,0,0);
   let idBase = Date.now(), idOff = 0;
