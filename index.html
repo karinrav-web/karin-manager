@@ -583,7 +583,10 @@
               <div class="legend-item"><div class="legend-dot" style="background:var(--normal)"></div>רגיל</div>
               <div class="legend-item"><div class="legend-dot" style="background:var(--low)"></div>נמוך</div>
             </div>
-            <div class="card-title">משימות — ממוינות לפי עדיפות</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+              <div class="card-title" style="margin-bottom:0;">משימות — ממוינות לפי עדיפות</div>
+              <button onclick="refreshDailyTasks()" title="צור מחדש משימות אוטומטיות" style="font-size:11px;padding:3px 8px;border:1px solid var(--border2);border-radius:6px;background:transparent;color:var(--text3);cursor:pointer;">⟳ רענן</button>
+            </div>
             <div id="tasks-list"></div>
             <button class="add-btn" onclick="toggleEl('add-task-form')">+ הוסף משימה</button>
             <div id="add-task-form" class="hidden">
@@ -882,6 +885,7 @@ const BOOTSTRAP_HASH = '03817dec5715d4da022c124c42163d55d410e0da520d699d5a93ce73
 
 let cloudPinHash = null;
 let prefetchedState = null;
+let lastCloudBillingCount = 0;
 
 async function hashPin(pw) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw + 'karin2026'));
@@ -1014,14 +1018,18 @@ function normalizeProject(x) {
 const AUTO_BACKUP_PREFIX = 'karin_ab_';
 const AUTO_BACKUP_DAYS = 7;
 
+function parseBackupDate(k) {
+  const [y,m,d] = k.replace(AUTO_BACKUP_PREFIX,'').split('-').map(Number);
+  return new Date(y, m-1, d).getTime();
+}
+
 function autoBackup() {
   try {
     const key = AUTO_BACKUP_PREFIX + todayStr();
     localStorage.setItem(key, JSON.stringify(state));
-    // מחק גיבויים ישנים מעבר ל-7 ימים
     Object.keys(localStorage)
       .filter(k => k.startsWith(AUTO_BACKUP_PREFIX))
-      .sort().reverse()
+      .sort((a,b) => parseBackupDate(b) - parseBackupDate(a))
       .slice(AUTO_BACKUP_DAYS)
       .forEach(k => localStorage.removeItem(k));
   } catch(e) {}
@@ -1030,7 +1038,7 @@ function autoBackup() {
 function listAutoBackups() {
   return Object.keys(localStorage)
     .filter(k => k.startsWith(AUTO_BACKUP_PREFIX))
-    .sort().reverse()
+    .sort((a,b) => parseBackupDate(b) - parseBackupDate(a))
     .map(k => k.replace(AUTO_BACKUP_PREFIX, ''));
 }
 
@@ -1051,7 +1059,7 @@ function restoreAutoBackup(dateStr) {
     const p = JSON.parse(data);
     if (!p.projects) { alert('גיבוי לא תקין'); return; }
     if (!confirm(`לשחזר גיבוי מ-${dateStr}?\n${p.projects.length} פרויקטים, ${(p.tasks||[]).length} משימות.\n\nהנתונים הנוכחיים יוחלפו.`)) return;
-    state = {projects:p.projects||[],tasks:p.tasks||[],settings:p.settings||state.settings,editDays:p.editDays||{},lastReset:p.lastReset||'',billing:p.billing||[]};
+    state = {projects:p.projects||[],tasks:p.tasks||[],settings:p.settings||state.settings,editDays:p.editDays||{},lastReset:p.lastReset||'',billing:p.billing||[],credits:p.credits||[]};
     blockCloudLoad = true;
     setTimeout(()=>{ blockCloudLoad=false; },30000);
     save(); render();
@@ -1068,6 +1076,11 @@ function save() {
     // הגנה: לא שולחים לענן state ריק — זה ימחק את הנתונים בענן
     if (!state.projects || state.projects.length === 0) {
       setSyncStatus('מקומי בלבד','var(--text3)');
+      return;
+    }
+    // הגנה: לא שולחים גביה ריקה אם הענן ידע על גביה קיימת
+    if (lastCloudBillingCount > 0 && (state.billing||[]).length === 0) {
+      setSyncStatus('⚠ גביה ריקה — לא נשמר לענן','var(--urgent)');
       return;
     }
     const cloudState = {
@@ -1293,6 +1306,7 @@ function mergeCloudState(d) {
         billing: mergeBilling(local.billing||[], p.billing||[]),
         credits: mergeBilling(local.credits||[], p.credits||[])
       });
+      lastCloudBillingCount = Math.max(lastCloudBillingCount, (state.billing||[]).length);
       try{localStorage.setItem('karin_pm',JSON.stringify(state));}catch(e){}
       setSyncStatus('✓ סונכרן','var(--accent)');
       applyPinToState();
@@ -1420,7 +1434,7 @@ async function syncShootDates() {
   } catch(e) { /* silent fail */ }
 }
 
-function render() { setGreeting(); state.projects.forEach(p => recalcClientShare(p)); renderTasks(); renderProjects(); refreshSelects(); renderUrgency(); renderCalendar(); loadSettings(); renderBillingSummaryMorning(); renderReport(); renderBillingPage(); document.querySelector('.main').classList.add('dashboard-mode'); initThemeSwatches(); loadDashboardSettings(); syncShootDates(); restoreTimer(); }
+function render() { if(generateDailyTasks()) save(); setGreeting(); state.projects.forEach(p => recalcClientShare(p)); renderTasks(); renderProjects(); refreshSelects(); renderUrgency(); renderCalendar(); loadSettings(); renderBillingSummaryMorning(); renderReport(); renderBillingPage(); document.querySelector('.main').classList.add('dashboard-mode'); initThemeSwatches(); loadDashboardSettings(); syncShootDates(); restoreTimer(); }
 
 function restoreTimer() {
   try {
@@ -1471,7 +1485,7 @@ function renderReport() {
     }
   });
 
-  const doneProjects = state.projects.filter(p=>p.status==='done');
+  const doneProjects = state.projects.filter(p=>p.stage==='done');
   const openTasks = state.tasks.filter(t=>!t.done).length;
   const doneTasks = state.tasks.filter(t=>t.done).length;
 
@@ -2073,7 +2087,6 @@ function loadDashboardSettings() {
 }
 
 function renderTasks() {
-  const sorted = [...state.tasks].sort((a,b)=>PORDER[a.priority]-PORDER[b.priority]);
   document.getElementById('m-projects').textContent = state.projects.filter(p=>p.stage!=='done'&&p.stage!=='s-done'&&p.stage!=='billing'&&p.stage!=='s-billing').length;
   document.getElementById('m-remaining').textContent = state.projects.filter(p=>p.stage==='edit').reduce((s,p)=>s+Math.max(0,(p.total||0)-(p.edited||0)),0);
   const totalGoal = state.projects.filter(p=>p.goalDaily>0).reduce((s,p)=>s+(p.goalDaily||0),0);
@@ -2082,17 +2095,46 @@ function renderTasks() {
   document.getElementById('m-goal-total').textContent = totalGoal;
   document.getElementById('m-goal-done').textContent = totalEditedToday;
   document.getElementById('m-goal-left').textContent = Math.max(0, totalGoal - totalEditedToday);
-  document.getElementById('tasks-list').innerHTML = sorted.map(t=>`
+
+  const TASK_GROUPS = [
+    {key:'עריכה',  label:'✏️ עריכה'},
+    {key:'שליחה',  label:'📤 שליחה'},
+    {key:'גביה',   label:'💰 גביה'},
+    {key:'סינון',  label:'🗂 סינון'},
+    {key:'מחכה',   label:'👀 מעקב'},
+    {key:'_other', label:'📋 כללי'},
+  ];
+  const known = new Set(['עריכה','שליחה','גביה','סינון','מחכה']);
+  const byGroup = {};
+  TASK_GROUPS.forEach(g => byGroup[g.key] = []);
+
+  [...state.tasks]
+    .sort((a,b) => PORDER[a.priority] - PORDER[b.priority])
+    .forEach(t => {
+      const k = known.has(t.stage) ? t.stage : '_other';
+      byGroup[k].push(t);
+    });
+
+  const taskRow = t => `
     <div class="task-row" data-task-id="${t.id}">
       <div class="priority-strip ${PSTRIP[t.priority]||''}"></div>
       <div class="task-check ${t.done?'done':''}" onclick="toggleTask(${t.id})">${t.done?'✓':''}</div>
       <div class="task-body">
         <div class="task-text ${t.done?'done':''}">${t.text}</div>
-        <div class="task-meta">${t.client?t.client+' · ':''}${t.stage||''}${PLABEL[t.priority]?`<span class="badge ${PBADGE[t.priority]||''}">${PLABEL[t.priority]}</span>`:''}</div>
+        <div class="task-meta">${t.client?t.client+' · ':''}${PLABEL[t.priority]?`<span class="badge ${PBADGE[t.priority]||''}">${PLABEL[t.priority]}</span>`:''}</div>
       </div>
       <button onclick="editTask(${t.id})" title="ערוך" style="flex-shrink:0;width:24px;height:24px;border-radius:50%;border:1px solid var(--border);background:transparent;cursor:pointer;font-size:13px;color:var(--text3);display:flex;align-items:center;justify-content:center;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text3)'">✎</button>
       <button onclick="deleteTask(${t.id})" style="flex-shrink:0;width:24px;height:24px;border-radius:50%;border:1px solid var(--border);background:transparent;cursor:pointer;font-size:12px;color:var(--text3);display:flex;align-items:center;justify-content:center;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--urgent)';this.style.color='var(--urgent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text3)'">✕</button>
-    </div>`).join('');
+    </div>`;
+
+  document.getElementById('tasks-list').innerHTML = TASK_GROUPS.map(g => {
+    const tasks = byGroup[g.key];
+    if (!tasks.length) return '';
+    return `<div style="margin-bottom:10px;">
+      <div style="font-size:11px;font-weight:600;color:var(--text3);padding:4px 0 4px 2px;border-bottom:1px solid var(--border);margin-bottom:4px;letter-spacing:0.03em;">${g.label}</div>
+      ${tasks.map(taskRow).join('')}
+    </div>`;
+  }).join('') || '<div style="color:var(--text3);font-size:13px;padding:8px 0;text-align:center;">אין משימות</div>';
 }
 
 function toggleTask(id) { const t=state.tasks.find(t=>t.id===id); if(t){t.done=t.done?0:1;save();renderTasks();} }
@@ -2131,6 +2173,69 @@ function saveTaskEdit(id) {
   t.stage    = document.getElementById(`et-stage-${id}`)?.value || '';
   t.priority = document.getElementById(`et-priority-${id}`)?.value || 'normal';
   save(); renderTasks(); refreshSelects();
+}
+
+function refreshDailyTasks() {
+  state.tasks = state.tasks.filter(t => !t.auto || t.done);
+  if (generateDailyTasks()) save();
+  renderTasks();
+}
+
+function generateDailyTasks() {
+  const today = todayStr();
+  // נקה משימות אוטומטיות ישנות שלא הושלמו
+  state.tasks = state.tasks.filter(t => !t.auto || t.done || t.autoDate === today);
+  // אל תיצור שוב אם כבר נוצרו היום
+  if (state.tasks.some(t => t.auto && t.autoDate === today)) return false;
+
+  const now = new Date(); now.setHours(0,0,0,0);
+  let idBase = Date.now(), idOff = 0;
+  const newTasks = [];
+
+  const mk = (p, text, stage, priority) => ({
+    id: idBase + (++idOff), text,
+    client: p.client, stage, priority,
+    done: 0, auto: true, autoDate: today
+  });
+
+  state.projects.forEach(p => {
+    if (p.stage === 'done' || p.stage === 's-done') return;
+    const daysLeft = p.deadline
+      ? Math.ceil((new Date(p.deadline) - now) / 86400000) : null;
+    const pri = daysLeft !== null && daysLeft <= 2 ? 'urgent'
+              : daysLeft !== null && daysLeft <= 5 ? 'high' : 'normal';
+
+    if (p.stage === 'send') {
+      newTasks.push(mk(p, `שלחי סינון ל${p.client}`, 'סינון', pri));
+    }
+    if (p.stage === 'wait') {
+      newTasks.push(mk(p, `עקבי אחרי סינון מ${p.client}`, 'מחכה', pri === 'normal' ? 'low' : pri));
+    }
+    if (p.stage === 'edit') {
+      const rem = Math.max(0, (p.total || 0) - (p.edited || 0));
+      if (rem > 0) {
+        const deadline_txt = daysLeft !== null ? ` · ${daysLeft} ימים לסיום` : '';
+        newTasks.push(mk(p, `ערכי תמונות — ${p.client} (נשארו ${rem}${deadline_txt})`, 'עריכה', pri));
+      }
+    }
+    if (p.stage === 'deliver') {
+      newTasks.push(mk(p, `שלחי קובץ מוכן ל${p.client}`, 'שליחה', pri === 'normal' ? 'high' : pri));
+    }
+    if (p.stage === 'notes') {
+      newTasks.push(mk(p, `טפלי בהערות של ${p.client}`, 'הערות', pri === 'normal' ? 'high' : pri));
+    }
+    if (p.stage === 'billing') {
+      newTasks.push(mk(p, `סיימי גביה עבור ${p.client}`, 'גביה', 'high'));
+    }
+    // גביה — משלמים שלא שילמו
+    (p.payers || [])
+      .filter(x => !x.paid && x.type !== 'credit' && Number(x.amount) > 0)
+      .forEach(pay => newTasks.push(mk(p, `גבי תשלום מ${pay.name || p.client}`, 'גביה', 'high')));
+  });
+
+  if (newTasks.length === 0) return false;
+  state.tasks.push(...newTasks);
+  return true;
 }
 
 function addTask() {
@@ -2827,7 +2932,7 @@ function renderBillingSummaryMorning() {
   let totalActive = 0, totalPending = 0;
 
   state.projects.forEach(p => {
-    if (p.status === 'done') return;
+    if (p.stage === 'done' || p.stage === 's-done') return;
     const vendors = (p.payers||[]).filter(x=>x.type==='vendor');
     const vendorBonus = vendors.length * 500;
     const vendorPaid = vendors.reduce((s,x)=>s+(Number(x.amount)||0),0);
@@ -2843,7 +2948,7 @@ function renderBillingSummaryMorning() {
       });
     } else if (base > 0 && payers.filter(x=>x.paid).length === 0) {
       // יש מחיר, אין משלמים מוגדרים עדיין
-      pendingRows.push({label:p.client+(p.title?' · '+p.title:''), stage:STAGES[p.status]||p.status, amt:Math.round(base*1.18)});
+      pendingRows.push({label:p.client+(p.title?' · '+p.title:''), stage:STAGES[p.stage]||p.stage, amt:Math.round(base*1.18)});
       totalPending += Math.round(base*1.18);
     }
   });
