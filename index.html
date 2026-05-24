@@ -2186,10 +2186,8 @@ function refreshDailyTasks() {
 
 function generateDailyTasks() {
   const today = todayStr();
-  // נקה משימות אוטומטיות ישנות שלא הושלמו
-  state.tasks = state.tasks.filter(t => !t.auto || t.done || t.autoDate === today);
-  // אל תיצור שוב אם כבר נוצרו היום
-  if (state.tasks.some(t => t.auto && t.autoDate === today)) return false;
+  // הסר את כל המשימות האוטומטיות שלא הושלמו וצור מחדש
+  state.tasks = state.tasks.filter(t => !t.auto || t.done);
 
   const now = new Date(); now.setHours(0,0,0,0);
   let idBase = Date.now(), idOff = 0;
