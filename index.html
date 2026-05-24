@@ -2120,7 +2120,7 @@ function renderTasks() {
       <div class="priority-strip ${PSTRIP[t.priority]||''}"></div>
       <div class="task-check ${t.done?'done':''}" onclick="toggleTask(${t.id})">${t.done?'✓':''}</div>
       <div class="task-body">
-        <div class="task-text ${t.done?'done':''}">${t.text}</div>
+        <div class="task-text ${t.done?'done':''}" ${t.projId?`onclick="goToProject(${t.projId})" style="cursor:pointer;" title="עבור לפרויקט"`:''}>${t.text}${t.projId&&!t.done?' <span style="font-size:10px;color:var(--accent);opacity:0.7;">↗</span>':''}</div>
         <div class="task-meta">${t.client?t.client+' · ':''}${PLABEL[t.priority]?`<span class="badge ${PBADGE[t.priority]||''}">${PLABEL[t.priority]}</span>`:''}</div>
       </div>
       <button onclick="editTask(${t.id})" title="ערוך" style="flex-shrink:0;width:24px;height:24px;border-radius:50%;border:1px solid var(--border);background:transparent;cursor:pointer;font-size:13px;color:var(--text3);display:flex;align-items:center;justify-content:center;transition:all 0.15s;" onmouseover="this.style.borderColor='var(--accent)';this.style.color='var(--accent)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text3)'">✎</button>
@@ -2195,7 +2195,7 @@ function generateDailyTasks() {
   const mk = (p, text, stage, priority) => ({
     id: idBase + (++idOff), text,
     client: p.client, stage, priority,
-    done: 0, auto: true, autoDate: today
+    done: 0, auto: true, autoDate: today, projId: p.id
   });
 
   state.projects.forEach(p => {
@@ -2361,6 +2361,16 @@ function toggleExpand(id) {
   if (expandedProjects.has(id)) expandedProjects.delete(id);
   else expandedProjects.add(id);
   renderProjects();
+}
+
+function goToProject(projId) {
+  showPage('projects', document.getElementById('nav-projects'));
+  expandedProjects.add(projId);
+  renderProjects();
+  setTimeout(() => {
+    const el = document.querySelector(`.proj-card[data-id="${projId}"]`);
+    if (el) { el.scrollIntoView({behavior:'smooth', block:'center'}); el.style.outline='2px solid var(--accent)'; setTimeout(()=>el.style.outline='',1500); }
+  }, 100);
 }
 
 let dragSrcId = null;
