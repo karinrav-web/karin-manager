@@ -2200,7 +2200,7 @@ function generateDailyTasks() {
   });
 
   state.projects.forEach(p => {
-    if (p.stage === 'done' || p.stage === 's-done') return;
+    if (p.stage === 'done' || p.stage === 's-done' || p.stage === 'billing' || p.stage === 's-billing') return;
     const daysLeft = p.deadline
       ? Math.ceil((new Date(p.deadline) - now) / 86400000) : null;
     const pri = daysLeft !== null && daysLeft <= 2 ? 'urgent'
@@ -2224,9 +2224,6 @@ function generateDailyTasks() {
     }
     if (p.stage === 'notes') {
       newTasks.push(mk(p, `טפלי בהערות של ${p.client}`, 'הערות', pri === 'normal' ? 'high' : pri));
-    }
-    if (p.stage === 'billing') {
-      newTasks.push(mk(p, `סיימי גביה עבור ${p.client}`, 'גביה', 'high'));
     }
     // גביה — משלמים שלא שילמו
     (p.payers || [])
