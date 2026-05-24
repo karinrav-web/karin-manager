@@ -1074,6 +1074,8 @@ function save() {
   clearTimeout(saveTimer);
   setSyncStatus('שומר...','var(--text3)');
   saveTimer=setTimeout(()=>{
+    // נקה פרויקטים ריקים לפני שמירה לענן
+    state.projects = state.projects.filter(p => p.client && p.client.trim());
     // הגנה: לא שולחים לענן state ריק — זה ימחק את הנתונים בענן
     if (!state.projects || state.projects.length === 0) {
       setSyncStatus('מקומי בלבד','var(--text3)');
