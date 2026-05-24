@@ -1370,6 +1370,7 @@ function showPage(p, el) {
   if (p==='report') renderReport();
   if (p==='billing') renderBillingPage();
   if (p==='projects') renderProjects();
+  if (p==='calendar') renderCalendar();
 }
 function showPageMobile(p, el) {
   document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));
@@ -1382,6 +1383,7 @@ function showPageMobile(p, el) {
   if (p==='report') renderReport();
   if (p==='billing') renderBillingPage();
   if (p==='projects') renderProjects();
+  if (p==='calendar') renderCalendar();
 }
 function filterStage(stage) {
   stageFilter = stage;
