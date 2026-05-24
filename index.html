@@ -2209,11 +2209,19 @@ function generateDailyTasks() {
   });
 
   state.projects.forEach(p => {
-    if (p.stage === 'done' || p.stage === 's-done' || p.stage === 'billing' || p.stage === 's-billing') return;
+    if (p.stage === 'done' || p.stage === 's-done') return;
     const daysLeft = p.deadline
       ? Math.ceil((new Date(p.deadline) - now) / 86400000) : null;
     const pri = daysLeft !== null && daysLeft <= 2 ? 'urgent'
               : daysLeft !== null && daysLeft <= 5 ? 'high' : 'normal';
+
+    if (p.stage === 'billing' || p.stage === 's-billing') {
+      // גביה — רק לפרויקטים בשלב גביה
+      (p.payers || [])
+        .filter(x => !x.paid && x.type !== 'credit' && Number(x.amount) > 0)
+        .forEach(pay => newTasks.push(mk(p, `גבי תשלום מ${pay.name || p.client}`, 'גביה', 'high')));
+      return;
+    }
 
     if (p.stage === 'send') {
       newTasks.push(mk(p, `שלחי סינון ל${p.client}`, 'סינון', pri));
@@ -2234,10 +2242,6 @@ function generateDailyTasks() {
     if (p.stage === 'notes') {
       newTasks.push(mk(p, `טפלי בהערות של ${p.client}`, 'הערות', pri === 'normal' ? 'high' : pri));
     }
-    // גביה — משלמים שלא שילמו
-    (p.payers || [])
-      .filter(x => !x.paid && x.type !== 'credit' && Number(x.amount) > 0)
-      .forEach(pay => newTasks.push(mk(p, `גבי תשלום מ${pay.name || p.client}`, 'גביה', 'high')));
   });
 
   if (newTasks.length === 0) return false;
