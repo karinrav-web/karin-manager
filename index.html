@@ -2196,7 +2196,8 @@ function refreshDailyTasks() {
 function generateDailyTasks() {
   const today = todayStr();
   // הסר את כל המשימות האוטומטיות שלא הושלמו וצור מחדש
-  state.tasks = state.tasks.filter(t => !t.auto || t.done);
+  // הסר כל משימה אוטומטית שלא הושלמה — גם אם חסר הדגל auto (משימות ישנות מזוהות לפי projId)
+  state.tasks = state.tasks.filter(t => (!t.auto && !t.projId) || t.done);
 
   const now = new Date(); now.setHours(0,0,0,0);
   let idBase = Date.now(), idOff = 0;
