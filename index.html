@@ -1262,7 +1262,7 @@ function mergeCloudState(d) {
   if(!(d.ok&&d.state&&d.state.projects&&d.state.projects.length>0)) return false;
   if(blockCloudLoad){ setSyncStatus('✓ נשמר','var(--accent)'); return true; }
   const p=d.state;
-      p.projects=dedup(p.projects.map(normalizeProject));
+      p.projects=dedup(p.projects.map(normalizeProject)).filter(p=>p.client&&p.client.trim());
       p.tasks=dedup((p.tasks||[]).map(x=>({...x,done:Number(x.done)||0})));
       let local = {};
       try { const ls = localStorage.getItem('karin_pm'); if(ls) local = JSON.parse(ls); } catch(e){}
@@ -1341,7 +1341,7 @@ function load() {
     const s = localStorage.getItem('karin_pm');
     if (s) {
       const p = JSON.parse(s);
-      if (p.projects) p.projects = dedup(p.projects.map(normalizeProject));
+      if (p.projects) p.projects = dedup(p.projects.map(normalizeProject)).filter(p=>p.client&&p.client.trim());
       if (p.tasks) p.tasks = dedup(p.tasks.map(x=>({...x,done:Number(x.done)||0}))).filter(t=>t.text&&t.text.trim());
       state = applyDayReset({projects:p.projects||[],tasks:p.tasks||[],settings:p.settings||{hoursPerDay:6,photosPerDay:20,workDays:[0,1,2,3,4]},editDays:p.editDays||{},billing:p.billing||[],credits:p.credits||[],lastReset:p.lastReset||''});
     }
