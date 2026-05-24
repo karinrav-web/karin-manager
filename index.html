@@ -886,6 +886,7 @@ const BOOTSTRAP_HASH = '03817dec5715d4da022c124c42163d55d410e0da520d699d5a93ce73
 let cloudPinHash = null;
 let prefetchedState = null;
 let lastCloudBillingCount = 0;
+let _dailyTasksDone = false;
 
 async function hashPin(pw) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw + 'karin2026'));
@@ -1310,6 +1311,7 @@ function mergeCloudState(d) {
       try{localStorage.setItem('karin_pm',JSON.stringify(state));}catch(e){}
       setSyncStatus('✓ סונכרן','var(--accent)');
       applyPinToState();
+      maybeGenerateDailyTasks();
       render();
       return true;
 }
@@ -1322,11 +1324,12 @@ function loadFallback() {
     setTimeout(() => {
       fetch(API+'?t='+Date.now())
       .then(r=>r.json())
-      .then(d=>{ if(!mergeCloudState(d)){ setSyncStatus('⚠ אין חיבור לענן — רענני','var(--urgent)'); render(); } })
-      .catch(()=>{ setSyncStatus('⚠ אין חיבור לענן — רענני','var(--urgent)'); render(); });
+      .then(d=>{ if(!mergeCloudState(d)){ setSyncStatus('⚠ אין חיבור לענן — רענני','var(--urgent)'); maybeGenerateDailyTasks(); render(); } })
+      .catch(()=>{ setSyncStatus('⚠ אין חיבור לענן — רענני','var(--urgent)'); maybeGenerateDailyTasks(); render(); });
     }, 5000);
   } else {
     setSyncStatus('עובד מקומית','var(--text3)');
+    maybeGenerateDailyTasks();
     render();
   }
 }
@@ -1434,7 +1437,13 @@ async function syncShootDates() {
   } catch(e) { /* silent fail */ }
 }
 
-function render() { if(generateDailyTasks()) save(); setGreeting(); state.projects.forEach(p => recalcClientShare(p)); renderTasks(); renderProjects(); refreshSelects(); renderUrgency(); renderCalendar(); loadSettings(); renderBillingSummaryMorning(); renderReport(); renderBillingPage(); document.querySelector('.main').classList.add('dashboard-mode'); initThemeSwatches(); loadDashboardSettings(); syncShootDates(); restoreTimer(); }
+function maybeGenerateDailyTasks() {
+  if (_dailyTasksDone) return;
+  _dailyTasksDone = true;
+  if (generateDailyTasks()) save();
+}
+
+function render() { setGreeting(); state.projects.forEach(p => recalcClientShare(p)); renderTasks(); renderProjects(); refreshSelects(); renderUrgency(); renderCalendar(); loadSettings(); renderBillingSummaryMorning(); renderReport(); renderBillingPage(); document.querySelector('.main').classList.add('dashboard-mode'); initThemeSwatches(); loadDashboardSettings(); syncShootDates(); restoreTimer(); }
 
 function restoreTimer() {
   try {
@@ -2179,7 +2188,7 @@ function saveTaskEdit(id) {
 }
 
 function refreshDailyTasks() {
-  state.tasks = state.tasks.filter(t => !t.auto || t.done);
+  _dailyTasksDone = false;
   if (generateDailyTasks()) save();
   renderTasks();
 }
