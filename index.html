@@ -651,6 +651,10 @@
         <div id="cal-summary" style="font-size:13px;color:var(--text2);"></div>
       </div>
       <div class="card">
+        <div class="card-title">📸 ימי צילום השנה</div>
+        <div id="shoot-year-summary" style="font-size:13px;color:var(--text2);"></div>
+      </div>
+      <div class="card">
         <div class="card-title">⚙ הגדרות עריכה</div>
         <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;">
           <div style="display:flex;flex-direction:column;gap:8px;">
@@ -1212,6 +1216,23 @@ function renderCalendar(){
     const totalShoot=[...shootDays].filter(d=>d.startsWith(monthPrefix)).length;
     summaryEl.innerHTML=`<strong>${totalEdit}</strong> ימי עריכה · <strong style="color:#7c3aed">📸 ${totalShoot}</strong> ימי צילום · <strong>${daysInMonth-totalEdit-totalShoot}</strong> ימים פנויים`;
   }
+  renderShootYearSummary();
+}
+function renderShootYearSummary() {
+  const el = document.getElementById('shoot-year-summary');
+  if (!el) return;
+  const year = new Date().getFullYear();
+  const todayStr3 = new Date().toISOString().slice(0,10);
+  const log = (state.shootDatesLog || []).filter(d => d.startsWith(year+'-') && d < todayStr3);
+  if (log.length === 0) { el.innerHTML = '<span style="color:var(--text3)">אין נתונים עדיין — יתעדכן לאחר הסנכרון הבא</span>'; return; }
+  const monthNames = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+  const byMonth = {};
+  log.forEach(d => { const m = parseInt(d.slice(5,7))-1; byMonth[m] = (byMonth[m]||0)+1; });
+  const rows = Object.keys(byMonth).sort((a,b)=>a-b).map(m =>
+    `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border1);">
+      <span>${monthNames[m]}</span><span style="font-weight:600;color:#7c3aed">${byMonth[m]} ימים</span>
+    </div>`).join('');
+  el.innerHTML = `<div style="font-size:15px;font-weight:700;color:#7c3aed;margin-bottom:10px;">סה״כ ${log.length} ימי צילום ב-${year}</div>${rows}`;
 }
 function countEditDaysUntil(deadline){
   const today=new Date(); today.setHours(0,0,0,0);
@@ -1417,6 +1438,13 @@ async function syncShootDates() {
     if (!res.ok) return;
     const { shootDates } = await res.json();
     shootDays = new Set(shootDates);
+
+    // צבור ימי צילום שכבר עברו ב-state כדי לשמור היסטוריה שנתית
+    const todayStr2 = new Date().toISOString().slice(0,10);
+    if (!state.shootDatesLog) state.shootDatesLog = [];
+    const logSet = new Set(state.shootDatesLog);
+    shootDates.filter(d => d < todayStr2).forEach(d => logSet.add(d));
+    state.shootDatesLog = [...logSet].sort();
 
     // Auto-mark future working days (Sun-Thu) as edit days if not shoot days
     const today = new Date(); today.setHours(0,0,0,0);
