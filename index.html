@@ -1234,7 +1234,8 @@ function renderShootYearSummary() {
   const monthNames = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
 
   const projects = (state.projects || []).filter(p => p.date && p.date.startsWith(year+'-') && p.date <= todayStr3);
-  const prevProjects = (state.projects || []).filter(p => p.date && p.date.startsWith(prevYear+'-') && p.date <= samedayPrevYear);
+  // נתוני שנה שעברה — מעמוד ההכנסות (billing records)
+  const prevProjects = (state.billing || []).filter(r => r.date && r.date.startsWith(prevYear+'-') && r.date <= samedayPrevYear);
 
   const byMonth = {};
   projects.forEach(p => { const m = parseInt(p.date.slice(5,7))-1; byMonth[m] = (byMonth[m]||0)+1; });
