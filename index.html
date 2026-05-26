@@ -2150,7 +2150,7 @@ function loadDashboardSettings() {
 
 function renderTasks() {
   document.getElementById('m-projects').textContent = state.projects.filter(p=>p.stage!=='done'&&p.stage!=='s-done'&&p.stage!=='billing'&&p.stage!=='s-billing').length;
-  document.getElementById('m-remaining').textContent = state.projects.filter(p=>p.stage!=='done'&&p.stage!=='billing').reduce((s,p)=>s+Math.max(0,(p.total||0)-(p.edited||0)),0);
+  document.getElementById('m-remaining').textContent = state.projects.filter(p=>p.stage==='edit').reduce((s,p)=>s+Math.max(0,(p.total||0)-(p.edited||0)),0);
   const totalGoal = state.projects.filter(p=>p.goalDaily>0&&p.stage!=='done'&&p.stage!=='billing').reduce((s,p)=>s+(p.goalDaily||0),0);
   const totalEditedToday = state.projects.reduce((s,p)=>s+(p.editedToday||0),0);
   document.getElementById('m-edited-today').textContent = totalEditedToday;
