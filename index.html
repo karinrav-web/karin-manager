@@ -2578,11 +2578,14 @@ function renderProjects() {
         <div>
           <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;margin-bottom:8px;">
             <div>
-              <div class="proj-section-label">תמונות שנערכו</div>
-              <div class="num-row"><input type="number" value="${p.edited}" min="0" max="${p.total}" id="edited-${p.id}" onchange="updateEdited(${p.id},this.value)" /><span>מתוך ${p.total}</span></div>
+              <div class="proj-section-label">✅ ערכתי היום${gt ? ` <span class="goal-pct">· ${et}/${gt}${et >= gt ? ' ✓' : ''}</span>` : ''}</div>
+              <div class="num-row">
+                <input type="number" value="${et}" min="0" id="editedtoday-${p.id}" onchange="updateEditedToday(${p.id},this.value)" />
+                ${gt ? `<span>מתוך ${gt}</span>` : ''}
+              </div>
             </div>
             <div>
-              <div class="proj-section-label">🎯 יעד יומי${gt ? ` <span class="goal-pct">· ${et}/${gt}${et >= gt ? ' ✓' : ''}</span>` : ''}</div>
+              <div class="proj-section-label">🎯 יעד יומי</div>
               <div style="display:flex;align-items:center;gap:8px;">
                 <input type="number" value="${gt || ''}" min="0" placeholder="הגדירי..." oninput="updateGoalTarget(${p.id},this.value)"
                   style="width:70px;padding:6px 10px;font-size:14px;font-weight:600;border:2px solid var(--accent);border-radius:var(--radius-sm);background:var(--accent-light);color:var(--accent);font-family:'Rubik',sans-serif;outline:none;text-align:center;" />
@@ -2598,6 +2601,7 @@ function renderProjects() {
             <button class="qbtn" onclick="bumpEdited(${p.id},10)">+10</button>
           </div>
           ${gt ? `<div class="prog-bar" style="margin-top:8px"><div class="prog-fill" style="width:${Math.min(100,Math.round(et/gt*100))}%"></div></div>` : ''}
+          <div style="margin-top:10px;font-size:13px;color:var(--text3);">נערכו סה״כ: <strong style="color:var(--text);">${p.edited}</strong> מתוך ${p.total} · ${pct}%</div>
         </div>
       </div>
       <div class="notes-area">
@@ -2673,20 +2677,22 @@ function renderProjects() {
 function setStageBtn(btn){const id=Number(btn.dataset.pid);const s=btn.dataset.stage;setStage(id,s);}
 function setStage(id,s){const p=state.projects.find(p=>p.id===id);if(p){p.stage=s;save();renderProjects();}}
 
-function updateEdited(id,v){
+function updateEditedToday(id,v){
   const p=state.projects.find(p=>p.id===id); if(!p) return;
-  const newVal=Math.max(0,parseInt(v)||0); const diff=newVal-(p.edited||0);
-  if(diff>0) p.editedToday=(p.editedToday||0)+diff;
-  p.edited=newVal; save();renderProjects();
+  const newVal=Math.max(0,parseInt(v)||0);
+  const diff=newVal-(p.editedToday||0);
+  p.editedToday=newVal;
+  p.edited=Math.max(0,Math.min(p.total||9999,(p.edited||0)+diff));
+  save();renderProjects();renderTasks();renderUrgency();
 }
 function updateGoalTarget(id,v){const p=state.projects.find(p=>p.id===id);if(p){p.goalDaily=Math.max(0,parseInt(v)||0);renderTasks();save();renderProjects();}}
 function updateNotes(id,v){const p=state.projects.find(p=>p.id===id);if(p){p.notes=v;save();}}
 
 function bumpEdited(id,d){
   const p=state.projects.find(p=>p.id===id); if(!p) return;
+  p.editedToday=Math.max(0,(p.editedToday||0)+d);
   p.edited=Math.max(0,Math.min(p.total||9999,(p.edited||0)+d));
-  if(d>0) p.editedToday=(p.editedToday||0)+d;
-  const i=document.getElementById('edited-'+id); if(i) i.value=p.edited;
+  const i=document.getElementById('editedtoday-'+id); if(i) i.value=p.editedToday;
   save();renderProjects();renderTasks();renderUrgency();
 }
 
