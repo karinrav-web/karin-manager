@@ -2150,8 +2150,8 @@ function loadDashboardSettings() {
 
 function renderTasks() {
   document.getElementById('m-projects').textContent = state.projects.filter(p=>p.stage!=='done'&&p.stage!=='s-done'&&p.stage!=='billing'&&p.stage!=='s-billing').length;
-  document.getElementById('m-remaining').textContent = state.projects.filter(p=>p.stage==='edit').reduce((s,p)=>s+Math.max(0,(p.total||0)-(p.edited||0)),0);
-  const totalGoal = state.projects.filter(p=>p.goalDaily>0).reduce((s,p)=>s+(p.goalDaily||0),0);
+  document.getElementById('m-remaining').textContent = state.projects.filter(p=>p.stage!=='done'&&p.stage!=='billing').reduce((s,p)=>s+Math.max(0,(p.total||0)-(p.edited||0)),0);
+  const totalGoal = state.projects.filter(p=>p.goalDaily>0&&p.stage!=='done'&&p.stage!=='billing').reduce((s,p)=>s+(p.goalDaily||0),0);
   const totalEditedToday = state.projects.reduce((s,p)=>s+(p.editedToday||0),0);
   document.getElementById('m-edited-today').textContent = totalEditedToday;
   document.getElementById('m-goal-total').textContent = totalGoal;
@@ -2536,8 +2536,7 @@ function renderProjects() {
   el.innerHTML = list.map(p => {
     const pct = p.total ? Math.min(100, Math.round(p.edited / p.total * 100)) : 0;
     const fillCls = pct >= 80 ? 'green' : pct >= 50 ? 'yellow' : pct >= 25 ? 'amber' : '';
-    const gd = p.goalDone || 0, gt = p.goalDaily || 0;
-    const gpct = gt ? Math.min(100, Math.round(gd / gt * 100)) : 0;
+    const gt = p.goalDaily || 0;
     const rem = Math.max(0, (p.total || 0) - (p.edited || 0));
     const et = p.editedToday || 0;
     const urgCnt = state.tasks.filter(t => t.client === p.client && t.priority === 'urgent' && !t.done).length;
@@ -2561,7 +2560,7 @@ function renderProjects() {
               <span style="background:var(--s-${p.stage}-b,var(--border));color:#fff;padding:1px 8px;border-radius:20px;font-size:11px;">${STAGES[p.stage] || p.stage}</span>
               <span>נערכו ${p.edited}/${p.total}</span>
               <span style="color:var(--accent)">היום: ${et}</span>
-              ${gt ? `<span style="color:${gd >= gt ? 'var(--accent)' : 'var(--text3)'}">יעד: ${gd}/${gt}</span>` : ''}
+              ${gt ? `<span style="color:${et >= gt ? 'var(--accent)' : 'var(--text3)'}">יעד: ${et}/${gt}</span>` : ''}
               <span>${pct}%</span>
               ${p.deadline ? `<span style="color:var(--urgent);font-weight:500;">📅 ${new Date(p.deadline).toLocaleDateString('he-IL')}</span>` : ''}
             </div>
@@ -2575,10 +2574,22 @@ function renderProjects() {
       <div class="prog-bar" style="margin-top:6px;"><div class="prog-fill ${fillCls}" style="width:${pct}%"></div></div>
       ${isExpanded ? `
       <div class="stage-row" style="margin-top:10px;">${stages}</div>
-      <div class="proj-bottom">
+      <div class="proj-bottom" style="grid-template-columns:1fr;">
         <div>
-          <div class="proj-section-label">תמונות שנערכו</div>
-          <div class="num-row"><input type="number" value="${p.edited}" min="0" max="${p.total}" id="edited-${p.id}" onchange="updateEdited(${p.id},this.value)" /><span>מתוך ${p.total}</span></div>
+          <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;margin-bottom:8px;">
+            <div>
+              <div class="proj-section-label">תמונות שנערכו</div>
+              <div class="num-row"><input type="number" value="${p.edited}" min="0" max="${p.total}" id="edited-${p.id}" onchange="updateEdited(${p.id},this.value)" /><span>מתוך ${p.total}</span></div>
+            </div>
+            <div>
+              <div class="proj-section-label">🎯 יעד יומי${gt ? ` <span class="goal-pct">· ${et}/${gt}${et >= gt ? ' ✓' : ''}</span>` : ''}</div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <input type="number" value="${gt || ''}" min="0" placeholder="הגדירי..." oninput="updateGoalTarget(${p.id},this.value)"
+                  style="width:70px;padding:6px 10px;font-size:14px;font-weight:600;border:2px solid var(--accent);border-radius:var(--radius-sm);background:var(--accent-light);color:var(--accent);font-family:'Rubik',sans-serif;outline:none;text-align:center;" />
+                <span style="font-size:12px;color:var(--text3);">תמונות/יום</span>
+              </div>
+            </div>
+          </div>
           <div class="quick-btns">
             <button class="qbtn minus" onclick="bumpEdited(${p.id},-1)">−1</button>
             <button class="qbtn minus" onclick="bumpEdited(${p.id},-5)">−5</button>
@@ -2586,29 +2597,7 @@ function renderProjects() {
             <button class="qbtn" onclick="bumpEdited(${p.id},5)">+5</button>
             <button class="qbtn" onclick="bumpEdited(${p.id},10)">+10</button>
           </div>
-        </div>
-        <div>
-          <div class="proj-section-label">יעד יומי ${gt ? `<span class="goal-pct">· ${gpct}%</span>` : ''}</div>
-          <div style="margin-bottom:6px;">
-            <div style="font-size:11px;color:var(--text3);margin-bottom:3px;">🎯 יעד (הגדרה)</div>
-            <input type="number" value="${gt || ''}" min="0" placeholder="הגדירי יעד..." oninput="updateGoalTarget(${p.id},this.value)"
-              style="width:90px;padding:6px 10px;font-size:14px;font-weight:600;border:2px solid var(--accent);border-radius:var(--radius-sm);background:var(--accent-light);color:var(--accent);font-family:'Rubik',sans-serif;outline:none;text-align:center;" />
-            <span style="font-size:12px;color:var(--text3);margin-right:6px;">תמונות</span>
-          </div>
-          <div style="margin-bottom:6px;">
-            <div style="font-size:11px;color:var(--text3);margin-bottom:3px;">✅ ערכתי היום</div>
-            <div class="num-row" style="margin-bottom:0;">
-              <input type="number" value="${gd}" min="0" id="gdone-${p.id}" onchange="updateGoalDone(${p.id},this.value)" style="width:65px;text-align:center;" />
-              <span style="font-size:12px;color:var(--text3);">מתוך ${gt || '?'}</span>
-            </div>
-          </div>
-          <div class="quick-btns">
-            <button class="qbtn minus" onclick="bumpGoal(${p.id},-1)">−1</button>
-            <button class="qbtn" onclick="bumpGoal(${p.id},1)">+1</button>
-            <button class="qbtn" onclick="bumpGoal(${p.id},5)">+5</button>
-            <button class="qbtn" onclick="bumpGoal(${p.id},10)">+10</button>
-          </div>
-          ${gt ? `<div class="prog-bar" style="margin-top:8px"><div class="prog-fill" style="width:${gpct}%"></div></div>` : ''}
+          ${gt ? `<div class="prog-bar" style="margin-top:8px"><div class="prog-fill" style="width:${Math.min(100,Math.round(et/gt*100))}%"></div></div>` : ''}
         </div>
       </div>
       <div class="notes-area">
@@ -2690,13 +2679,6 @@ function updateEdited(id,v){
   if(diff>0) p.editedToday=(p.editedToday||0)+diff;
   p.edited=newVal; save();renderProjects();
 }
-function updateGoalDone(id,v){
-  const p=state.projects.find(p=>p.id===id);if(!p)return;
-  const newVal=Math.max(0,parseInt(v)||0); const diff=newVal-(p.goalDone||0);
-  p.goalDone=newVal;
-  if(diff>0){p.edited=Math.min(p.total||9999,(p.edited||0)+diff);p.editedToday=(p.editedToday||0)+diff;}
-  save();renderProjects();renderTasks();renderUrgency();
-}
 function updateGoalTarget(id,v){const p=state.projects.find(p=>p.id===id);if(p){p.goalDaily=Math.max(0,parseInt(v)||0);renderTasks();save();renderProjects();}}
 function updateNotes(id,v){const p=state.projects.find(p=>p.id===id);if(p){p.notes=v;save();}}
 
@@ -2705,14 +2687,6 @@ function bumpEdited(id,d){
   p.edited=Math.max(0,Math.min(p.total||9999,(p.edited||0)+d));
   if(d>0) p.editedToday=(p.editedToday||0)+d;
   const i=document.getElementById('edited-'+id); if(i) i.value=p.edited;
-  save();renderProjects();renderTasks();renderUrgency();
-}
-function bumpGoal(id,d){
-  const p=state.projects.find(p=>p.id===id);if(!p)return;
-  p.goalDone=Math.max(0,(p.goalDone||0)+d);
-  if(d>0){p.edited=Math.min(p.total||9999,(p.edited||0)+d);p.editedToday=(p.editedToday||0)+d;}
-  const i=document.getElementById('gdone-'+id);if(i)i.value=p.goalDone;
-  const e=document.getElementById('edited-'+id);if(e)e.value=p.edited;
   save();renderProjects();renderTasks();renderUrgency();
 }
 
