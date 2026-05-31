@@ -781,6 +781,7 @@
         <div class="page-title" id="proj-page-title">פרויקטים</div>
         <button onclick="collapseAll()" style="padding:7px 16px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">▲ קפל הכל</button>
         <button id="sort-toggle-btn" onclick="toggleProjectSort()" style="padding:7px 16px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">📅 לפי תאריך</button>
+        <button id="sort-deadline-btn" onclick="toggleDeadlineSort()" style="padding:7px 16px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">⏰ לפי דדליין</button>
       </div>
       <div id="deadline-alerts" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;"></div>
       <input id="proj-search" type="text" placeholder="🔍 חיפוש לפי לקוח או שם פרויקט..." oninput="renderProjects()" style="width:100%;padding:8px 14px;font-size:13px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);margin-bottom:14px;box-sizing:border-box;outline:none;" />
@@ -2499,6 +2500,10 @@ function renderProjects() {
         const ad = a.date || '', bd = b.date || '';
         if (ad !== bd) return bd.localeCompare(ad);
       }
+      if (projectSortMode === 'deadline-asc') {
+        const ad = a.deadline || '9999-99-99', bd = b.deadline || '9999-99-99';
+        if (ad !== bd) return ad.localeCompare(bd);
+      }
       const ao = a.order!==undefined?a.order:9999; const bo = b.order!==undefined?b.order:9999;
       if (ao !== bo) return ao - bo;
       return (STAGE_ORDER[a.stage]??5)-(STAGE_ORDER[b.stage]??5);
@@ -3259,14 +3264,32 @@ function unuseCredit(id) {
 function collapseAll() { expandedProjects.clear(); renderProjects(); }
 
 function toggleProjectSort() {
-  projectSortMode = projectSortMode === 'manual' ? 'date-desc' : 'manual';
-  const btn = document.getElementById('sort-toggle-btn');
-  if (btn) {
-    btn.style.background = projectSortMode === 'date-desc' ? 'var(--accent)' : 'var(--surface2)';
-    btn.style.color = projectSortMode === 'date-desc' ? '#fff' : 'var(--text2)';
-    btn.style.borderColor = projectSortMode === 'date-desc' ? 'var(--accent)' : 'var(--border2)';
-  }
+  projectSortMode = projectSortMode === 'date-desc' ? 'manual' : 'date-desc';
+  updateSortBtns();
   renderProjects();
+}
+
+function toggleDeadlineSort() {
+  projectSortMode = projectSortMode === 'deadline-asc' ? 'manual' : 'deadline-asc';
+  updateSortBtns();
+  renderProjects();
+}
+
+function updateSortBtns() {
+  const btn1 = document.getElementById('sort-toggle-btn');
+  const btn2 = document.getElementById('sort-deadline-btn');
+  if (btn1) {
+    const on = projectSortMode === 'date-desc';
+    btn1.style.background = on ? 'var(--accent)' : 'var(--surface2)';
+    btn1.style.color = on ? '#fff' : 'var(--text2)';
+    btn1.style.borderColor = on ? 'var(--accent)' : 'var(--border2)';
+  }
+  if (btn2) {
+    const on = projectSortMode === 'deadline-asc';
+    btn2.style.background = on ? 'var(--urgent)' : 'var(--surface2)';
+    btn2.style.color = on ? '#fff' : 'var(--text2)';
+    btn2.style.borderColor = on ? 'var(--urgent)' : 'var(--border2)';
+  }
 }
 
 load();
