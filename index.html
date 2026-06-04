@@ -1918,7 +1918,7 @@ function renderClientCards() {
         <div style="font-size:15px;font-weight:600;">${name}</div>
         <div style="display:flex;gap:14px;align-items:center;">
           ${revenue>0?`<span style="font-size:13px;color:var(--accent);font-weight:600;">${fmtMoney(revenue)}</span>`:''}
-          ${clientBilling.length>0?`<span style="font-size:11px;color:var(--text3);">${clientBilling.length} רשומות</span>`:activeProjects.length>0?`<span style="font-size:11px;color:var(--text3);">${activeProjects.length} פרויקטים</span>`:''}
+          ${clientBilling.length>0?`<span style="font-size:11px;color:var(--text3);">${clientBilling.length} פרויקטים</span>`:activeProjects.length>0?`<span style="font-size:11px;color:var(--text3);">${activeProjects.length} פרויקטים</span>`:''}
           <span style="font-size:12px;color:var(--text3);" id="${safeId}-arrow">${isOpen?'▲':'▼'}</span>
         </div>
       </div>
