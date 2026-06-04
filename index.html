@@ -753,6 +753,13 @@
         <div class="card-title">לפי חודש</div>
         <div class="billing-chart" id="billing-chart"></div>
       </div>
+      <div class="card" style="margin-bottom:18px;">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+          <span>👤 כרטיסי לקוחות</span>
+          <span id="client-cards-count" style="font-size:12px;font-weight:400;color:var(--text3);"></span>
+        </div>
+        <div id="client-cards-list"></div>
+      </div>
       <div class="card">
         <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
           <span>רשומות</span>
@@ -984,7 +991,7 @@ const PBADGE = {urgent:'b-urgent',high:'b-high',normal:'b-normal',low:'b-low'};
 const PSTRIP = {urgent:'ps-urgent',high:'ps-high',normal:'ps-normal',low:'ps-low'};
 const STAGEMAP = {culling:'edit',retouch:'edit',approval:'wait',delivery:'deliver','s-send':'send','s-wait':'wait','s-edit':'edit','s-deliver':'deliver','s-notes':'notes','s-billing':'billing','s-done':'done'};
 
-let state = {projects:[],tasks:[],settings:{hoursPerDay:6,photosPerDay:20,photosPerProj:10,workDays:[0,1,2,3,4]}};
+let state = {projects:[],tasks:[],settings:{hoursPerDay:6,photosPerDay:20,photosPerProj:10,workDays:[0,1,2,3,4]},clients:{}};
 let editingId = null;
 let stageFilter = null;
 let activeTimer = {projId:null,startTs:null,iv:null};
@@ -1073,7 +1080,7 @@ function restoreAutoBackup(dateStr) {
     const p = JSON.parse(data);
     if (!p.projects) { alert('גיבוי לא תקין'); return; }
     if (!confirm(`לשחזר גיבוי מ-${dateStr}?\n${p.projects.length} פרויקטים, ${(p.tasks||[]).length} משימות.\n\nהנתונים הנוכחיים יוחלפו.`)) return;
-    state = {projects:p.projects||[],tasks:p.tasks||[],settings:p.settings||state.settings,editDays:p.editDays||{},lastReset:p.lastReset||'',billing:p.billing||[],credits:p.credits||[]};
+    state = {projects:p.projects||[],tasks:p.tasks||[],settings:p.settings||state.settings,editDays:p.editDays||{},lastReset:p.lastReset||'',billing:p.billing||[],credits:p.credits||[],clients:p.clients||{}};
     blockCloudLoad = true;
     setTimeout(()=>{ blockCloudLoad=false; },30000);
     save(); render();
@@ -1359,7 +1366,8 @@ function mergeCloudState(d) {
         settings:mergedSettings,
         editDays:local.editDays||p.editDays||{},
         billing: mergeBilling(local.billing||[], p.billing||[]),
-        credits: mergeBilling(local.credits||[], p.credits||[])
+        credits: mergeBilling(local.credits||[], p.credits||[]),
+        clients: {...(local.clients||{}), ...(p.clients||{})}
       });
       lastCloudBillingCount = Math.max(lastCloudBillingCount, (state.billing||[]).length);
       try{localStorage.setItem('karin_pm',JSON.stringify(state));}catch(e){}
@@ -1396,7 +1404,7 @@ function load() {
       const p = JSON.parse(s);
       if (p.projects) p.projects = dedup(p.projects.map(normalizeProject)).filter(p=>p.client&&p.client.trim());
       if (p.tasks) p.tasks = dedup(p.tasks.map(x=>({...x,done:Number(x.done)||0}))).filter(t=>t.text&&t.text.trim());
-      state = applyDayReset({projects:p.projects||[],tasks:p.tasks||[],settings:p.settings||{hoursPerDay:6,photosPerDay:20,workDays:[0,1,2,3,4]},editDays:p.editDays||{},billing:p.billing||[],credits:p.credits||[],lastReset:p.lastReset||''});
+      state = applyDayReset({projects:p.projects||[],tasks:p.tasks||[],settings:p.settings||{hoursPerDay:6,photosPerDay:20,workDays:[0,1,2,3,4]},editDays:p.editDays||{},billing:p.billing||[],credits:p.credits||[],clients:p.clients||{},lastReset:p.lastReset||''});
     }
   } catch(e) {}
   setSyncStatus('טוען...','var(--text3)');
@@ -1629,6 +1637,7 @@ function billingYears() {
 function renderBillingPage() {
   if (!document.getElementById('page-billing')) return;
   renderCreditsSection();
+  renderClientCards();
   const records = getBillingRecords();
 
   // Year tabs
@@ -1845,6 +1854,75 @@ function renderBillingPage() {
       </div>`;
     }).join('') : '<div style="color:var(--text3);font-size:13px;padding:16px 0;text-align:center;">אין רשומות</div>';
   }
+}
+
+function renderClientCards() {
+  const el = document.getElementById('client-cards-list');
+  const cntEl = document.getElementById('client-cards-count');
+  if (!el) return;
+
+  // Collect all unique client names from billing records + projects
+  const clientSet = new Set();
+  (state.billing||[]).forEach(r => { if (r.client && r.client.trim()) clientSet.add(r.client.trim()); });
+  state.projects.forEach(p => { if (p.client && p.client.trim()) clientSet.add(p.client.trim()); });
+  const clients = [...clientSet].sort((a,b) => a.localeCompare(b, 'he'));
+
+  if (cntEl) cntEl.textContent = clients.length ? clients.length + ' לקוחות' : '';
+  if (!clients.length) {
+    el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:8px 0;">אין לקוחות עדיין</div>';
+    return;
+  }
+
+  el.innerHTML = clients.map((name, idx) => {
+    const notes = (state.clients?.[name]?.notes) || '';
+    const revenue = (state.billing||[]).filter(r => r.client === name).reduce((s, r) => s + (r.total||0), 0);
+    const projects = state.projects.filter(p => p.client === name);
+    const safeId = 'cc-' + idx;
+    const isOpen = clientCardOpen.has(name);
+
+    const projectRows = projects.map(p => {
+      const dateStr = p.date ? p.date.slice(8)+'/'+p.date.slice(5,7)+'/'+p.date.slice(0,4) : '';
+      return `<div style="display:flex;align-items:center;gap:8px;padding:5px 2px;border-bottom:1px solid var(--border);">
+        <span style="flex:1;font-size:13px;">${p.title||'—'}</span>
+        <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:var(--s-${p.stage}-b,var(--border));color:#fff;white-space:nowrap;">${STAGES[p.stage]||p.stage}</span>
+        ${dateStr?`<span style="font-size:11px;color:var(--text3);white-space:nowrap;">${dateStr}</span>`:''}
+      </div>`;
+    }).join('');
+
+    return `<div style="border:1px solid var(--border2);border-radius:var(--radius);margin-bottom:10px;overflow:hidden;">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;cursor:pointer;background:var(--surface2);" onclick="toggleClientCard('${name.replace(/'/g,"\\'")}')">
+        <div style="font-size:15px;font-weight:600;">${name}</div>
+        <div style="display:flex;gap:14px;align-items:center;">
+          ${revenue>0?`<span style="font-size:13px;color:var(--accent);font-weight:600;">${fmtMoney(revenue)}</span>`:''}
+          <span style="font-size:11px;color:var(--text3);">${projects.length} פרויקטים</span>
+          <span style="font-size:12px;color:var(--text3);" id="${safeId}-arrow">${isOpen?'▲':'▼'}</span>
+        </div>
+      </div>
+      <div id="${safeId}-body" style="display:${isOpen?'block':'none'};padding:12px 14px;">
+        <textarea
+          placeholder="תיאור / הערות על הלקוח..."
+          oninput="saveClientNote('${name.replace(/'/g,"\\'")}', this.value)"
+          style="width:100%;min-height:64px;padding:8px 10px;font-size:13px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);resize:vertical;box-sizing:border-box;outline:none;${projects.length?'margin-bottom:12px;':''}"
+        >${notes}</textarea>
+        ${projects.length?`<div style="font-size:11px;color:var(--text3);margin-bottom:6px;font-weight:500;">פרויקטים</div>${projectRows}`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+const clientCardOpen = new Set();
+
+function toggleClientCard(name) {
+  if (clientCardOpen.has(name)) clientCardOpen.delete(name);
+  else clientCardOpen.add(name);
+  renderClientCards();
+}
+
+function saveClientNote(name, note) {
+  if (!state.clients) state.clients = {};
+  if (!state.clients[name]) state.clients[name] = {};
+  state.clients[name].notes = note;
+  save();
 }
 
 function toggleBillingClientView() {
@@ -2786,7 +2864,7 @@ function importBackup(e){
       const p=JSON.parse(ev.target.result);
       if(!p.projects){alert('קובץ לא תקין');return;}
       if(!confirm('לייבא גיבוי? הנתונים הנוכחיים יוחלפו.'))return;
-      state={projects:p.projects||[],tasks:p.tasks||[],settings:p.settings||state.settings,editDays:p.editDays||{},lastReset:p.lastReset||'',billing:p.billing||[]};
+      state={projects:p.projects||[],tasks:p.tasks||[],settings:p.settings||state.settings,editDays:p.editDays||{},lastReset:p.lastReset||'',billing:p.billing||[],clients:p.clients||{}};
       blockCloudLoad = true;
       setTimeout(()=>{ blockCloudLoad = false; }, 30000);
       save();render();
