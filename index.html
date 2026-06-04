@@ -1913,10 +1913,14 @@ function renderClientCards() {
     const hasActive = activeRows.length > 0;
     const hasBilling = billingRows.length > 0;
 
+    const projNamesList = [...uniqueProjectNames].filter(n=>n&&n!=='—').join(' · ');
     return `<div style="border:1px solid var(--border2);border-radius:var(--radius);margin-bottom:10px;overflow:hidden;">
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;cursor:pointer;background:var(--surface2);" onclick="toggleClientCard('${name.replace(/'/g,"\\'")}')">
-        <div style="font-size:15px;font-weight:600;">${name}</div>
-        <div style="display:flex;gap:14px;align-items:center;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;background:var(--surface2);" onclick="toggleClientCard('${name.replace(/'/g,"\\'")}')">
+        <div style="min-width:0;">
+          <div style="font-size:15px;font-weight:600;">${name}</div>
+          ${projNamesList?`<div style="font-size:11px;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${projNamesList}</div>`:''}
+        </div>
+        <div style="display:flex;gap:14px;align-items:center;flex-shrink:0;">
           ${revenue>0?`<span style="font-size:13px;color:var(--accent);font-weight:600;">${fmtMoney(revenue)}</span>`:''}
           ${clientBilling.length>0?`<span style="font-size:11px;color:var(--text3);">${clientBilling.length} פרויקטים</span>`:activeProjects.length>0?`<span style="font-size:11px;color:var(--text3);">${activeProjects.length} פרויקטים</span>`:''}
           <span style="font-size:12px;color:var(--text3);" id="${safeId}-arrow">${isOpen?'▲':'▼'}</span>
