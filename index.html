@@ -585,7 +585,6 @@
             </div>
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
               <div class="card-title" style="margin-bottom:0;">משימות — ממוינות לפי עדיפות</div>
-              <button onclick="refreshDailyTasks()" title="צור מחדש משימות אוטומטיות" style="font-size:11px;padding:3px 8px;border:1px solid var(--border2);border-radius:6px;background:transparent;color:var(--text3);cursor:pointer;">⟳ רענן</button>
             </div>
             <div id="tasks-list"></div>
             <button class="add-btn" onclick="toggleEl('add-task-form')">+ הוסף משימה</button>
@@ -905,7 +904,6 @@ const BOOTSTRAP_HASH = '03817dec5715d4da022c124c42163d55d410e0da520d699d5a93ce73
 let cloudPinHash = null;
 let prefetchedState = null;
 let lastCloudBillingCount = 0;
-let _dailyTasksDone = false;
 
 async function hashPin(pw) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw + 'karin2026'));
@@ -1322,7 +1320,7 @@ function mergeCloudState(d) {
   if(blockCloudLoad){ setSyncStatus('✓ נשמר','var(--accent)'); return true; }
   const p=d.state;
       p.projects=dedup(p.projects.map(normalizeProject)).filter(p=>p.client&&p.client.trim());
-      p.tasks=dedup((p.tasks||[]).map(x=>({...x,done:Number(x.done)||0})));
+      p.tasks=dedup((p.tasks||[]).map(x=>({...x,done:Number(x.done)||0}))).filter(t=>!t.auto&&!t.projId);
       let local = {};
       try { const ls = localStorage.getItem('karin_pm'); if(ls) local = JSON.parse(ls); } catch(e){}
       const cloudProjMap = {};
@@ -1373,7 +1371,6 @@ function mergeCloudState(d) {
       try{localStorage.setItem('karin_pm',JSON.stringify(state));}catch(e){}
       setSyncStatus('✓ סונכרן','var(--accent)');
       applyPinToState();
-      maybeGenerateDailyTasks();
       render();
       return true;
 }
@@ -1384,15 +1381,14 @@ function loadFallback() {
     // גם localStorage וגם הענן לא החזירו נתונים — נסה שוב מהענן
     setSyncStatus('⚠ מנסה שוב...','var(--high)');
     setTimeout(() => {
-      if(!getAPI()){setSyncStatus('מקומי בלבד','var(--text3)');maybeGenerateDailyTasks();render();return;}
+      if(!getAPI()){setSyncStatus('מקומי בלבד','var(--text3)');render();return;}
       fetch(getAPI()+'?t='+Date.now())
       .then(r=>r.json())
-      .then(d=>{ if(!mergeCloudState(d)){ setSyncStatus('⚠ אין חיבור לענן — רענני','var(--urgent)'); maybeGenerateDailyTasks(); render(); } })
-      .catch(()=>{ setSyncStatus('⚠ אין חיבור לענן — רענני','var(--urgent)'); maybeGenerateDailyTasks(); render(); });
+      .then(d=>{ if(!mergeCloudState(d)){ setSyncStatus('⚠ אין חיבור לענן — רענני','var(--urgent)'); render(); } })
+      .catch(()=>{ setSyncStatus('⚠ אין חיבור לענן — רענני','var(--urgent)'); render(); });
     }, 5000);
   } else {
     setSyncStatus('עובד מקומית','var(--text3)');
-    maybeGenerateDailyTasks();
     render();
   }
 }
@@ -1403,7 +1399,7 @@ function load() {
     if (s) {
       const p = JSON.parse(s);
       if (p.projects) p.projects = dedup(p.projects.map(normalizeProject)).filter(p=>p.client&&p.client.trim());
-      if (p.tasks) p.tasks = dedup(p.tasks.map(x=>({...x,done:Number(x.done)||0}))).filter(t=>t.text&&t.text.trim());
+      if (p.tasks) p.tasks = dedup(p.tasks.map(x=>({...x,done:Number(x.done)||0}))).filter(t=>t.text&&t.text.trim()&&!t.auto&&!t.projId);
       state = applyDayReset({projects:p.projects||[],tasks:p.tasks||[],settings:p.settings||{hoursPerDay:6,photosPerDay:20,workDays:[0,1,2,3,4]},editDays:p.editDays||{},billing:p.billing||[],credits:p.credits||[],clients:p.clients||{},lastReset:p.lastReset||''});
     }
   } catch(e) {}
@@ -1503,11 +1499,6 @@ async function syncShootDates() {
   } catch(e) { /* silent fail */ }
 }
 
-function maybeGenerateDailyTasks() {
-  if (_dailyTasksDone) return;
-  _dailyTasksDone = true;
-  if (generateDailyTasks()) save();
-}
 
 function render() { setGreeting(); state.projects.forEach(p => recalcClientShare(p)); renderTasks(); renderProjects(); refreshSelects(); renderUrgency(); renderCalendar(); loadSettings(); renderBillingSummaryMorning(); renderShootYearSummary(); renderReport(); renderBillingPage(); document.querySelector('.main').classList.add('dashboard-mode'); initThemeSwatches(); loadDashboardSettings(); syncShootDates(); restoreTimer(); }
 
@@ -2352,72 +2343,6 @@ function saveTaskEdit(id) {
   save(); renderTasks(); refreshSelects();
 }
 
-function refreshDailyTasks() {
-  _dailyTasksDone = false;
-  generateDailyTasks();
-  save();
-  renderTasks();
-}
-
-function generateDailyTasks() {
-  const today = todayStr();
-  const AUTO_PREFIXES = ['שלחי סינון ל','עקבי אחרי סינון מ','ערכי תמונות —','שלחי קובץ מוכן ל','טפלי בהערות של','גבי תשלום מ','סיימי גביה'];
-  state.tasks = state.tasks.filter(t => {
-    if (t.done) return true;
-    if (t.auto || t.projId) return false;
-    return !AUTO_PREFIXES.some(p => t.text && t.text.startsWith(p));
-  });
-
-  const now = new Date(); now.setHours(0,0,0,0);
-  let idBase = Date.now(), idOff = 0;
-  const newTasks = [];
-
-  const mk = (p, text, stage, priority) => ({
-    id: idBase + (++idOff), text,
-    client: p.client, stage, priority,
-    done: 0, auto: true, autoDate: today, projId: p.id
-  });
-
-  state.projects.forEach(p => {
-    if (p.stage === 'done' || p.stage === 's-done') return;
-    const daysLeft = p.deadline
-      ? Math.ceil((new Date(p.deadline) - now) / 86400000) : null;
-    const pri = daysLeft !== null && daysLeft <= 2 ? 'urgent'
-              : daysLeft !== null && daysLeft <= 5 ? 'high' : 'normal';
-
-    if (p.stage === 'billing' || p.stage === 's-billing') {
-      // גביה — רק לפרויקטים בשלב גביה
-      (p.payers || [])
-        .filter(x => !x.paid && x.type !== 'credit' && Number(x.amount) > 0)
-        .forEach(pay => newTasks.push(mk(p, `גבי תשלום מ${pay.name || p.client}`, 'גביה', 'high')));
-      return;
-    }
-
-    if (p.stage === 'send') {
-      newTasks.push(mk(p, `שלחי סינון ל${p.client}`, 'סינון', pri));
-    }
-    if (p.stage === 'wait') {
-      newTasks.push(mk(p, `עקבי אחרי סינון מ${p.client}`, 'מחכה', pri === 'normal' ? 'low' : pri));
-    }
-    if (p.stage === 'edit') {
-      const rem = Math.max(0, (p.total || 0) - (p.edited || 0));
-      if (rem > 0) {
-        const deadline_txt = daysLeft !== null ? ` · ${daysLeft} ימים לסיום` : '';
-        newTasks.push(mk(p, `ערכי תמונות — ${p.client} (נשארו ${rem}${deadline_txt})`, 'עריכה', pri));
-      }
-    }
-    if (p.stage === 'deliver') {
-      newTasks.push(mk(p, `שלחי קובץ מוכן ל${p.client}`, 'שליחה', pri === 'normal' ? 'high' : pri));
-    }
-    if (p.stage === 'notes') {
-      newTasks.push(mk(p, `טפלי בהערות של ${p.client}`, 'הערות', pri === 'normal' ? 'high' : pri));
-    }
-  });
-
-  if (newTasks.length === 0) return false;
-  state.tasks.push(...newTasks);
-  return true;
-}
 
 function addTask() {
   const text=document.getElementById('nt-text').value.trim(); if(!text) return;
