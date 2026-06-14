@@ -1689,9 +1689,13 @@ function renderBillingPage() {
     const diff = currentToDate !== null ? currentToDate - prevYearToDate : null;
     const diffPct = prevYearToDate > 0 && diff !== null ? Math.round((diff/prevYearToDate)*100) : null;
 
+    const uniqueYearProjects = new Set(yearRecs.map(r => (r.client||'') + '|' + (r.project||''))).size;
+    const avgPerProject = uniqueYearProjects > 0 ? Math.round(totalYear / uniqueYearProjects) : 0;
+
     if (sumEl) sumEl.innerHTML = `
       <div class="billing-stat"><div class="billing-stat-val">${fmtMoney(totalYear)}</div><div class="billing-stat-label">סה"כ ${billingYear}</div></div>
       <div class="billing-stat"><div class="billing-stat-val">${fmtMoney(monthlyAvg)}</div><div class="billing-stat-label">ממוצע חודשי${billingYear==nowYear?' (עד כה)':''}</div></div>
+      <div class="billing-stat"><div class="billing-stat-val">${fmtMoney(avgPerProject)}</div><div class="billing-stat-label">ממוצע לפרויקט · ${uniqueYearProjects} פרויקטים</div></div>
       <div class="billing-stat"><div class="billing-stat-val">${fmtMoney(totalThisMonth)}</div><div class="billing-stat-label">${months[nowMonth]} (החודש)</div></div>
       <div class="billing-stat"><div class="billing-stat-val">${fmtMoney(totalLastMonth)}</div><div class="billing-stat-label">${months[nowMonth>0?nowMonth-1:11]} (חודש קודם)</div></div>
       ${billingYear==nowYear && prevYearToDate>0 ? `
