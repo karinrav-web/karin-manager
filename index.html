@@ -3029,9 +3029,115 @@ function renderBillingSection(p) {
         <div class="billing-summary-item"><div>סה״כ כולל מעמ</div><strong>${fmtILS(totalWithVat)}</strong></div>
         <div class="billing-summary-item green"><div>התקבל</div><strong>${fmtILS(paidAmount)}</strong></div>
         <div class="billing-summary-item ${remainAmount>0?'red':'green'}"><div>נשאר</div><strong>${fmtILS(remainAmount)}</strong></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <button onclick="exportPaymentPDF(${p.id})" style="flex:1;padding:7px 12px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">📄 שמור PDF</button>
+        <button onclick="exportPaymentWhatsApp(${p.id})" style="flex:1;padding:7px 12px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid #25D366;border-radius:var(--radius-sm);background:#f0fdf4;color:#15803d;cursor:pointer;">💬 העתק לוואצאפ</button>
       </div>` : ''}
     </div>
   `;
+}
+
+function _paymentExportData(projId) {
+  const VAT_RATE = 1.18;
+  const p = state.projects.find(p => p.id === projId); if (!p) return null;
+  const payers = p.payers || [];
+  const discount = calcDiscount(p);
+  const vendors = payers.filter(x => x.type === 'vendor');
+  const credits = payers.filter(x => x.type === 'credit');
+  const client = payers.find(x => x.type === 'client');
+  const vendorBonus = vendors.length * 500;
+  const vendorPaid = vendors.reduce((s, x) => s + (Number(x.amount) || 0), 0);
+  const creditTotal = credits.reduce((s, x) => s + (Number(x.amount) || 0), 0);
+  const totalBeforeVat = Math.max(0, (Number(p.billingBase)||0) + vendorBonus + (Number(p.billingAdj)||0) - discount);
+  const totalWithVat = Math.round((totalBeforeVat - creditTotal) * VAT_RATE);
+  const paidAmount = payers.filter(x => x.paid && x.type !== 'credit').reduce((s, x) => s + Math.round(Number(x.amount) * VAT_RATE), 0);
+  const remainAmount = totalWithVat - paidAmount;
+  const rows = [...vendors, ...(client ? [client] : [])].map(pay => ({
+    name: pay.name,
+    amount: Math.round(Number(pay.amount) * VAT_RATE),
+    paid: !!pay.paid,
+    isCredit: Number(pay.amount) < 0
+  }));
+  return { p, rows, totalWithVat, paidAmount, remainAmount, discount, creditTotal };
+}
+
+function exportPaymentPDF(projId) {
+  const d = _paymentExportData(projId); if (!d) return;
+  const { p, rows, totalWithVat, paidAmount, remainAmount, discount } = d;
+  const dateStr = p.date ? new Date(p.date).toLocaleDateString('he-IL') : '';
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html><html lang="he" dir="rtl"><head>
+  <meta charset="UTF-8"><title>פירוט תשלומים — ${p.client}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Rubik',sans-serif;background:#fff;color:#1a1a2e;padding:40px;max-width:600px;margin:0 auto;}
+    h1{font-size:22px;font-weight:700;margin-bottom:4px;}
+    .sub{font-size:14px;color:#666;margin-bottom:28px;}
+    table{width:100%;border-collapse:collapse;margin-bottom:24px;}
+    th{text-align:right;font-size:12px;color:#888;font-weight:500;padding:8px 12px;border-bottom:2px solid #eee;}
+    td{padding:12px;font-size:14px;border-bottom:1px solid #f0f0f0;}
+    .badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600;}
+    .paid{background:#dcfce7;color:#15803d;}
+    .pending{background:#fef3c7;color:#92400e;}
+    .credit{background:#f5f0ff;color:#7c3aed;}
+    .summary{background:#f8f9fa;border-radius:10px;padding:16px 20px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+    .s-item{text-align:center;}
+    .s-label{font-size:11px;color:#888;margin-bottom:4px;}
+    .s-val{font-size:18px;font-weight:700;}
+    .green{color:#15803d;} .red{color:#dc2626;}
+    .footer{margin-top:32px;font-size:11px;color:#bbb;text-align:center;border-top:1px solid #eee;padding-top:16px;}
+    @media print{button{display:none!important}}
+  </style>
+  </head><body>
+  <h1>פירוט תשלומים</h1>
+  <div class="sub">${p.client}${p.title ? ' · ' + p.title : ''}${dateStr ? ' · ' + dateStr : ''}</div>
+  <table>
+    <thead><tr><th>שם</th><th>סכום כולל מעמ</th><th>סטטוס</th></tr></thead>
+    <tbody>
+    ${rows.map(r => `<tr>
+      <td style="font-weight:500;">${r.name}</td>
+      <td style="font-weight:600;">${r.isCredit ? '−' : ''}₪${Math.abs(r.amount).toLocaleString()}</td>
+      <td>${r.isCredit ? `<span class="badge credit">זיכוי</span>` : r.paid ? `<span class="badge paid">✓ שולם</span>` : `<span class="badge pending">ממתין</span>`}</td>
+    </tr>`).join('')}
+    </tbody>
+  </table>
+  ${discount > 0 ? `<p style="font-size:13px;color:#dc2626;margin-bottom:16px;">הנחה: −₪${discount.toLocaleString()}</p>` : ''}
+  <div class="summary">
+    <div class="s-item"><div class="s-label">סה"כ כולל מעמ</div><div class="s-val">₪${totalWithVat.toLocaleString()}</div></div>
+    <div class="s-item"><div class="s-label">התקבל</div><div class="s-val green">₪${paidAmount.toLocaleString()}</div></div>
+    <div class="s-item"><div class="s-label">נשאר לתשלום</div><div class="s-val ${remainAmount > 0 ? 'red' : 'green'}">₪${Math.abs(remainAmount).toLocaleString()}</div></div>
+  </div>
+  <div class="footer">קרין רבנה — צילום אדריכלות ועיצוב פנים</div>
+  <script>window.onload=()=>window.print();<\/script>
+  </body></html>`);
+  win.document.close();
+}
+
+function exportPaymentWhatsApp(projId) {
+  const d = _paymentExportData(projId); if (!d) return;
+  const { p, rows, totalWithVat, paidAmount, remainAmount, discount } = d;
+  const lines = [];
+  lines.push(`💰 *פירוט תשלומים*`);
+  if (p.title) lines.push(`📁 ${p.client} · ${p.title}`);
+  else lines.push(`📁 ${p.client}`);
+  lines.push('');
+  rows.forEach(r => {
+    const icon = r.isCredit ? '💜' : r.paid ? '✅' : '⏳';
+    const status = r.isCredit ? 'זיכוי' : r.paid ? 'שולם' : 'ממתין';
+    lines.push(`${icon} ${r.name}: ₪${Math.abs(r.amount).toLocaleString()} — ${status}`);
+  });
+  if (discount > 0) lines.push(`🏷️ הנחה: −₪${discount.toLocaleString()}`);
+  lines.push('');
+  lines.push(`סה"כ: ₪${totalWithVat.toLocaleString()} כולל מעמ`);
+  lines.push(`התקבל: ₪${paidAmount.toLocaleString()}`);
+  if (remainAmount > 0) lines.push(`נשאר לתשלום: ₪${remainAmount.toLocaleString()}`);
+  else lines.push(`✅ שולם במלואו`);
+  navigator.clipboard.writeText(lines.join('\n')).then(() => {
+    const btn = document.querySelector(`button[onclick="exportPaymentWhatsApp(${projId})"]`);
+    if (btn) { const orig = btn.textContent; btn.textContent = '✓ הועתק!'; setTimeout(() => btn.textContent = orig, 2000); }
+  });
 }
 
 function renderBillingSummaryMorning() {
