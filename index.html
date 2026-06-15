@@ -2900,11 +2900,11 @@ function recalcClientShare(p) {
   const vendorPaid = vendors.reduce((s, x) => s + (Number(x.amount) || 0), 0);
   const creditTotal = creditsUsed.reduce((s, x) => s + (Number(x.amount) || 0), 0);
   const discount = calcDiscount(p);
-  const clientShare = Math.max(0, base + vendorBonus + adj - discount - vendorPaid - creditTotal);
+  const clientShare = base + vendorBonus + adj - discount - vendorPaid - creditTotal;
   const client = (p.payers || []).find(x => x.type === 'client');
   if (client) {
     client.amount = clientShare;
-    if (clientShare <= 0 && creditTotal > 0) client.paid = true;
+    if (clientShare <= 0) client.paid = true;
   }
 }
 
@@ -2923,7 +2923,7 @@ function renderBillingSection(p) {
   const vendorBonus = vendors.length * 500;
   const creditTotal = credits.reduce((s, x) => s + (Number(x.amount) || 0), 0);
   const totalBeforeVat = Math.max(0, base + vendorBonus + adj - discount);
-  const clientShare = client ? (Number(client.amount) || 0) : Math.max(0, totalBeforeVat - vendorPaid - creditTotal);
+  const clientShare = client ? (Number(client.amount) || 0) : totalBeforeVat - vendorPaid - creditTotal;
 
   const paidAmount = payers.filter(x => x.paid && x.type !== 'credit').reduce((s, x) => s + Math.round(Number(x.amount) * VAT_RATE), 0);
   const totalWithVat = Math.round((totalBeforeVat - creditTotal) * VAT_RATE);
@@ -2968,12 +2968,17 @@ function renderBillingSection(p) {
 
   const clientRow = client ? (() => {
     const realIdx = payers.indexOf(client);
-    return `<div class="billing-row" style="background:var(--accent-light);border-radius:var(--radius-sm);padding:6px 10px;">
-      <span class="billing-type" style="background:var(--accent);color:#fff;">לקוח</span>
+    const isCredit = clientShare < 0;
+    const bg = isCredit ? '#f5f0ff' : 'var(--accent-light)';
+    const badgeBg = isCredit ? '#7c3aed' : 'var(--accent)';
+    const label = isCredit ? 'זיכוי ללקוח' : 'לקוח';
+    const amtColor = isCredit ? '#7c3aed' : 'inherit';
+    return `<div class="billing-row" style="background:${bg};border-radius:var(--radius-sm);padding:6px 10px;">
+      <span class="billing-type" style="background:${badgeBg};color:#fff;">${label}</span>
       <span class="billing-name" style="font-weight:500;">${client.name}</span>
       <div style="display:flex;align-items:center;gap:6px;">
-        <span style="font-size:14px;font-weight:600;">${fmtILS(clientShare)}</span>
-        <span style="font-size:11px;color:var(--text3);">(${fmtILS(clientShare*VAT_RATE)} כולל מעמ)</span>
+        <span style="font-size:14px;font-weight:600;color:${amtColor};">${isCredit ? '−' : ''}${fmtILS(Math.abs(clientShare))}</span>
+        <span style="font-size:11px;color:var(--text3);">(${isCredit ? '−' : ''}${fmtILS(Math.abs(clientShare)*VAT_RATE)} כולל מעמ)</span>
       </div>
       <button class="billing-paid-btn ${client.paid ? 'paid' : ''}" onclick="togglePaid(${p.id},${realIdx})">${client.paid ? '✓' : ''}</button>
       <button class="billing-delete-btn" onclick="deletePayer(${p.id},${realIdx})">✕</button>
