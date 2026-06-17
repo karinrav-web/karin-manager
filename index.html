@@ -2856,10 +2856,27 @@ function updateBillingBase(projId, val) {
   recalcClientShare(p);
   save(); renderProjects(); renderBillingSummaryMorning();
 }
-function updateBillingAdj(projId, val) {
+function _syncBillingAdj(p) {
+  p.billingAdj = (p.adjItems||[]).reduce((s,x) => s + (Number(x.amount)||0), 0);
+}
+function addAdjItem(projId) {
   const p = state.projects.find(p => p.id === projId); if (!p) return;
-  p.billingAdj = Number(val) || 0;
-  recalcClientShare(p);
+  if (!p.adjItems) p.adjItems = [];
+  p.adjItems.push({ desc: '', amount: 0 });
+  _syncBillingAdj(p); recalcClientShare(p);
+  save(); renderProjects(); renderBillingSummaryMorning();
+}
+function updateAdjItem(projId, idx, field, val) {
+  const p = state.projects.find(p => p.id === projId); if (!p || !p.adjItems) return;
+  if (field === 'amount') p.adjItems[idx].amount = Number(val) || 0;
+  else p.adjItems[idx].desc = val;
+  _syncBillingAdj(p); recalcClientShare(p);
+  save(); if (field === 'amount') { renderProjects(); renderBillingSummaryMorning(); }
+}
+function deleteAdjItem(projId, idx) {
+  const p = state.projects.find(p => p.id === projId); if (!p || !p.adjItems) return;
+  p.adjItems.splice(idx, 1);
+  _syncBillingAdj(p); recalcClientShare(p);
   save(); renderProjects(); renderBillingSummaryMorning();
 }
 function updateBillingDiscount(projId, val) {
@@ -2912,7 +2929,8 @@ function renderBillingSection(p) {
   const VAT_RATE = 1.18;
   const payers = p.payers || [];
   const base = Number(p.billingBase) || 0;
-  const adj = Number(p.billingAdj) || 0;
+  const adjItems = p.adjItems && p.adjItems.length ? p.adjItems : (p.billingAdj ? [{desc:'תוספת',amount:Number(p.billingAdj)}] : []);
+  const adj = adjItems.reduce((s,x) => s + (Number(x.amount)||0), 0);
   const discountRaw = Number(p.billingDiscount) || 0;
   const discountType = p.billingDiscountType || 'amount';
   const discount = calcDiscount(p);
@@ -2997,11 +3015,18 @@ function renderBillingSection(p) {
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">${baseButtons}
           <input type="number" placeholder="אחר..." value="${base && ![2700,3700,5000].includes(base)?base:''}" style="width:90px;padding:4px 8px;font-size:12px;border:1px solid var(--border2);border-radius:20px;font-family:'Rubik',sans-serif;" onchange="updateBillingBase(${p.id},this.value)" />
         </div>
-        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-          <div style="display:flex;align-items:center;gap:6px;">
-            <span style="font-size:12px;color:var(--accent);">+ תוספת:</span>
-            <input type="number" value="${adj||''}" placeholder="0" min="0" style="width:75px;padding:4px 8px;font-size:12px;border:1px solid var(--accent);border-radius:var(--radius-sm);font-family:'Rubik',sans-serif;text-align:center;" onchange="updateBillingAdj(${p.id},this.value)" />
+        <div style="margin-top:8px;border-top:1px dashed var(--border);padding-top:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${adjItems.length?'6':'0'}px;">
+            <span style="font-size:11px;color:var(--accent);font-weight:500;">+ תוספות${adj>0?' · '+fmtILS(adj):''}</span>
+            <button onclick="addAdjItem(${p.id})" style="font-size:11px;padding:2px 10px;border:1px dashed var(--accent);border-radius:var(--radius-sm);background:transparent;color:var(--accent);cursor:pointer;font-family:'Rubik',sans-serif;">+ הוסף</button>
           </div>
+          ${adjItems.map((item,idx) => `<div style="display:flex;gap:5px;margin-bottom:5px;align-items:center;">
+            <input type="text" value="${item.desc||''}" placeholder="תיאור תוספת..." style="flex:1;padding:4px 8px;font-size:12px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-family:'Rubik',sans-serif;background:var(--surface);color:var(--text);" onchange="updateAdjItem(${p.id},${idx},'desc',this.value)" />
+            <input type="number" value="${item.amount||''}" placeholder="₪" min="0" style="width:72px;padding:4px 8px;font-size:12px;border:1px solid var(--accent);border-radius:var(--radius-sm);font-family:'Rubik',sans-serif;text-align:center;" onchange="updateAdjItem(${p.id},${idx},'amount',this.value)" />
+            <button onclick="deleteAdjItem(${p.id},${idx})" style="padding:3px 7px;font-size:12px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:transparent;color:var(--text3);cursor:pointer;">✕</button>
+          </div>`).join('')}
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:8px;">
           <div style="display:flex;align-items:center;gap:6px;">
             <span style="font-size:12px;color:var(--urgent);">− הנחה:</span>
             <input type="number" value="${discountRaw||''}" placeholder="0" min="0" max="${discountType==='pct'?100:''}" style="width:65px;padding:4px 8px;font-size:12px;border:1px solid var(--urgent);border-radius:var(--radius-sm);font-family:'Rubik',sans-serif;text-align:center;" onchange="updateBillingDiscount(${p.id},this.value)" />
@@ -3059,13 +3084,14 @@ function _paymentExportData(projId) {
     paid: !!pay.paid,
     isCredit: Number(pay.amount) < 0
   }));
-  const adj = Number(p.billingAdj) || 0;
-  return { p, rows, totalWithVat, paidAmount, remainAmount, discount, creditTotal, adj };
+  const adjItems = p.adjItems && p.adjItems.length ? p.adjItems : (p.billingAdj ? [{desc:'תוספת',amount:Number(p.billingAdj)}] : []);
+  const adj = adjItems.reduce((s,x) => s + (Number(x.amount)||0), 0);
+  return { p, rows, totalWithVat, paidAmount, remainAmount, discount, creditTotal, adj, adjItems };
 }
 
 function exportPaymentPDF(projId) {
   const d = _paymentExportData(projId); if (!d) return;
-  const { p, rows, totalWithVat, paidAmount, remainAmount, discount, adj } = d;
+  const { p, rows, totalWithVat, paidAmount, remainAmount, discount, adj, adjItems } = d;
   const dateStr = p.date ? new Date(p.date).toLocaleDateString('he-IL') : '';
   const base = Number(p.billingBase) || 0;
   const totalPhotos = Number(p.total) || 0;
@@ -3103,7 +3129,7 @@ function exportPaymentPDF(projId) {
   <div class="sub">${p.client}${p.title ? ' · ' + p.title : ''}${dateStr ? ' · ' + dateStr : ''}</div>
   <div class="meta">
     ${base ? `<div class="meta-item"><div class="meta-label">מחיר בסיס</div><div class="meta-val">₪${base.toLocaleString()} לפני מעמ</div></div>` : ''}
-    ${adj > 0 ? `<div class="meta-item" style="background:#f0fdf4;"><div class="meta-label">תוספת</div><div class="meta-val" style="color:#15803d;">+₪${adj.toLocaleString()}</div></div>` : ''}
+    ${adjItems.map(x => `<div class="meta-item" style="background:#f0fdf4;"><div class="meta-label">${x.desc||'תוספת'}</div><div class="meta-val" style="color:#15803d;">+₪${(Number(x.amount)||0).toLocaleString()}</div></div>`).join('')}
     ${discount > 0 ? `<div class="meta-item" style="background:#fff5f5;"><div class="meta-label">הנחה</div><div class="meta-val" style="color:#dc2626;">−₪${discount.toLocaleString()}</div></div>` : ''}
     ${totalPhotos ? `<div class="meta-item"><div class="meta-label">תמונות</div><div class="meta-val">${totalPhotos} תמונות</div></div>` : ''}
   </div>
@@ -3131,7 +3157,7 @@ function exportPaymentPDF(projId) {
 
 function exportPaymentWhatsApp(projId) {
   const d = _paymentExportData(projId); if (!d) return;
-  const { p, rows, totalWithVat, paidAmount, remainAmount, discount, adj } = d;
+  const { p, rows, totalWithVat, paidAmount, remainAmount, discount, adj, adjItems } = d;
   const base = Number(p.billingBase) || 0;
   const totalPhotos = Number(p.total) || 0;
   const lines = [];
@@ -3139,7 +3165,7 @@ function exportPaymentWhatsApp(projId) {
   if (p.title) lines.push(`📁 ${p.client} · ${p.title}`);
   else lines.push(`📁 ${p.client}`);
   if (base) lines.push(`💵 מחיר בסיס: ₪${base.toLocaleString()} לפני מעמ`);
-  if (adj > 0) lines.push(`➕ תוספת: ₪${adj.toLocaleString()}`);
+  adjItems.forEach(x => { if (Number(x.amount)) lines.push(`➕ ${x.desc||'תוספת'}: ₪${Number(x.amount).toLocaleString()}`); });
   if (discount > 0) lines.push(`🏷️ הנחה: −₪${discount.toLocaleString()}`);
   if (totalPhotos) lines.push(`📷 ${totalPhotos} תמונות`);
   lines.push('');
