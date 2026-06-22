@@ -730,6 +730,12 @@
           <button onclick="openBillingModal()" style="padding:8px 16px;font-size:13px;font-family:'Rubik',sans-serif;border:none;border-radius:var(--radius-sm);background:var(--accent);color:#fff;cursor:pointer;">+ הוסף</button>
         </div>
       </div>
+      <div style="margin-bottom:14px;position:relative;">
+        <input id="billing-search" type="text" placeholder="🔍 חיפוש לקוח, ספק, פרויקט..." oninput="renderBillingSearch()" style="width:100%;padding:9px 14px;font-size:13px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);box-sizing:border-box;outline:none;" />
+        <button id="billing-search-clear" onclick="clearBillingSearch()" style="display:none;position:absolute;left:10px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:16px;color:var(--text3);cursor:pointer;">✕</button>
+      </div>
+      <div id="billing-search-results" style="display:none;margin-bottom:18px;"></div>
+      <div id="billing-main-content">
       <div class="billing-year-tabs" id="billing-year-tabs"></div>
       <div class="billing-summary" id="billing-summary"></div>
       <div class="card" style="margin-bottom:18px;">
@@ -779,6 +785,7 @@
         <div id="billing-client-summary" style="display:none;margin-bottom:12px;"></div>
         <div id="billing-records"></div>
       </div>
+      </div> <!-- /billing-main-content -->
     </div>
 
     <!-- PROJECTS -->
@@ -1623,6 +1630,101 @@ function billingYears() {
   const cur = String(new Date().getFullYear());
   years.add(cur);
   return [...years].sort((a,b)=>b-a);
+}
+
+function clearBillingSearch() {
+  const el = document.getElementById('billing-search');
+  if (el) el.value = '';
+  renderBillingSearch();
+}
+
+function renderBillingSearch() {
+  const q = (document.getElementById('billing-search')?.value || '').trim().toLowerCase();
+  const clearBtn = document.getElementById('billing-search-clear');
+  const resultsEl = document.getElementById('billing-search-results');
+  const mainEl = document.getElementById('billing-main-content');
+  if (clearBtn) clearBtn.style.display = q ? 'block' : 'none';
+  if (!q) {
+    if (resultsEl) resultsEl.style.display = 'none';
+    if (mainEl) mainEl.style.display = '';
+    return;
+  }
+  if (mainEl) mainEl.style.display = 'none';
+  if (!resultsEl) return;
+  resultsEl.style.display = '';
+
+  const VAT_RATE = 1.18;
+  const sections = [];
+
+  // 1. Billing records matching query
+  const matchingRecs = (state.billing||[]).filter(r =>
+    (r.client||'').toLowerCase().includes(q) ||
+    (r.project||'').toLowerCase().includes(q)
+  ).sort((a,b) => (b.date||'').localeCompare(a.date||''));
+
+  if (matchingRecs.length) {
+    const rows = matchingRecs.map(r => {
+      const dateStr = r.date ? r.date.slice(8)+'/'+r.date.slice(5,7)+'/'+r.date.slice(0,4) : '';
+      const supplierStr = (r.suppliers||[]).filter(s=>s.name).map(s=>`${s.name} ${fmtMoney(s.amount)}`).join(' · ');
+      return `<div class="billing-record">
+        <div class="billing-record-date">${dateStr}</div>
+        <div style="flex:1;min-width:0;">
+          <div class="billing-record-client">${r.client||'—'} ${r.project?'· '+r.project:''}</div>
+          ${r.designerFee>0||supplierStr?`<div class="billing-record-sub">${r.designerFee>0?'מעצבת '+fmtMoney(r.designerFee):''}${r.designerFee>0&&supplierStr?' · ':''}${supplierStr}</div>`:''}
+        </div>
+        <div class="billing-record-amount">${fmtMoney(r.total)}</div>
+        <button class="billing-record-edit" onclick="openBillingModal(${r.id})">✏️</button>
+      </div>`;
+    }).join('');
+    const total = matchingRecs.reduce((s,r)=>s+(r.total||0),0);
+    sections.push(`<div class="card" style="margin-bottom:14px;">
+      <div class="card-title" style="display:flex;justify-content:space-between;">
+        <span>📋 רשומות חיוב <span style="font-weight:400;color:var(--text3);font-size:12px;">${matchingRecs.length} תוצאות</span></span>
+        <span style="color:var(--accent);font-weight:600;">${fmtMoney(total)}</span>
+      </div>
+      ${rows}
+    </div>`);
+  }
+
+  // 2. Project payers (vendors + clients) matching query
+  const payerMatches = [];
+  state.projects.forEach(p => {
+    (p.payers||[]).forEach(pay => {
+      if ((pay.name||'').toLowerCase().includes(q) || (p.client||'').toLowerCase().includes(q)) {
+        payerMatches.push({ p, pay });
+      }
+    });
+  });
+
+  if (payerMatches.length) {
+    const rows = payerMatches.map(({p, pay}) => {
+      const amt = Number(pay.amount) || 0;
+      const amtVat = Math.round(amt * VAT_RATE);
+      const typeLabel = pay.type === 'client' ? 'לקוח' : pay.type === 'vendor' ? 'ספק' : 'זיכוי';
+      const typeBg = pay.type === 'client' ? 'var(--accent)' : pay.type === 'vendor' ? 'var(--s-send-b)' : '#7c3aed';
+      const stageLabel = STAGES[p.stage] || p.stage;
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid var(--border);flex-wrap:wrap;">
+        <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:${typeBg};color:#fff;flex-shrink:0;">${typeLabel}</span>
+        <span style="font-weight:500;font-size:13px;flex-shrink:0;">${pay.name||'—'}</span>
+        <span style="font-size:12px;color:var(--text3);flex:1;">${p.client}${p.title?' · '+p.title:''}</span>
+        <span style="font-size:11px;color:var(--text3);">${stageLabel}</span>
+        <span style="font-size:13px;font-weight:600;color:${pay.paid?'var(--accent)':'var(--urgent)'};">${fmtMoney(amt)} <span style="font-size:10px;font-weight:400;">(${fmtMoney(amtVat)} מעמ)</span></span>
+        <span style="font-size:18px;">${pay.paid ? '✅' : '⏳'}</span>
+      </div>`;
+    }).join('');
+    const totalPaid = payerMatches.filter(x=>x.pay.paid).reduce((s,x)=>s+Math.round((Number(x.pay.amount)||0)*VAT_RATE),0);
+    sections.push(`<div class="card" style="margin-bottom:14px;">
+      <div class="card-title" style="display:flex;justify-content:space-between;">
+        <span>👥 משלמים בפרויקטים <span style="font-weight:400;color:var(--text3);font-size:12px;">${payerMatches.length} תוצאות</span></span>
+        <span style="color:var(--accent);font-weight:600;">שולם: ${fmtMoney(totalPaid)}</span>
+      </div>
+      ${rows}
+    </div>`);
+  }
+
+  resultsEl.innerHTML = sections.length
+    ? sections.join('')
+    : `<div class="card" style="text-align:center;color:var(--text3);font-size:14px;padding:24px;">אין תוצאות עבור "${q}"</div>`;
 }
 
 function renderBillingPage() {
