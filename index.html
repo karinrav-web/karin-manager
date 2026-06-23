@@ -1096,6 +1096,7 @@ let editingId = null;
 let stageFilter = null;
 let activeTimer = {projId:null,startTs:null,iv:null};
 let blockCloudLoad = false;
+let _deferredRenderTimer = null;
 
 function remBadgeHtml(rem) {
   if (rem <= 0) return `<span class="rem-badge rem-done"><span class="rem-num">✓</span><span class="rem-label">הושלם</span></span>`;
@@ -1424,20 +1425,24 @@ function mergeCloudState(d) {
   try{localStorage.setItem('karin_pm',JSON.stringify(state));}catch(e){}
   setSyncStatus('✓ סונכרן','var(--accent)');
   applyPinToState();
-  // don't re-render while user is typing — defer until they stop
+  // don't re-render while user is typing — cancel any pending deferred render and schedule one fresh
   const active = document.activeElement;
   const isTyping = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
   if (isTyping) {
-    const waitAndRender = () => {
+    clearTimeout(_deferredRenderTimer);
+    const scheduleCheck = () => {
       const el = document.activeElement;
       if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
-        setTimeout(waitAndRender, 600);
+        _deferredRenderTimer = setTimeout(scheduleCheck, 600);
       } else {
+        _deferredRenderTimer = null;
         render();
       }
     };
-    setTimeout(waitAndRender, 600);
+    _deferredRenderTimer = setTimeout(scheduleCheck, 600);
   } else {
+    clearTimeout(_deferredRenderTimer);
+    _deferredRenderTimer = null;
     render();
   }
   return true;
