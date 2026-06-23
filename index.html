@@ -904,6 +904,27 @@
   </div>
 </div>
 
+<!-- Receive Payment Modal -->
+<div class="modal-bg" id="receive-payment-modal" style="display:none;z-index:200">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-title">💳 תשלום שהתקבל</div>
+    <div id="rpm-client-info" style="font-size:13px;color:var(--text2);margin-bottom:14px;"></div>
+    <div class="modal-field">
+      <label>סכום שהתקבל ₪</label>
+      <input id="rpm-amount" type="number" min="0" placeholder="0" oninput="updateReceivePaymentCalc()" />
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <button id="rpm-btn-no-vat" onclick="setRpmVat(false)" style="flex:1;padding:8px;font-family:'Rubik',sans-serif;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;">לא כולל מעמ</button>
+      <button id="rpm-btn-with-vat" onclick="setRpmVat(true)" style="flex:1;padding:8px;font-family:'Rubik',sans-serif;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;">כולל מעמ</button>
+    </div>
+    <div id="rpm-summary" style="background:var(--surface2);border-radius:var(--radius-sm);padding:10px 14px;font-size:13px;margin-bottom:14px;"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeReceivePaymentModal()">ביטול</button>
+      <button class="btn-confirm" onclick="confirmReceivePayment()">אישור</button>
+    </div>
+  </div>
+</div>
+
 <!-- Billing Modal -->
 <div class="modal-bg" id="billing-modal" style="display:none">
   <div class="modal" style="max-width:540px">
@@ -3109,7 +3130,7 @@ function renderBillingSection(p) {
         <span style="font-size:14px;font-weight:600;color:${amtColor};">${isCredit ? '−' : ''}${fmtILS(Math.abs(clientShare))}</span>
         <span style="font-size:11px;color:var(--text3);">(${isCredit ? '−' : ''}${fmtILS(Math.abs(clientShare)*VAT_RATE)} כולל מעמ)</span>
       </div>
-      <button class="billing-paid-btn ${client.paid ? 'paid' : ''}" onclick="togglePaid(${p.id},${realIdx})">${client.paid ? '✓' : ''}</button>
+      <button class="billing-paid-btn ${client.paid ? 'paid' : ''}" onclick="${client.paid ? `togglePaid(${p.id},${realIdx})` : `openReceivePaymentModal(${p.id},${realIdx})`}">${client.paid ? '✓' : ''}</button>
       <button class="billing-delete-btn" onclick="deletePayer(${p.id},${realIdx})">✕</button>
     </div>`;
   })() : '';
@@ -3430,6 +3451,69 @@ function togglePaid(projId, idx) {
   }
   save(); renderProjects(); renderBillingSummaryMorning(); renderBillingPage();
 }
+
+let _rpmProjId = null, _rpmIdx = null, _rpmWithVat = false;
+function openReceivePaymentModal(projId, idx) {
+  const p = state.projects.find(p => p.id === projId);
+  if (!p || !p.payers) return;
+  const payer = p.payers[idx];
+  _rpmProjId = projId; _rpmIdx = idx; _rpmWithVat = false;
+  const owedWithVat = Math.round((Number(payer.amount)||0) * 1.18);
+  document.getElementById('rpm-client-info').innerHTML =
+    `<strong>${payer.name}</strong> &nbsp;·&nbsp; לתשלום: <strong>₪${owedWithVat.toLocaleString()}</strong> כולל מעמ`;
+  document.getElementById('rpm-amount').value = owedWithVat;
+  setRpmVat(false);
+  document.getElementById('receive-payment-modal').style.display = 'flex';
+}
+function setRpmVat(withVat) {
+  _rpmWithVat = withVat;
+  const acc = 'background:var(--accent);color:#fff;border:1px solid var(--accent);';
+  const off = 'background:var(--surface2);color:var(--text2);border:1px solid var(--border2);';
+  document.getElementById('rpm-btn-no-vat').style.cssText += withVat ? off : acc;
+  document.getElementById('rpm-btn-with-vat').style.cssText += withVat ? acc : off;
+  updateReceivePaymentCalc();
+}
+function updateReceivePaymentCalc() {
+  const p = state.projects.find(p => p.id === _rpmProjId);
+  if (!p || !p.payers) return;
+  const payer = p.payers[_rpmIdx];
+  const received = parseFloat(document.getElementById('rpm-amount').value) || 0;
+  const noVat = _rpmWithVat ? Math.round(received / 1.18) : received;
+  const withVat = _rpmWithVat ? received : Math.round(received * 1.18);
+  const owed = Number(payer.amount) || 0;
+  const diff = noVat - owed;
+  let html = `<div style="display:flex;flex-direction:column;gap:5px;">
+    <div style="display:flex;justify-content:space-between;"><span>לפני מעמ:</span><strong>₪${noVat.toLocaleString()}</strong></div>
+    <div style="display:flex;justify-content:space-between;"><span>כולל מעמ:</span><strong>₪${withVat.toLocaleString()}</strong></div>`;
+  if (diff > 0) html += `<div style="margin-top:4px;padding-top:6px;border-top:1px solid var(--border);display:flex;justify-content:space-between;color:#7c3aed;font-weight:600;"><span>יתרה לזיכוי (לפני מעמ):</span><span>₪${diff.toLocaleString()}</span></div>`;
+  else if (diff < 0) html += `<div style="margin-top:4px;padding-top:6px;border-top:1px solid var(--border);display:flex;justify-content:space-between;color:var(--urgent);"><span>חסר לתשלום מלא:</span><span>₪${Math.abs(diff).toLocaleString()}</span></div>`;
+  html += '</div>';
+  document.getElementById('rpm-summary').innerHTML = html;
+}
+function closeReceivePaymentModal() {
+  document.getElementById('receive-payment-modal').style.display = 'none';
+}
+function confirmReceivePayment() {
+  const p = state.projects.find(p => p.id === _rpmProjId);
+  if (!p || !p.payers) return;
+  const payer = p.payers[_rpmIdx];
+  const received = parseFloat(document.getElementById('rpm-amount').value) || 0;
+  const noVat = _rpmWithVat ? Math.round(received / 1.18) : received;
+  const withVat = _rpmWithVat ? received : Math.round(received * 1.18);
+  const diff = noVat - (Number(payer.amount) || 0);
+  payer.paid = true;
+  if (!state.billing) state.billing = [];
+  const rec = { id: Date.now(), date: new Date().toISOString().slice(0,10), client: p.client||'', project: p.title||'', designerFee: withVat, suppliers: [], total: withVat, projectId: p.id };
+  payer.billingRecordId = rec.id;
+  state.billing.push(rec);
+  if (diff > 0 && confirm(`יש יתרה של ₪${diff.toLocaleString()} (לפני מעמ). להוסיף כזיכוי ללקוח?`)) {
+    p.payers.push({ name: payer.name, amount: diff, type: 'credit', note: 'יתרה מתשלום', paid: false });
+    recalcClientShare(p);
+  }
+  closeReceivePaymentModal();
+  save(); renderProjects(); renderBillingSummaryMorning(); renderBillingPage();
+}
+
 function deletePayer(projId, idx) {
   const p = state.projects.find(p => p.id === projId); if (!p || !p.payers) return;
   p.payers.splice(idx, 1);
