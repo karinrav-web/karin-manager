@@ -951,12 +951,13 @@ const FB_PATH = 'karin-manager-data';
 let _fbSaveTimer = null;
 let _fbInitialized = false; // blocks saves until we receive first Firebase response
 
-function fbSave(stateToSave) {
+function fbSave() {
   if (!_fbInitialized) return; // don't overwrite Firebase with stale localStorage data
   clearTimeout(_fbSaveTimer);
   setSyncStatus('שומר...','var(--text3)');
   _fbSaveTimer = setTimeout(() => {
-    fbDb.ref(FB_PATH).set(stateToSave)
+    // use state at fire-time, not at schedule-time — avoids overwriting cloud deletions
+    fbDb.ref(FB_PATH).set(state)
       .then(() => setSyncStatus('✓ נשמר לענן','var(--accent)'))
       .catch(e => { console.warn('FB save error', e); setSyncStatus('מקומי בלבד','var(--text3)'); });
   }, 800);
@@ -1147,7 +1148,7 @@ function restoreAutoBackup(dateStr) {
 
 function save() {
   try{localStorage.setItem('karin_pm',JSON.stringify(state));}catch(e){}
-  fbSave(state);
+  fbSave();
   autoBackup();
 }
 
