@@ -964,17 +964,11 @@ async function pinInit() {
   if (!cloudPinHash) {
     try { const l=JSON.parse(localStorage.getItem('karin_pm')||'{}'); if(l.settings?.pinHash) cloudPinHash=l.settings.pinHash; } catch(e) {}
   }
-  // fallback אחרון: bootstrap hash (אם גם הענן וגם localStorage ריקים)
-  if (!cloudPinHash && cloudLoaded) { cloudPinHash = BOOTSTRAP_HASH; sessionStorage.setItem('karin_pin_pending', BOOTSTRAP_HASH); }
+  // fallback אחרון: bootstrap hash — תמיד מאפשר כניסה גם ללא חיבור
+  if (!cloudPinHash) { cloudPinHash = BOOTSTRAP_HASH; }
   document.getElementById('pin-pad').style.opacity = '';
   document.getElementById('pin-pad').style.pointerEvents = '';
-  if (!cloudPinHash) {
-    document.getElementById('lock-sub').textContent = 'שגיאת חיבור — נסי לרענן';
-    document.getElementById('pin-pad').style.opacity = '0.4';
-    document.getElementById('pin-pad').style.pointerEvents = 'none';
-  } else {
-    document.getElementById('lock-sub').textContent = 'ניהול פרויקטים 2026';
-  }
+  document.getElementById('lock-sub').textContent = cloudLoaded ? 'ניהול פרויקטים 2026' : 'ניהול פרויקטים 2026';
 }
 
 async function pinSubmit() {
