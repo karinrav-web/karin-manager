@@ -3,7 +3,26 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>קרין רבנה — ניהול פרויקטים 2026</title>
+<title>קרין מנג׳ר</title>
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="קרין מנג׳ר">
+<meta name="theme-color" content="#7c3aed">
+<script>
+  // Generate apple-touch-icon from canvas (iOS)
+  window.addEventListener('DOMContentLoaded', () => {
+    const c = document.createElement('canvas'); c.width = c.height = 192;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#7c3aed'; ctx.roundRect(0,0,192,192,36); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 72px system-ui';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('KM', 96, 96);
+    const l = document.createElement('link');
+    l.rel = 'apple-touch-icon'; l.href = c.toDataURL();
+    document.head.appendChild(l);
+  });
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet" />
 <style>
   .material-symbols-outlined { font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24; vertical-align:middle; font-size:20px; }

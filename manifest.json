@@ -1,0 +1,15 @@
+{
+  "name": "קרין מנג׳ר",
+  "short_name": "קרין מנג׳ר",
+  "description": "ניהול פרויקטים ולקוחות",
+  "start_url": "/karin-manager/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f8f5ff",
+  "theme_color": "#7c3aed",
+  "lang": "he",
+  "dir": "rtl",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
