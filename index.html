@@ -411,7 +411,7 @@
 
   @media (max-width: 768px) {
     .sidebar { display:none; }
-    .main { margin-right:0; padding:16px; max-width:100%; }
+    .main { margin-right:0; padding:0; max-width:100%; }
     .metric-row { gap:8px; }
     .metric-card { padding:14px; }
     .metric-val { font-size:26px; }
@@ -440,9 +440,11 @@
     .panel-resize-handle { display:none; }
     #morning-greeting { display:none; }
     .page-date { display:block; }
-    .page-header { align-items:center; margin-bottom:16px; }
+    .page { padding:16px; }
+    .app-topbar { padding:12px 16px; }
+    .page-header { align-items:center; margin-bottom:12px; }
     .new-day-btn { padding:7px 14px; font-size:13px; }
-    .customize-btn { padding:6px 10px; font-size:12px; }
+    .customize-btn { display:none; }
   }
   @media (min-width: 769px) {
     .mobile-nav { display:none; }
