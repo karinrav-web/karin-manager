@@ -910,7 +910,7 @@
     <div class="modal-title">💵 תשלום שהתקבל מלקוח</div>
     <div id="cpm-info" style="font-size:13px;color:var(--text2);margin-bottom:14px;"></div>
     <div class="modal-field">
-      <label>סכום שהתקבל ₪ (לפני מעמ)</label>
+      <label>סכום שהתקבל ₪ (ללא מעמ — מזומן)</label>
       <input id="cpm-amount" type="number" min="0" placeholder="0" oninput="updateClientPaymentCalc()" />
     </div>
     <div class="modal-field">
@@ -3070,7 +3070,8 @@ function recalcClientShare(p) {
   const vendorBonus = vendors.length * 500;
   const vendorPaid = vendors.reduce((s, x) => s + (Number(x.amount) || 0), 0);
   const creditTotal = creditsUsed.reduce((s, x) => s + (Number(x.amount) || 0), 0);
-  const directPaid = directPayments.reduce((s, x) => s + (Number(x.amount) || 0), 0);
+  // direct payments are actual cash (no VAT) — divide by 1.18 to get pre-VAT equivalent
+  const directPaid = directPayments.reduce((s, x) => s + Math.round((Number(x.amount) || 0) / 1.18), 0);
   const discount = calcDiscount(p);
   const clientShare = base + vendorBonus + adj - discount - vendorPaid - creditTotal - directPaid;
   const client = (p.payers || []).find(x => x.type === 'client');
@@ -3134,7 +3135,7 @@ function renderBillingSection(p) {
       <span class="billing-name" style="color:#065f46;">${pay.name}${pay.note ? ` · <em style="font-weight:400">${pay.note}</em>` : ''}</span>
       <div style="display:flex;align-items:center;gap:6px;">
         <span style="font-size:14px;font-weight:600;color:#059669;">₪${amt.toLocaleString()}</span>
-        <span style="font-size:11px;color:var(--text3);">(${fmtILS(amt*VAT_RATE)} כולל מעמ)</span>
+        <span style="font-size:11px;color:var(--text3);">מזומן · ללא מעמ</span>
       </div>
       <button class="billing-delete-btn" onclick="deletePayer(${p.id},${realIdx})" style="margin-right:auto;">✕</button>
     </div>`;
@@ -3569,8 +3570,7 @@ function updateClientPaymentCalc() {
   const amt = parseFloat(document.getElementById('cpm-amount').value) || 0;
   if (!amt) { document.getElementById('cpm-summary').innerHTML = ''; return; }
   const VAT_RATE = 1.18;
-  const withVat = Math.round(amt * VAT_RATE);
-  // calculate current client share before this payment
+  // payment is cash (no VAT) — amt is actual amount received
   const vendors = (p.payers||[]).filter(x=>x.type==='vendor');
   const credits = (p.payers||[]).filter(x=>x.type==='credit');
   const existing = (p.payers||[]).filter(x=>x.type==='payment');
@@ -3578,14 +3578,17 @@ function updateClientPaymentCalc() {
   const vendorBonus = vendors.length*500;
   const vendorPaid = vendors.reduce((s,x)=>s+(Number(x.amount)||0),0);
   const creditTotal = credits.reduce((s,x)=>s+(Number(x.amount)||0),0);
-  const existingPaid = existing.reduce((s,x)=>s+(Number(x.amount)||0),0);
+  const existingPaid = existing.reduce((s,x)=>s+Math.round((Number(x.amount)||0)/VAT_RATE),0);
   const discount = calcDiscount(p);
-  const clientRemaining = base + vendorBonus + adj - discount - vendorPaid - creditTotal - existingPaid;
-  const credit = amt - clientRemaining;
+  const clientRemainingPreVat = base + vendorBonus + adj - discount - vendorPaid - creditTotal - existingPaid;
+  const clientRemainingWithVat = Math.round(clientRemainingPreVat * VAT_RATE);
+  // amt is cash (no VAT) — compare directly to with-VAT remaining
+  const credit = amt - clientRemainingWithVat;
+  const creditPreVat = Math.round(credit / VAT_RATE);
   let html = `<div style="display:flex;flex-direction:column;gap:5px;">
-    <div style="display:flex;justify-content:space-between;"><span>כולל מעמ:</span><strong>₪${withVat.toLocaleString()}</strong></div>
-    <div style="display:flex;justify-content:space-between;"><span>נשאר לתשלום לפני זה:</span><strong>₪${Math.round(clientRemaining*VAT_RATE).toLocaleString()}</strong></div>`;
-  if (credit > 0) html += `<div style="margin-top:4px;padding-top:6px;border-top:1px solid var(--border);display:flex;justify-content:space-between;color:#059669;font-weight:600;"><span>יתרה לזיכוי:</span><span>₪${credit.toLocaleString()} (לפני מעמ)</span></div>`;
+    <div style="display:flex;justify-content:space-between;"><span>נשאר לתשלום:</span><strong>₪${clientRemainingWithVat.toLocaleString()}</strong></div>`;
+  if (credit > 0) html += `<div style="margin-top:4px;padding-top:6px;border-top:1px solid var(--border);display:flex;justify-content:space-between;color:#059669;font-weight:600;"><span>יתרה לזיכוי:</span><span>₪${credit.toLocaleString()}</span></div>`;
+  else if (credit < 0) html += `<div style="margin-top:4px;padding-top:6px;border-top:1px solid var(--border);display:flex;justify-content:space-between;color:var(--urgent);"><span>חסר לתשלום מלא:</span><span>₪${Math.abs(credit).toLocaleString()}</span></div>`;
   html += '</div>';
   document.getElementById('cpm-summary').innerHTML = html;
 }
