@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>קרין מנג׳ר</title>
 <link rel="manifest" href="manifest.json">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="קרין מנג׳ר">
@@ -925,6 +927,26 @@
 </div>
 
 <script>
+/* ===== Firebase Sync ===== */
+const FB_CONFIG = {
+  apiKey: "AIzaSyBB5JR3ZPAqTvNitrsJ8mK4GkCaGoCWnh4",
+  authDomain: "family-meds-c8900.firebaseapp.com",
+  databaseURL: "https://family-meds-c8900-default-rtdb.firebaseio.com",
+  projectId: "family-meds-c8900",
+  appId: "1:296873475711:web:534e15501861924893494a"
+};
+firebase.initializeApp(FB_CONFIG);
+const fbDb = firebase.database();
+const FB_PATH = 'karin-manager-data';
+let _fbSaveTimer = null;
+
+function fbSave(stateToSave) {
+  clearTimeout(_fbSaveTimer);
+  _fbSaveTimer = setTimeout(() => {
+    fbDb.ref(FB_PATH).set(stateToSave).catch(e => console.warn('FB save error', e));
+  }, 800);
+}
+
 /* ===== Password Lock ===== */
 // BOOTSTRAP_HASH: hash של הסיסמה הראשית — נטען אם הענן ריק לגמרי
 const BOOTSTRAP_HASH = '03817dec5715d4da022c124c42163d55d410e0da520d699d5a93ce73b112ebb3';
@@ -1110,6 +1132,7 @@ function restoreAutoBackup(dateStr) {
 
 function save() {
   try{localStorage.setItem('karin_pm',JSON.stringify(state));}catch(e){}
+  fbSave(state);
   autoBackup();
   clearTimeout(saveTimer);
   setSyncStatus('שומר...','var(--text3)');
@@ -1416,6 +1439,7 @@ function loadFallback() {
 }
 
 function load() {
+  // Load from localStorage first for instant render
   try {
     const s = localStorage.getItem('karin_pm');
     if (s) {
@@ -1425,20 +1449,24 @@ function load() {
       state = applyDayReset({projects:p.projects||[],tasks:p.tasks||[],settings:p.settings||{hoursPerDay:6,photosPerDay:20,workDays:[0,1,2,3,4]},editDays:p.editDays||{},billing:p.billing||[],credits:p.credits||[],clients:p.clients||{},lastReset:p.lastReset||''});
     }
   } catch(e) {}
-  setSyncStatus('טוען...','var(--text3)');
-  // אם כבר מושך state ב-PIN init — השתמש בו
-  if (prefetchedState) {
-    const done = mergeCloudState({ok:true, state:prefetchedState});
-    if (!done) { loadFallback(); }
-    return;
-  }
-  const controller=new AbortController();
-  setTimeout(()=>controller.abort(),12000);
-  if(!getAPI()){loadFallback();return;}
-  fetch(getAPI()+'?t='+Date.now(),{signal:controller.signal})
-  .then(r=>r.json())
-  .then(d=>{ if(!mergeCloudState(d)){ loadFallback(); } })
-  .catch(e=>{ loadFallback(); });
+
+  setSyncStatus('מתחבר...','var(--text3)');
+
+  // Connect to Firebase for real-time sync
+  fbDb.ref(FB_PATH).on('value', snapshot => {
+    const fbData = snapshot.val();
+    if (fbData && fbData.projects && fbData.projects.length > 0) {
+      // Firebase has data — merge and use it
+      mergeCloudState({ok:true, state:fbData});
+    } else if (state.projects && state.projects.length > 0) {
+      // Firebase empty but we have local data — push it up
+      fbDb.ref(FB_PATH).set(state);
+      applyPinToState(); render();
+      setSyncStatus('✓ נשמר לענן','var(--accent)');
+    } else {
+      loadFallback();
+    }
+  }, err => { loadFallback(); });
 }
 
 function showPage(p, el) {
