@@ -1424,7 +1424,22 @@ function mergeCloudState(d) {
   try{localStorage.setItem('karin_pm',JSON.stringify(state));}catch(e){}
   setSyncStatus('✓ סונכרן','var(--accent)');
   applyPinToState();
-  render();
+  // don't re-render while user is typing — defer until they stop
+  const active = document.activeElement;
+  const isTyping = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+  if (isTyping) {
+    const waitAndRender = () => {
+      const el = document.activeElement;
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA')) {
+        setTimeout(waitAndRender, 600);
+      } else {
+        render();
+      }
+    };
+    setTimeout(waitAndRender, 600);
+  } else {
+    render();
+  }
   return true;
 }
 
