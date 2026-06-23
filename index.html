@@ -3600,15 +3600,6 @@ function confirmClientPayment() {
   if (!p.payers) p.payers = [];
   p.payers.push({ name: p.client || p.title, amount: amt, type: 'payment', note, paid: true });
   recalcClientShare(p);
-  // check if credit created
-  const client = p.payers.find(x=>x.type==='client');
-  if (client && (Number(client.amount)||0) < 0) {
-    const creditAmt = Math.abs(Number(client.amount));
-    if (confirm(`יש יתרה של ₪${creditAmt.toLocaleString()} (לפני מעמ). להוסיף כזיכוי ללקוח?`)) {
-      p.payers.push({ name: p.client || p.title, amount: creditAmt, type: 'credit', note: 'יתרה מתשלום', paid: false });
-      recalcClientShare(p);
-    }
-  }
   document.getElementById('client-payment-modal').style.display = 'none';
   save(); renderProjects(); renderBillingSummaryMorning(); renderBillingPage();
 }
