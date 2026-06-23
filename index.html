@@ -3261,12 +3261,22 @@ function _paymentExportData(projId) {
     payers.filter(x => x.paid && x.type === 'vendor').reduce((s,x) => s + Math.round(Number(x.amount)*VAT_RATE), 0) +
     payers.filter(x => x.type === 'payment').reduce((s,x) => s + (Number(x.amount)||0), 0);
   const remainAmount = totalWithVat - paidAmount;
-  const rows = [...vendors, ...(client ? [client] : [])].map(pay => ({
-    name: pay.name,
-    amount: Math.round(Number(pay.amount) * VAT_RATE),
-    paid: !!pay.paid,
-    isCredit: Number(pay.amount) < 0
-  }));
+  const directPayments = payers.filter(x => x.type === 'payment');
+  const rows = [
+    ...vendors.map(pay => ({
+      name: pay.name, amount: Math.round(Number(pay.amount) * VAT_RATE),
+      paid: !!pay.paid, isCredit: false, isPayment: false
+    })),
+    ...directPayments.map(pay => ({
+      name: (pay.name||'תשלום') + (pay.note ? ` · ${pay.note}` : ''),
+      amount: Number(pay.amount) || 0,
+      paid: true, isCredit: false, isPayment: true
+    })),
+    ...(client ? [{
+      name: client.name, amount: Math.round(Number(client.amount) * VAT_RATE),
+      paid: !!client.paid, isCredit: Number(client.amount) < 0, isPayment: false
+    }] : [])
+  ];
   const adjItems = p.adjItems && p.adjItems.length ? p.adjItems : (p.billingAdj ? [{desc:'תוספת',amount:Number(p.billingAdj)}] : []);
   const adj = adjItems.reduce((s,x) => s + (Number(x.amount)||0), 0);
   return { p, rows, totalWithVat, paidAmount, remainAmount, discount, creditTotal, adj, adjItems };
@@ -3322,8 +3332,8 @@ function exportPaymentPDF(projId) {
     ${rows.map((r, i) => `<tr>
       <td class="num">${i + 1}</td>
       <td style="font-weight:500;">${r.name}</td>
-      <td style="font-weight:600;">${r.isCredit ? '−' : ''}₪${Math.abs(r.amount).toLocaleString()}</td>
-      <td>${r.isCredit ? `<span class="badge credit">זיכוי</span>` : r.paid ? `<span class="badge paid">✓ שולם</span>` : `<span class="badge pending">ממתין</span>`}</td>
+      <td style="font-weight:600;">${r.isCredit ? '−' : ''}₪${Math.abs(r.amount).toLocaleString()}${r.isPayment ? '<span style="font-size:10px;color:#888;font-weight:400;margin-right:4px;">ללא מעמ</span>' : ''}</td>
+      <td>${r.isCredit ? `<span class="badge credit">זיכוי</span>` : r.isPayment ? `<span class="badge paid">✓ מזומן</span>` : r.paid ? `<span class="badge paid">✓ שולם</span>` : `<span class="badge pending">ממתין</span>`}</td>
     </tr>`).join('')}
     </tbody>
   </table>
@@ -3353,14 +3363,15 @@ function exportPaymentWhatsApp(projId) {
   if (totalPhotos) lines.push(`📷 ${totalPhotos} תמונות`);
   lines.push('');
   rows.forEach((r, i) => {
-    const icon = r.isCredit ? '💜' : r.paid ? '✅' : '⏳';
-    const status = r.isCredit ? 'זיכוי' : r.paid ? 'שולם' : 'ממתין';
+    const icon = r.isCredit ? '💜' : r.isPayment ? '💵' : r.paid ? '✅' : '⏳';
+    const status = r.isCredit ? 'זיכוי' : r.isPayment ? 'מזומן ללא מעמ' : r.paid ? 'שולם' : 'ממתין';
     lines.push(`${i + 1}. ${icon} ${r.name}: ₪${Math.abs(r.amount).toLocaleString()} — ${status}`);
   });
   lines.push('');
   lines.push(`סה"כ: ₪${totalWithVat.toLocaleString()} כולל מעמ`);
   lines.push(`התקבל: ₪${paidAmount.toLocaleString()}`);
   if (remainAmount > 0) lines.push(`נשאר לתשלום: ₪${remainAmount.toLocaleString()}`);
+  else if (remainAmount < 0) lines.push(`💜 זיכוי ללקוח: ₪${Math.abs(remainAmount).toLocaleString()}`);
   else lines.push(`✅ שולם במלואו`);
   navigator.clipboard.writeText(lines.join('\n')).then(() => {
     const btn = document.querySelector(`button[onclick="exportPaymentWhatsApp(${projId})"]`);
