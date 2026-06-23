@@ -3100,7 +3100,9 @@ function renderBillingSection(p) {
   const totalBeforeVat = Math.max(0, base + vendorBonus + adj - discount);
   const clientShare = client ? (Number(client.amount) || 0) : totalBeforeVat - vendorPaid - creditTotal;
 
-  const paidAmount = payers.filter(x => x.paid && x.type !== 'credit').reduce((s, x) => s + Math.round(Number(x.amount) * VAT_RATE), 0);
+  const paidAmount =
+    payers.filter(x => x.paid && x.type === 'vendor').reduce((s,x) => s + Math.round(Number(x.amount)*VAT_RATE), 0) +
+    payers.filter(x => x.type === 'payment').reduce((s,x) => s + (Number(x.amount)||0), 0); // cash = no VAT
   const totalWithVat = Math.round((totalBeforeVat - creditTotal) * VAT_RATE);
   const remainAmount = totalWithVat - paidAmount;
 
@@ -3249,7 +3251,9 @@ function _paymentExportData(projId) {
   const creditTotal = credits.reduce((s, x) => s + (Number(x.amount) || 0), 0);
   const totalBeforeVat = Math.max(0, (Number(p.billingBase)||0) + vendorBonus + (Number(p.billingAdj)||0) - discount);
   const totalWithVat = Math.round((totalBeforeVat - creditTotal) * VAT_RATE);
-  const paidAmount = payers.filter(x => x.paid && x.type !== 'credit').reduce((s, x) => s + Math.round(Number(x.amount) * VAT_RATE), 0);
+  const paidAmount =
+    payers.filter(x => x.paid && x.type === 'vendor').reduce((s,x) => s + Math.round(Number(x.amount)*VAT_RATE), 0) +
+    payers.filter(x => x.type === 'payment').reduce((s,x) => s + (Number(x.amount)||0), 0);
   const remainAmount = totalWithVat - paidAmount;
   const rows = [...vendors, ...(client ? [client] : [])].map(pay => ({
     name: pay.name,
