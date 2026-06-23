@@ -434,7 +434,12 @@
     .morning-metrics { grid-template-columns:repeat(3,1fr); }
     .morning-grid { display:block; }
     .morning-col { min-width:0; width:100%; }
-    .morning-panel { overflow-y:visible; flex:none; }
+    .morning-panel { overflow-y:visible; flex:none !important; height:auto !important; min-height:0 !important; }
+    .col-resizer { display:none; }
+    .panel-handle { display:none; }
+    .panel-resize-handle { display:none; }
+    #morning-greeting { display:none; }
+    .page-date { display:block; margin-bottom:10px; }
   }
   @media (min-width: 769px) {
     .mobile-nav { display:none; }
