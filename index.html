@@ -3234,7 +3234,7 @@ function renderBillingSection(p) {
       <div class="billing-summary" style="margin-top:10px;">
         <div class="billing-summary-item"><div>סה״כ כולל מעמ</div><strong>${fmtILS(totalWithVat)}</strong></div>
         <div class="billing-summary-item green"><div>התקבל</div><strong>${fmtILS(paidAmount)}</strong></div>
-        <div class="billing-summary-item ${remainAmount>0?'red':'green'}"><div>נשאר</div><strong>${fmtILS(remainAmount)}</strong></div>
+        <div class="billing-summary-item ${remainAmount>0?'red':'green'}"><div>${remainAmount<0?'זיכוי ללקוח':'נשאר'}</div><strong>${fmtILS(Math.abs(remainAmount))}</strong></div>
       </div>
       <div style="display:flex;gap:8px;margin-top:10px;">
         <button onclick="exportPaymentPDF(${p.id})" style="flex:1;padding:7px 12px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">📄 שמור PDF</button>
@@ -3340,7 +3340,7 @@ function exportPaymentPDF(projId) {
   <div class="summary">
     <div class="s-item"><div class="s-label">סה"כ כולל מעמ</div><div class="s-val">₪${totalWithVat.toLocaleString()}</div></div>
     <div class="s-item"><div class="s-label">התקבל</div><div class="s-val green">₪${paidAmount.toLocaleString()}</div></div>
-    <div class="s-item"><div class="s-label">נשאר לתשלום</div><div class="s-val ${remainAmount > 0 ? 'red' : 'green'}">₪${Math.abs(remainAmount).toLocaleString()}</div></div>
+    <div class="s-item"><div class="s-label">${remainAmount < 0 ? 'זיכוי ללקוח' : 'נשאר לתשלום'}</div><div class="s-val ${remainAmount > 0 ? 'red' : 'green'}">₪${Math.abs(remainAmount).toLocaleString()}</div></div>
   </div>
   <div class="footer">קרין רבנה — צילום אדריכלות ועיצוב פנים</div>
   <script>window.onload=()=>window.print();<\/script>
