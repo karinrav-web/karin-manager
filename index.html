@@ -949,8 +949,10 @@ firebase.initializeApp(FB_CONFIG);
 const fbDb = firebase.database();
 const FB_PATH = 'karin-manager-data';
 let _fbSaveTimer = null;
+let _fbInitialized = false; // blocks saves until we receive first Firebase response
 
 function fbSave(stateToSave) {
+  if (!_fbInitialized) return; // don't overwrite Firebase with stale localStorage data
   clearTimeout(_fbSaveTimer);
   setSyncStatus('שומר...','var(--text3)');
   _fbSaveTimer = setTimeout(() => {
@@ -1417,12 +1419,12 @@ function load() {
 
   // Connect to Firebase for real-time sync
   fbDb.ref(FB_PATH).on('value', snapshot => {
+    _fbInitialized = true; // now safe to save — we know what Firebase has
     const fbData = snapshot.val();
     if (fbData && fbData.projects && fbData.projects.length > 0) {
-      // Firebase has data — merge and use it
       mergeCloudState({ok:true, state:fbData});
     } else if (state.projects && state.projects.length > 0) {
-      // Firebase empty but we have local data — push it up
+      // Firebase empty but we have local data — push it up (first-time upload only)
       fbDb.ref(FB_PATH).set(state);
       applyPinToState(); render();
       setSyncStatus('✓ נשמר לענן','var(--accent)');
