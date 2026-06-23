@@ -1334,61 +1334,43 @@ async function changePin() {
 function mergeCloudState(d) {
   if(!(d.ok&&d.state&&d.state.projects&&d.state.projects.length>0)) return false;
   if(blockCloudLoad){ setSyncStatus('✓ נשמר','var(--accent)'); return true; }
-  const p=d.state;
-      p.projects=dedup(p.projects.map(normalizeProject)).filter(p=>p.client&&p.client.trim());
-      p.tasks=dedup((p.tasks||[]).map(x=>({...x,done:Number(x.done)||0}))).filter(t=>!t.auto&&!t.projId);
-      let local = {};
-      try { const ls = localStorage.getItem('karin_pm'); if(ls) local = JSON.parse(ls); } catch(e){}
-      const cloudProjMap = {};
-      p.projects.forEach(x=>{ cloudProjMap[x.id]=x; });
-      const merged = (local.projects||[]).map(lp=>{
-        const cp = cloudProjMap[lp.id];
-        if(!cp) return lp;
-        return {...cp,
-          date: lp.date||cp.date||'',
-          client: lp.client||cp.client||'',
-          title: lp.title||cp.title||'',
-          stage: lp.stage||cp.stage||'send',
-          total: lp.total||cp.total||0,
-          deadline: lp.deadline||cp.deadline||'',
-          goalDone: lp.goalDone||0,
-          editedToday: lp.editedToday||0,
-          goalDaily: lp.goalDaily||0,
-          payers: (lp.payers&&lp.payers.length>0) ? lp.payers : (cp.payers||[]),
-          order: lp.order!==undefined?lp.order:(cp.order!==undefined?cp.order:9999),
-          seconds: lp.seconds||cp.seconds||0,
-          sessions: lp.sessions||cp.sessions||0,
-          timeLogs: lp.timeLogs||cp.timeLogs||[],
-          notes: lp.notes||cp.notes||'',
-          shootHours: lp.shootHours||cp.shootHours||0,
-          billingBase: lp.billingBase||cp.billingBase||0,
-          billingAdj: lp.billingAdj||cp.billingAdj||0,
-          billingDiscount: lp.billingDiscount||cp.billingDiscount||0,
-          billingDiscountType: lp.billingDiscountType||cp.billingDiscountType||'amount'
-        };
-      });
-      const localIds = new Set((local.projects||[]).map(x=>x.id));
-      p.projects.forEach(cp=>{ if(!localIds.has(cp.id)) merged.push(cp); });
-      p.projects = dedup(merged.map(normalizeProject));
-      // מיזוג הגדרות: ענן גובר על מקומי, אבל pinHash מקומי נשמר אם לענן אין
-      const mergedSettings = {...(local.settings||{}), ...(p.settings||{})};
-      if (!mergedSettings.pinHash && local.settings?.pinHash) mergedSettings.pinHash = local.settings.pinHash;
-      state=applyDayReset({
-        projects:p.projects,
-        tasks:p.tasks||[],
-        lastReset:local.lastReset||p.lastReset||'',
-        settings:mergedSettings,
-        editDays:local.editDays||p.editDays||{},
-        billing: mergeBilling(local.billing||[], p.billing||[]),
-        credits: mergeBilling(local.credits||[], p.credits||[]),
-        clients: {...(local.clients||{}), ...(p.clients||{})}
-      });
-      lastCloudBillingCount = Math.max(lastCloudBillingCount, (state.billing||[]).length);
-      try{localStorage.setItem('karin_pm',JSON.stringify(state));}catch(e){}
-      setSyncStatus('✓ סונכרן','var(--accent)');
-      applyPinToState();
-      render();
-      return true;
+  const p = d.state;
+  p.projects = dedup(p.projects.map(normalizeProject)).filter(p=>p.client&&p.client.trim());
+  p.tasks = dedup((p.tasks||[]).map(x=>({...x,done:Number(x.done)||0}))).filter(t=>!t.auto&&!t.projId);
+  // Firebase is source of truth for project list — merge only runtime session fields from local
+  let local = {};
+  try { const ls = localStorage.getItem('karin_pm'); if(ls) local = JSON.parse(ls); } catch(e){}
+  const localProjMap = {};
+  (local.projects||[]).forEach(x=>{ localProjMap[x.id]=x; });
+  p.projects = p.projects.map(cp => {
+    const lp = localProjMap[cp.id];
+    if (!lp) return cp;
+    return {...cp,
+      goalDone: lp.goalDone||0,
+      editedToday: lp.editedToday||0,
+      goalDaily: lp.goalDaily||cp.goalDaily||0,
+      seconds: lp.seconds||cp.seconds||0,
+      sessions: lp.sessions||cp.sessions||0,
+    };
+  });
+  const mergedSettings = {...(local.settings||{}), ...(p.settings||{})};
+  if (!mergedSettings.pinHash && local.settings?.pinHash) mergedSettings.pinHash = local.settings.pinHash;
+  state = applyDayReset({
+    projects: p.projects,
+    tasks: p.tasks||[],
+    lastReset: local.lastReset||p.lastReset||'',
+    settings: mergedSettings,
+    editDays: local.editDays||p.editDays||{},
+    billing: p.billing||[],
+    credits: p.credits||[],
+    clients: {...(local.clients||{}), ...(p.clients||{})}
+  });
+  lastCloudBillingCount = Math.max(lastCloudBillingCount, (state.billing||[]).length);
+  try{localStorage.setItem('karin_pm',JSON.stringify(state));}catch(e){}
+  setSyncStatus('✓ סונכרן','var(--accent)');
+  applyPinToState();
+  render();
+  return true;
 }
 
 function loadFallback() {
