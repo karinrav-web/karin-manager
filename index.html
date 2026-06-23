@@ -904,6 +904,27 @@
   </div>
 </div>
 
+<!-- Client Payment Modal -->
+<div class="modal-bg" id="client-payment-modal" style="display:none;z-index:200">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-title">💵 תשלום שהתקבל מלקוח</div>
+    <div id="cpm-info" style="font-size:13px;color:var(--text2);margin-bottom:14px;"></div>
+    <div class="modal-field">
+      <label>סכום שהתקבל ₪ (לפני מעמ)</label>
+      <input id="cpm-amount" type="number" min="0" placeholder="0" oninput="updateClientPaymentCalc()" />
+    </div>
+    <div class="modal-field">
+      <label>הערה (אופציונלי — למשל "מזומן ביום צילום")</label>
+      <input id="cpm-note" type="text" placeholder="" />
+    </div>
+    <div id="cpm-summary" style="background:var(--surface2);border-radius:var(--radius-sm);padding:10px 14px;font-size:13px;margin-bottom:14px;min-height:40px;"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="document.getElementById('client-payment-modal').style.display='none'">ביטול</button>
+      <button class="btn-confirm" onclick="confirmClientPayment()">אישור</button>
+    </div>
+  </div>
+</div>
+
 <!-- Receive Payment Modal -->
 <div class="modal-bg" id="receive-payment-modal" style="display:none;z-index:200">
   <div class="modal" style="max-width:380px">
@@ -3045,11 +3066,13 @@ function recalcClientShare(p) {
   const adj = Number(p.billingAdj) || 0;
   const vendors = (p.payers || []).filter(x => x.type === 'vendor');
   const creditsUsed = (p.payers || []).filter(x => x.type === 'credit');
+  const directPayments = (p.payers || []).filter(x => x.type === 'payment');
   const vendorBonus = vendors.length * 500;
   const vendorPaid = vendors.reduce((s, x) => s + (Number(x.amount) || 0), 0);
   const creditTotal = creditsUsed.reduce((s, x) => s + (Number(x.amount) || 0), 0);
+  const directPaid = directPayments.reduce((s, x) => s + (Number(x.amount) || 0), 0);
   const discount = calcDiscount(p);
-  const clientShare = base + vendorBonus + adj - discount - vendorPaid - creditTotal;
+  const clientShare = base + vendorBonus + adj - discount - vendorPaid - creditTotal - directPaid;
   const client = (p.payers || []).find(x => x.type === 'client');
   if (client) {
     client.amount = clientShare;
@@ -3068,6 +3091,7 @@ function renderBillingSection(p) {
   const discount = calcDiscount(p);
   const vendors = payers.filter(x => x.type === 'vendor');
   const credits = payers.filter(x => x.type === 'credit');
+  const directPayments = payers.filter(x => x.type === 'payment');
   const client = payers.find(x => x.type === 'client');
   const vendorPaid = vendors.reduce((s, x) => s + (Number(x.amount) || 0), 0);
   const vendorBonus = vendors.length * 500;
@@ -3099,6 +3123,20 @@ function renderBillingSection(p) {
       </div>
       <button class="billing-paid-btn ${pay.paid ? 'paid' : ''}" onclick="togglePaid(${p.id},${realIdx})">${pay.paid ? '✓' : ''}</button>
       <button class="billing-delete-btn" onclick="deletePayer(${p.id},${realIdx})">✕</button>
+    </div>`;
+  }).join('');
+
+  const paymentRows = directPayments.map((pay) => {
+    const realIdx = payers.indexOf(pay);
+    const amt = Number(pay.amount) || 0;
+    return `<div class="billing-row" style="background:#f0fdf4;border-radius:var(--radius-sm);padding:6px 10px;">
+      <span class="billing-type" style="background:#059669;color:#fff;">תשלום</span>
+      <span class="billing-name" style="color:#065f46;">${pay.name}${pay.note ? ` · <em style="font-weight:400">${pay.note}</em>` : ''}</span>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="font-size:14px;font-weight:600;color:#059669;">₪${amt.toLocaleString()}</span>
+        <span style="font-size:11px;color:var(--text3);">(${fmtILS(amt*VAT_RATE)} כולל מעמ)</span>
+      </div>
+      <button class="billing-delete-btn" onclick="deletePayer(${p.id},${realIdx})" style="margin-right:auto;">✕</button>
     </div>`;
   }).join('');
 
@@ -3170,6 +3208,7 @@ function renderBillingSection(p) {
       </div>
 
       ${vendorRows}
+      ${paymentRows}
       ${creditRows}
       ${clientRow}
 
@@ -3177,6 +3216,7 @@ function renderBillingSection(p) {
         <input type="text" id="bname-${p.id}" placeholder="שם ספק" style="width:130px" />
         <input type="number" id="bamount-${p.id}" placeholder="סכום ₪ (0 אם שילם למעצבת)" value="0" style="width:80px" />
         <button class="btn-save" style="font-size:12px;padding:6px 14px" onclick="addVendor(${p.id})">+ הוסף ספק</button>
+        <button class="edit-btn" style="font-size:12px;border-color:#059669;color:#059669;" onclick="openAddClientPaymentModal(${p.id})">+ תשלום מלקוח</button>
         <button class="edit-btn" style="font-size:12px;border-color:#c4b5fd;color:#7c3aed;" onclick="openAddCreditModal(${p.id})">+ זיכוי לקוח</button>
         ${!client ? `<button class="edit-btn" onclick="addClient(${p.id})">+ הוסף לקוח</button>` : ''}
       </div>
@@ -3511,6 +3551,62 @@ function confirmReceivePayment() {
     recalcClientShare(p);
   }
   closeReceivePaymentModal();
+  save(); renderProjects(); renderBillingSummaryMorning(); renderBillingPage();
+}
+
+let _cpmProjId = null;
+function openAddClientPaymentModal(projId) {
+  const p = state.projects.find(p => p.id === projId); if (!p) return;
+  _cpmProjId = projId;
+  document.getElementById('cpm-info').innerHTML = `לקוח: <strong>${p.client || p.title}</strong>`;
+  document.getElementById('cpm-amount').value = '';
+  document.getElementById('cpm-note').value = '';
+  document.getElementById('cpm-summary').innerHTML = '';
+  document.getElementById('client-payment-modal').style.display = 'flex';
+}
+function updateClientPaymentCalc() {
+  const p = state.projects.find(p => p.id === _cpmProjId); if (!p) return;
+  const amt = parseFloat(document.getElementById('cpm-amount').value) || 0;
+  if (!amt) { document.getElementById('cpm-summary').innerHTML = ''; return; }
+  const VAT_RATE = 1.18;
+  const withVat = Math.round(amt * VAT_RATE);
+  // calculate current client share before this payment
+  const vendors = (p.payers||[]).filter(x=>x.type==='vendor');
+  const credits = (p.payers||[]).filter(x=>x.type==='credit');
+  const existing = (p.payers||[]).filter(x=>x.type==='payment');
+  const base = Number(p.billingBase)||0, adj = Number(p.billingAdj)||0;
+  const vendorBonus = vendors.length*500;
+  const vendorPaid = vendors.reduce((s,x)=>s+(Number(x.amount)||0),0);
+  const creditTotal = credits.reduce((s,x)=>s+(Number(x.amount)||0),0);
+  const existingPaid = existing.reduce((s,x)=>s+(Number(x.amount)||0),0);
+  const discount = calcDiscount(p);
+  const clientRemaining = base + vendorBonus + adj - discount - vendorPaid - creditTotal - existingPaid;
+  const credit = amt - clientRemaining;
+  let html = `<div style="display:flex;flex-direction:column;gap:5px;">
+    <div style="display:flex;justify-content:space-between;"><span>כולל מעמ:</span><strong>₪${withVat.toLocaleString()}</strong></div>
+    <div style="display:flex;justify-content:space-between;"><span>נשאר לתשלום לפני זה:</span><strong>₪${Math.round(clientRemaining*VAT_RATE).toLocaleString()}</strong></div>`;
+  if (credit > 0) html += `<div style="margin-top:4px;padding-top:6px;border-top:1px solid var(--border);display:flex;justify-content:space-between;color:#059669;font-weight:600;"><span>יתרה לזיכוי:</span><span>₪${credit.toLocaleString()} (לפני מעמ)</span></div>`;
+  html += '</div>';
+  document.getElementById('cpm-summary').innerHTML = html;
+}
+function confirmClientPayment() {
+  const p = state.projects.find(p => p.id === _cpmProjId); if (!p) return;
+  const amt = parseFloat(document.getElementById('cpm-amount').value) || 0;
+  if (!amt) return;
+  const note = document.getElementById('cpm-note').value.trim();
+  if (!p.payers) p.payers = [];
+  p.payers.push({ name: p.client || p.title, amount: amt, type: 'payment', note, paid: true });
+  recalcClientShare(p);
+  // check if credit created
+  const client = p.payers.find(x=>x.type==='client');
+  if (client && (Number(client.amount)||0) < 0) {
+    const creditAmt = Math.abs(Number(client.amount));
+    if (confirm(`יש יתרה של ₪${creditAmt.toLocaleString()} (לפני מעמ). להוסיף כזיכוי ללקוח?`)) {
+      p.payers.push({ name: p.client || p.title, amount: creditAmt, type: 'credit', note: 'יתרה מתשלום', paid: false });
+      recalcClientShare(p);
+    }
+  }
+  document.getElementById('client-payment-modal').style.display = 'none';
   save(); renderProjects(); renderBillingSummaryMorning(); renderBillingPage();
 }
 
