@@ -1409,19 +1409,23 @@ function mergeCloudState(d) {
     return {...cp,
       goalDone: lp.goalDone||0,
       editedToday: lp.editedToday||0,
-      goalDaily: lp.goalDaily||cp.goalDaily||0,
-      seconds: lp.seconds||cp.seconds||0,
-      sessions: lp.sessions||cp.sessions||0,
+      goalDaily: Math.max(lp.goalDaily||0, cp.goalDaily||0),
+      seconds: Math.max(lp.seconds||0, cp.seconds||0),
+      sessions: Math.max(lp.sessions||0, cp.sessions||0),
     };
   });
   const mergedSettings = {...(local.settings||{}), ...(p.settings||{})};
   if (!mergedSettings.pinHash && local.settings?.pinHash) mergedSettings.pinHash = local.settings.pinHash;
+  // prefer the later reset date so "new day" from any device propagates
+  const mergedLastReset = (local.lastReset||'') > (p.lastReset||'') ? local.lastReset : (p.lastReset||'');
+  // union both editDays maps so calendar marks from any device are kept
+  const mergedEditDays = {...(p.editDays||{}), ...(local.editDays||{})};
   state = applyDayReset({
     projects: p.projects,
     tasks: p.tasks||[],
-    lastReset: local.lastReset||p.lastReset||'',
+    lastReset: mergedLastReset,
     settings: mergedSettings,
-    editDays: local.editDays||p.editDays||{},
+    editDays: mergedEditDays,
     billing: p.billing||[],
     credits: p.credits||[],
     clients: {...(local.clients||{}), ...(p.clients||{})}
