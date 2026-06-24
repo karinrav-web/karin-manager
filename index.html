@@ -1389,12 +1389,12 @@ async function changePin() {
 function mergeCloudState(d) {
   if(!(d.ok&&d.state&&d.state.projects&&d.state.projects.length>0)) return false;
   if(blockCloudLoad){ setSyncStatus('✓ נשמר','var(--accent)'); return true; }
-  // skip entirely while user is typing — fbSave will push their data and Firebase will re-fire
-  const activeEl = document.activeElement;
-  if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
-    setSyncStatus('✓ סונכרן','var(--accent)');
-    return true;
-  }
+  // capture focused input before updating state — will restore after render
+  const _activeEl = document.activeElement;
+  const _isTyping = _activeEl && (_activeEl.tagName==='INPUT'||_activeEl.tagName==='TEXTAREA') && _activeEl.id;
+  const _savedId = _isTyping ? _activeEl.id : null;
+  const _savedVal = _isTyping ? _activeEl.value : null;
+  const _savedSel = _isTyping ? [_activeEl.selectionStart, _activeEl.selectionEnd] : null;
   const p = d.state;
   p.projects = dedup(p.projects.map(normalizeProject)).filter(p=>p.client&&p.client.trim());
   p.tasks = dedup((p.tasks||[]).map(x=>({...x,done:Number(x.done)||0}))).filter(t=>!t.auto&&!t.projId);
@@ -1431,6 +1431,11 @@ function mergeCloudState(d) {
   setSyncStatus('✓ סונכרן','var(--accent)');
   applyPinToState();
   render();
+  // restore focused input value after render rebuilt the DOM
+  if (_savedId) {
+    const el = document.getElementById(_savedId);
+    if (el) { el.value = _savedVal; el.focus(); try{el.setSelectionRange(_savedSel[0],_savedSel[1]);}catch(e){} }
+  }
   return true;
 }
 
