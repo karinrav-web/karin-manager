@@ -604,6 +604,7 @@
         <div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#e8f4ee;"><span class="material-symbols-outlined" style="color:#2D6A4F;">done_all</span></div><div><div class="metric-val green" id="m-goal-done">0</div><div class="metric-label">הושלמו מהיעד</div></div></div>
         <div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#fdecea;"><span class="material-symbols-outlined" style="color:var(--urgent);">hourglass_bottom</span></div><div><div class="metric-val red" id="m-goal-left">0</div><div class="metric-label">נשאר מהיעד</div></div></div>
       </div>
+      <div id="daily-focus" style="margin-bottom:10px;"></div>
       <div class="morning-grid">
         <div class="morning-col" id="mcol-left"
              ondragover="colDragOver(event,this)" ondrop="colDrop(event,this)" ondragleave="colDragLeave(event,this)">
@@ -1280,6 +1281,111 @@ function computeAllFinishDates() {
   return finishDates;
 }
 
+function renderDailyFocus() {
+  const el = document.getElementById('daily-focus'); if (!el) return;
+  const workDays = state.settings.workDays || [0,1,2,3,4];
+  const today = new Date(); today.setHours(0,0,0,0);
+  if (!workDays.includes(today.getDay())) { el.innerHTML = ''; return; }
+
+  const dailyCap = state.settings.photosPerDay || 20;
+  const active = state.projects.filter(p =>
+    p.stage !== 'done' && p.stage !== 's-done' && (p.total||0) > (p.edited||0)
+  );
+  if (!active.length) { el.innerHTML = ''; return; }
+
+  const finishMap = computeAllFinishDates();
+
+  // Enrich each project with urgency info
+  const projs = active.map(p => {
+    const rem = Math.max(0, (p.total||0) - (p.edited||0));
+    const dl = p.deadline ? (() => { const d=new Date(p.deadline);d.setHours(0,0,0,0);return d; })() : null;
+    const daysLeft = dl ? Math.round((dl - today) / 86400000) : null;
+    const fin = finishMap[p.id] || null;
+    const willBeLate = dl && fin ? fin > dl : false;
+    const daysToFinish = fin ? Math.round((fin - today) / 86400000) : null;
+    return { ...p, rem, dl, daysLeft, fin, willBeLate, daysToFinish };
+  });
+
+  // Classify
+  const critical  = projs.filter(p => (p.daysLeft !== null && p.daysLeft <= 2) || (p.willBeLate && p.daysLeft !== null && p.daysLeft <= 7));
+  const quickWins = projs.filter(p => !critical.find(c=>c.id===p.id) && p.rem <= Math.round(dailyCap * 1.5));
+  const normal    = projs.filter(p => !critical.find(c=>c.id===p.id) && !quickWins.find(q=>q.id===p.id));
+
+  // Build today's allocation
+  const alloc = [];
+  let capLeft = dailyCap;
+
+  // Critical: give generous slice (up to half cap each, sorted by deadline)
+  for (const p of critical.sort((a,b)=>(a.daysLeft??99)-(b.daysLeft??99))) {
+    if (capLeft <= 0) break;
+    const give = Math.min(capLeft, p.rem, Math.max(Math.ceil(dailyCap / Math.max(critical.length,1)), 5));
+    if (give > 0) { alloc.push({p, photos: give, tag:'critical'}); capLeft -= give; }
+  }
+
+  // Quick wins: finish them completely if they fit
+  for (const p of quickWins.sort((a,b)=>a.rem-b.rem)) {
+    if (capLeft <= 0) break;
+    const give = Math.min(capLeft, p.rem);
+    if (give > 0) { alloc.push({p, photos: give, tag:'quick'}); capLeft -= give; }
+  }
+
+  // Normal: equal share of remaining cap
+  if (capLeft > 0 && normal.length) {
+    const share = Math.max(1, Math.floor(capLeft / normal.length));
+    for (const p of normal) {
+      const give = Math.min(capLeft, p.rem, share);
+      if (give > 0) { alloc.push({p, photos: give, tag:'normal'}); capLeft -= give; }
+    }
+  }
+
+  // Generate headline + explanation
+  let headline, explanation;
+  const overdue = critical.filter(p => p.daysLeft !== null && p.daysLeft < 0);
+  const todayDeadline = critical.filter(p => p.daysLeft === 0);
+  const soonLate = critical.filter(p => p.daysLeft > 0 && p.willBeLate);
+
+  if (overdue.length) {
+    headline = '🚨 יש פרויקטים שעברו את הדדליין';
+    explanation = `${overdue.map(p=>p.client).join(', ')} — תתמקדי בהם עוד היום`;
+  } else if (todayDeadline.length) {
+    headline = '⏰ דדליין היום!';
+    explanation = `${todayDeadline.map(p=>p.client).join(', ')} חייב להסתיים היום`;
+  } else if (soonLate.length) {
+    headline = '⚠️ פרויקטים בסיכון לאיחור';
+    explanation = `לפי הקצב הנוכחי, ${soonLate.map(p=>p.client).join(', ')} יאחרו — כדאי להאיץ`;
+  } else if (quickWins.length && !critical.length) {
+    const qw = quickWins.sort((a,b)=>a.rem-b.rem)[0];
+    headline = '💡 הזדמנות לסגור פרויקט היום';
+    explanation = `ל${qw.client} נשארו רק ${qw.rem} תמונות — סיומו ישחרר את העומס`;
+  } else {
+    headline = '✅ אין דחיפויות — יום מאוזן';
+    explanation = `פזרי את ${dailyCap} התמונות היומיות בין ${active.length} הפרויקטים`;
+  }
+
+  const rows = alloc.map(({p, photos, tag}) => {
+    const icon = tag==='critical' ? '🔥' : tag==='quick' ? '✨' : '·';
+    const color = tag==='critical' ? '#dc2626' : tag==='quick' ? '#0891b2' : 'var(--text)';
+    const note = tag==='critical' && p.daysLeft !== null
+      ? `<span style="font-size:11px;color:#dc2626;"> (דדליין ${p.daysLeft<0?'פג':'בעוד '+p.daysLeft+' י׳'})</span>`
+      : tag==='quick'
+      ? `<span style="font-size:11px;color:#0891b2;"> (נשארו ${p.rem} — אפשר לסיים!)</span>`
+      : '';
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);">
+      <span style="font-size:13px;color:${color};font-weight:500;">${icon} ${p.client}${p.title?' — '+p.title:''}${note}</span>
+      <span style="font-size:15px;font-weight:700;color:${color};white-space:nowrap;">${photos} תמ׳</span>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `<div style="background:var(--surface);border:1.5px solid var(--border2);border-radius:var(--radius);padding:14px 16px;margin-bottom:2px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <div style="font-size:15px;font-weight:700;color:var(--text);">${headline}</div>
+      <span style="font-size:11px;color:var(--text3);">סה״כ ${dailyCap} תמ׳/יום</span>
+    </div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">${explanation}</div>
+    ${rows}
+  </div>`;
+}
+
 function renderUrgency(){
   const el=document.getElementById('urgency-list'); if(!el) return;
   const s=state.settings||{};
@@ -1624,7 +1730,7 @@ async function syncShootDates() {
 }
 
 
-function render() { setGreeting(); state.projects.forEach(p => recalcClientShare(p)); renderTasks(); renderProjects(); refreshSelects(); renderUrgency(); renderCalendar(); loadSettings(); renderBillingSummaryMorning(); renderShootYearSummary(); renderReport(); renderBillingPage(); document.querySelector('.main').classList.add('dashboard-mode'); initThemeSwatches(); loadDashboardSettings(); syncShootDates(); restoreTimer(); }
+function render() { setGreeting(); state.projects.forEach(p => recalcClientShare(p)); renderTasks(); renderProjects(); refreshSelects(); renderUrgency(); renderDailyFocus(); renderCalendar(); loadSettings(); renderBillingSummaryMorning(); renderShootYearSummary(); renderReport(); renderBillingPage(); document.querySelector('.main').classList.add('dashboard-mode'); initThemeSwatches(); loadDashboardSettings(); syncShootDates(); restoreTimer(); }
 
 function restoreTimer() {
   try {
