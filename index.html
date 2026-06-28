@@ -1234,15 +1234,50 @@ function addWorkDays(fromDate, n, workDays) {
   while (added < n) { d.setDate(d.getDate()+1); if ((workDays||[0,1,2,3,4]).includes(d.getDay())) added++; }
   return d;
 }
-function estimateFinishDate(p) {
-  const rem = Math.max(0,(p.total||0)-(p.edited||0));
-  if (!rem || !p.total) return null;
-  const perDay = p.goalDaily || state.settings.photosPerProj || 10;
-  if (!perDay) return null;
-  const wdNeeded = Math.ceil(rem / perDay);
+// Schedules all active projects together, splitting daily capacity by deadline priority.
+// Projects with earlier deadlines get worked on first each day.
+function computeAllFinishDates() {
   const workDays = state.settings.workDays || [0,1,2,3,4];
-  const today0 = new Date(); today0.setHours(0,0,0,0);
-  return { date: addWorkDays(today0, wdNeeded, workDays), wdNeeded, perDay };
+  const dailyCap = state.settings.photosPerDay || 20;
+  const defaultRate = state.settings.photosPerProj || 10;
+
+  const active = state.projects
+    .filter(p => p.stage !== 'done' && p.stage !== 's-done' && (p.total||0) > (p.edited||0))
+    .sort((a,b) => {
+      if (!a.deadline && !b.deadline) return 0;
+      if (!a.deadline) return 1;
+      if (!b.deadline) return -1;
+      return new Date(a.deadline) - new Date(b.deadline);
+    });
+
+  if (!active.length) return {};
+
+  const rem = {};
+  active.forEach(p => { rem[p.id] = Math.max(0,(p.total||0)-(p.edited||0)); });
+  const finishDates = {};
+  const today = new Date(); today.setHours(0,0,0,0);
+  let d = new Date(today);
+
+  for (let day = 0; day < 730; day++) {
+    d = new Date(d.getTime() + 86400000);
+    if (!workDays.includes(d.getDay())) continue;
+
+    const todo = active.filter(p => rem[p.id] > 0);
+    if (!todo.length) break;
+
+    // Give each project a daily slot; cap total at dailyCap
+    // Projects sorted by deadline get priority: earlier deadlines fill first
+    let capLeft = dailyCap;
+    const share = Math.max(1, Math.floor(dailyCap / todo.length));
+    for (const p of todo) {
+      const alloc = Math.min(capLeft, Math.min(rem[p.id], p.goalDaily || share));
+      rem[p.id] = Math.max(0, rem[p.id] - alloc);
+      capLeft -= alloc;
+      if (rem[p.id] <= 0) finishDates[p.id] = new Date(d);
+      if (capLeft <= 0) break; // daily capacity exhausted
+    }
+  }
+  return finishDates;
 }
 
 function renderUrgency(){
@@ -2762,6 +2797,7 @@ function renderProjects() {
     titleEl.textContent = list.length > 0 ? `${baseName} (${list.length})` : baseName;
   }
   if (!list.length) { el.innerHTML = `<p style="font-size:13px;color:var(--text3);padding:16px 0">${stageFilter ? 'אין פרויקטים בשלב זה' : 'עוד אין פרויקטים — הוסיפי את הראשון למטה'}</p>`; return; }
+  const _allFinish = computeAllFinishDates();
   el.innerHTML = list.map(p => {
     const pct = p.total ? Math.min(100, Math.round(p.edited / p.total * 100)) : 0;
     const fillCls = pct >= 80 ? 'green' : pct >= 50 ? 'yellow' : pct >= 25 ? 'amber' : '';
@@ -2773,21 +2809,19 @@ function renderProjects() {
     const secs = (p.seconds || 0) + (isRunning ? Math.floor((Date.now() - activeTimer.startTs) / 1000) : 0);
     const stages = Object.keys(STAGES).map(s => `<button class="stage-btn ${p.stage === s ? 'active s-' + s : ''}" data-pid="${p.id}" data-stage="${s}" onclick="setStageBtn(this)">${STAGES[s]}</button>`).join('');
     const isExpanded = expandedProjects.has(p.id);
-    const _est = estimateFinishDate(p);
-    const _estHtml = _est ? (() => {
-      const dateStr = _est.date.toLocaleDateString('he-IL',{day:'numeric',month:'numeric'});
-      const isTomorrow = _est.wdNeeded === 1;
-      const label = isTomorrow ? 'מחר' : dateStr;
-      // compare to deadline
+    const _finishDate = _allFinish[p.id] || null;
+    const _estHtml = _finishDate ? (() => {
+      const dateStr = _finishDate.toLocaleDateString('he-IL',{day:'numeric',month:'numeric'});
+      const today0 = new Date(); today0.setHours(0,0,0,0);
+      const daysFromNow = Math.round((_finishDate - today0) / 86400000);
+      const label = daysFromNow === 0 ? 'היום' : daysFromNow === 1 ? 'מחר' : dateStr;
       let deadlineNote = '', color = '#0891b2';
       if (p.deadline) {
         const dl = new Date(p.deadline); dl.setHours(0,0,0,0);
-        const est0 = new Date(_est.date); est0.setHours(0,0,0,0);
-        const diffDays = Math.round((est0 - dl) / 86400000);
-        if (diffDays <= 0) { color = '#059669'; deadlineNote = diffDays === 0 ? ' ✓ בדיוק' : ` ✓ ${Math.abs(diffDays)}י מוקדם`; }
-        else { color = '#dc2626'; deadlineNote = ` ⚠ ${diffDays}י איחור`; }
-      } else {
-        color = _est.wdNeeded <= 3 ? '#059669' : '#0891b2';
+        const fin = new Date(_finishDate); fin.setHours(0,0,0,0);
+        const diff = Math.round((fin - dl) / 86400000);
+        if (diff <= 0) { color = '#059669'; deadlineNote = diff === 0 ? ' ✓' : ` ✓ ${Math.abs(diff)}י מוקדם`; }
+        else { color = '#dc2626'; deadlineNote = ` ⚠ ${diff}י איחור`; }
       }
       return `<span style="color:${color};font-size:12px;font-weight:600;">📅 ~${label}${deadlineNote}</span>`;
     })() : '';
@@ -2850,23 +2884,23 @@ function renderProjects() {
           </div>
           ${gt ? `<div class="prog-bar" style="margin-top:8px"><div class="prog-fill" style="width:${Math.min(100,Math.round(et/gt*100))}%"></div></div>` : ''}
           <div style="margin-top:10px;font-size:13px;color:var(--text3);">נערכו סה״כ: <strong style="color:var(--text);">${p.edited}</strong> מתוך ${p.total} · ${pct}%</div>
-          ${_est ? (() => {
-            const fullDate = _est.date.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
+          ${_finishDate ? (() => {
+            const fullDate = _finishDate.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
+            const numActive = Object.keys(_allFinish).length;
             let dlHtml = '';
             if (p.deadline) {
               const dl = new Date(p.deadline); dl.setHours(0,0,0,0);
-              const est0 = new Date(_est.date); est0.setHours(0,0,0,0);
-              const diff = Math.round((est0 - dl) / 86400000);
+              const fin = new Date(_finishDate); fin.setHours(0,0,0,0);
+              const diff = Math.round((fin - dl) / 86400000);
               const dlStr = dl.toLocaleDateString('he-IL',{day:'numeric',month:'long'});
               if (diff < 0) dlHtml = `<div style="color:#059669;font-size:12px;margin-top:4px;">✓ ${Math.abs(diff)} ימים לפני הדדליין (${dlStr})</div>`;
               else if (diff === 0) dlHtml = `<div style="color:#059669;font-size:12px;margin-top:4px;">✓ מסיימת בדיוק ביום הדדליין (${dlStr})</div>`;
-              else dlHtml = `<div style="color:#dc2626;font-size:12px;margin-top:4px;">⚠ הערכה: איחור של ${diff} ימים אחרי הדדליין (${dlStr})</div>`;
+              else dlHtml = `<div style="color:#dc2626;font-size:12px;margin-top:4px;">⚠ איחור משוער של ${diff} ימים אחרי הדדליין (${dlStr})</div>`;
             }
-            const bg = p.deadline ? ((() => { const d=new Date(p.deadline);d.setHours(0,0,0,0);const e=new Date(_est.date);e.setHours(0,0,0,0);return e>d; })() ? '#fff5f5' : '#f0fdf4') : '#f0f9ff';
-            const border = p.deadline ? ((() => { const d=new Date(p.deadline);d.setHours(0,0,0,0);const e=new Date(_est.date);e.setHours(0,0,0,0);return e>d; })() ? '#fecaca' : '#bbf7d0') : '#bae6fd';
-            return `<div style="margin-top:8px;padding:8px 12px;background:${bg};border-radius:8px;border:1px solid ${border};">
+            const isLate = p.deadline && (() => { const dl=new Date(p.deadline);dl.setHours(0,0,0,0);const fin=new Date(_finishDate);fin.setHours(0,0,0,0);return fin>dl; })();
+            return `<div style="margin-top:8px;padding:8px 12px;background:${isLate?'#fff5f5':p.deadline?'#f0fdf4':'#f0f9ff'};border-radius:8px;border:1px solid ${isLate?'#fecaca':p.deadline?'#bbf7d0':'#bae6fd'};">
               <div style="font-size:13px;font-weight:600;color:#0369a1;">📅 סיום משוער: ${fullDate}</div>
-              <div style="font-size:12px;color:var(--text3);margin-top:2px;">${_est.wdNeeded} ימי עבודה · ${_est.perDay} תמ׳/יום</div>
+              <div style="font-size:12px;color:var(--text3);margin-top:2px;">לפי תזמון עם ${numActive} פרויקטים פעילים · ${state.settings.photosPerDay||20} תמ׳/יום סה״כ</div>
               ${dlHtml}
             </div>`;
           })() : ''}
