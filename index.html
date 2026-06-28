@@ -1228,6 +1228,22 @@ function countWorkDays(fromDate, toDate, workDays){
   while(d<=toDate){ if(workDays.includes(d.getDay())) count++; d.setDate(d.getDate()+1); }
   return count;
 }
+function addWorkDays(fromDate, n, workDays) {
+  const d = new Date(fromDate); d.setHours(0,0,0,0);
+  let added = 0;
+  while (added < n) { d.setDate(d.getDate()+1); if ((workDays||[0,1,2,3,4]).includes(d.getDay())) added++; }
+  return d;
+}
+function estimateFinishDate(p) {
+  const rem = Math.max(0,(p.total||0)-(p.edited||0));
+  if (!rem || !p.total) return null;
+  const perDay = p.goalDaily || state.settings.photosPerProj || 10;
+  if (!perDay) return null;
+  const wdNeeded = Math.ceil(rem / perDay);
+  const workDays = state.settings.workDays || [0,1,2,3,4];
+  const today0 = new Date(); today0.setHours(0,0,0,0);
+  return { date: addWorkDays(today0, wdNeeded, workDays), wdNeeded, perDay };
+}
 
 function renderUrgency(){
   const el=document.getElementById('urgency-list'); if(!el) return;
@@ -2757,6 +2773,15 @@ function renderProjects() {
     const secs = (p.seconds || 0) + (isRunning ? Math.floor((Date.now() - activeTimer.startTs) / 1000) : 0);
     const stages = Object.keys(STAGES).map(s => `<button class="stage-btn ${p.stage === s ? 'active s-' + s : ''}" data-pid="${p.id}" data-stage="${s}" onclick="setStageBtn(this)">${STAGES[s]}</button>`).join('');
     const isExpanded = expandedProjects.has(p.id);
+    const _est = estimateFinishDate(p);
+    const _estHtml = _est ? (() => {
+      const dateStr = _est.date.toLocaleDateString('he-IL',{day:'numeric',month:'numeric'});
+      const isToday = _est.wdNeeded === 0;
+      const isTomorrow = _est.wdNeeded === 1;
+      const label = isToday ? 'היום!' : isTomorrow ? 'מחר' : dateStr;
+      const color = _est.wdNeeded <= 2 ? '#059669' : '#0891b2';
+      return `<span style="color:${color};font-size:12px;font-weight:600;">📅 ~${label}${_est.wdNeeded>1?' ('+_est.wdNeeded+' יע׳)':''}</span>`;
+    })() : '';
     return `<div class="proj-card s-${p.stage || 'send'}" draggable="true" data-id="${p.id}"
         ondragstart="dragStart(event,${p.id})" ondragend="dragEnd(event)" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event,${p.id})">
       <div class="proj-compact" style="display:flex;align-items:center;gap:10px;">
@@ -2775,7 +2800,8 @@ function renderProjects() {
               <span style="color:var(--accent)">היום: ${et}</span>
               ${gt ? `<span style="color:${et >= gt ? 'var(--accent)' : 'var(--text3)'}">יעד: ${et}/${gt}</span>` : ''}
               <span>${pct}%</span>
-              ${p.deadline ? `<span style="color:var(--urgent);font-weight:500;">📅 ${new Date(p.deadline).toLocaleDateString('he-IL')}</span>` : ''}
+              ${p.deadline ? `<span style="color:var(--urgent);font-weight:500;">⏰ ${new Date(p.deadline).toLocaleDateString('he-IL')}</span>` : ''}
+              ${_estHtml}
             </div>
           </div>
         </div>
@@ -2815,6 +2841,10 @@ function renderProjects() {
           </div>
           ${gt ? `<div class="prog-bar" style="margin-top:8px"><div class="prog-fill" style="width:${Math.min(100,Math.round(et/gt*100))}%"></div></div>` : ''}
           <div style="margin-top:10px;font-size:13px;color:var(--text3);">נערכו סה״כ: <strong style="color:var(--text);">${p.edited}</strong> מתוך ${p.total} · ${pct}%</div>
+          ${_est ? `<div style="margin-top:8px;padding:8px 12px;background:#f0f9ff;border-radius:8px;border:1px solid #bae6fd;">
+            <span style="font-size:13px;font-weight:600;color:#0369a1;">📅 סיום משוער: ${_est.date.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'})}</span>
+            <span style="font-size:12px;color:#0891b2;margin-right:8px;">(${_est.wdNeeded} ימי עבודה · ${_est.perDay} תמ׳/יום)</span>
+          </div>` : ''}
         </div>
       </div>
       <div class="notes-area">
