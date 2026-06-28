@@ -2776,11 +2776,20 @@ function renderProjects() {
     const _est = estimateFinishDate(p);
     const _estHtml = _est ? (() => {
       const dateStr = _est.date.toLocaleDateString('he-IL',{day:'numeric',month:'numeric'});
-      const isToday = _est.wdNeeded === 0;
       const isTomorrow = _est.wdNeeded === 1;
-      const label = isToday ? 'היום!' : isTomorrow ? 'מחר' : dateStr;
-      const color = _est.wdNeeded <= 2 ? '#059669' : '#0891b2';
-      return `<span style="color:${color};font-size:12px;font-weight:600;">📅 ~${label}${_est.wdNeeded>1?' ('+_est.wdNeeded+' יע׳)':''}</span>`;
+      const label = isTomorrow ? 'מחר' : dateStr;
+      // compare to deadline
+      let deadlineNote = '', color = '#0891b2';
+      if (p.deadline) {
+        const dl = new Date(p.deadline); dl.setHours(0,0,0,0);
+        const est0 = new Date(_est.date); est0.setHours(0,0,0,0);
+        const diffDays = Math.round((est0 - dl) / 86400000);
+        if (diffDays <= 0) { color = '#059669'; deadlineNote = diffDays === 0 ? ' ✓ בדיוק' : ` ✓ ${Math.abs(diffDays)}י מוקדם`; }
+        else { color = '#dc2626'; deadlineNote = ` ⚠ ${diffDays}י איחור`; }
+      } else {
+        color = _est.wdNeeded <= 3 ? '#059669' : '#0891b2';
+      }
+      return `<span style="color:${color};font-size:12px;font-weight:600;">📅 ~${label}${deadlineNote}</span>`;
     })() : '';
     return `<div class="proj-card s-${p.stage || 'send'}" draggable="true" data-id="${p.id}"
         ondragstart="dragStart(event,${p.id})" ondragend="dragEnd(event)" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event,${p.id})">
@@ -2841,10 +2850,26 @@ function renderProjects() {
           </div>
           ${gt ? `<div class="prog-bar" style="margin-top:8px"><div class="prog-fill" style="width:${Math.min(100,Math.round(et/gt*100))}%"></div></div>` : ''}
           <div style="margin-top:10px;font-size:13px;color:var(--text3);">נערכו סה״כ: <strong style="color:var(--text);">${p.edited}</strong> מתוך ${p.total} · ${pct}%</div>
-          ${_est ? `<div style="margin-top:8px;padding:8px 12px;background:#f0f9ff;border-radius:8px;border:1px solid #bae6fd;">
-            <span style="font-size:13px;font-weight:600;color:#0369a1;">📅 סיום משוער: ${_est.date.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'})}</span>
-            <span style="font-size:12px;color:#0891b2;margin-right:8px;">(${_est.wdNeeded} ימי עבודה · ${_est.perDay} תמ׳/יום)</span>
-          </div>` : ''}
+          ${_est ? (() => {
+            const fullDate = _est.date.toLocaleDateString('he-IL',{weekday:'long',day:'numeric',month:'long'});
+            let dlHtml = '';
+            if (p.deadline) {
+              const dl = new Date(p.deadline); dl.setHours(0,0,0,0);
+              const est0 = new Date(_est.date); est0.setHours(0,0,0,0);
+              const diff = Math.round((est0 - dl) / 86400000);
+              const dlStr = dl.toLocaleDateString('he-IL',{day:'numeric',month:'long'});
+              if (diff < 0) dlHtml = `<div style="color:#059669;font-size:12px;margin-top:4px;">✓ ${Math.abs(diff)} ימים לפני הדדליין (${dlStr})</div>`;
+              else if (diff === 0) dlHtml = `<div style="color:#059669;font-size:12px;margin-top:4px;">✓ מסיימת בדיוק ביום הדדליין (${dlStr})</div>`;
+              else dlHtml = `<div style="color:#dc2626;font-size:12px;margin-top:4px;">⚠ הערכה: איחור של ${diff} ימים אחרי הדדליין (${dlStr})</div>`;
+            }
+            const bg = p.deadline ? ((() => { const d=new Date(p.deadline);d.setHours(0,0,0,0);const e=new Date(_est.date);e.setHours(0,0,0,0);return e>d; })() ? '#fff5f5' : '#f0fdf4') : '#f0f9ff';
+            const border = p.deadline ? ((() => { const d=new Date(p.deadline);d.setHours(0,0,0,0);const e=new Date(_est.date);e.setHours(0,0,0,0);return e>d; })() ? '#fecaca' : '#bbf7d0') : '#bae6fd';
+            return `<div style="margin-top:8px;padding:8px 12px;background:${bg};border-radius:8px;border:1px solid ${border};">
+              <div style="font-size:13px;font-weight:600;color:#0369a1;">📅 סיום משוער: ${fullDate}</div>
+              <div style="font-size:12px;color:var(--text3);margin-top:2px;">${_est.wdNeeded} ימי עבודה · ${_est.perDay} תמ׳/יום</div>
+              ${dlHtml}
+            </div>`;
+          })() : ''}
         </div>
       </div>
       <div class="notes-area">
