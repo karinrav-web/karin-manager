@@ -1243,7 +1243,7 @@ function computeAllFinishDates() {
   const defaultRate = state.settings.photosPerProj || 10;
 
   const active = state.projects
-    .filter(p => p.stage !== 'done' && p.stage !== 's-done' && (p.total||0) > (p.edited||0))
+    .filter(p => p.stage === 'edit' && (p.total||0) > (p.edited||0))
     .sort((a,b) => {
       if (!a.deadline && !b.deadline) return 0;
       if (!a.deadline) return 1;
@@ -1289,7 +1289,7 @@ function renderDailyFocus() {
 
   const dailyCap = state.settings.photosPerDay || 20;
   const active = state.projects.filter(p =>
-    p.stage !== 'done' && p.stage !== 's-done' && (p.total||0) > (p.edited||0)
+    p.stage === 'edit' && (p.total||0) > (p.edited||0)
   );
   if (!active.length) { el.innerHTML = ''; return; }
 
