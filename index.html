@@ -601,7 +601,6 @@
         <div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#fdf0ec;"><span class="material-symbols-outlined" style="color:var(--accent);">photo_library</span></div><div><div class="metric-val" id="m-remaining">0</div><div class="metric-label">תמונות לעריכה</div></div></div>
         <div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#e8f4ee;"><span class="material-symbols-outlined" style="color:#2D6A4F;">check_circle</span></div><div><div class="metric-val" id="m-edited-today">0</div><div class="metric-label">נערכו היום</div></div></div>
         <div class="metric-card metric-card-icon" style="border:2px dashed var(--border2);"><div class="metric-icon-circle" style="background:#fdf0ec;"><span class="material-symbols-outlined" style="color:var(--accent);">flag</span></div><div><div class="metric-val" id="m-goal-total">0</div><div class="metric-label">יעד יומי</div></div></div>
-<div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#fdecea;"><span class="material-symbols-outlined" style="color:var(--urgent);">hourglass_bottom</span></div><div><div class="metric-val red" id="m-goal-left">0</div><div class="metric-label">נשאר מהיעד</div></div></div>
       </div>
       <div id="daily-focus" style="margin-bottom:10px;"></div>
       <div class="morning-grid">
@@ -2584,10 +2583,8 @@ function renderTasks() {
   document.getElementById('m-remaining').textContent = state.projects.filter(p=>p.stage==='edit').reduce((s,p)=>s+Math.max(0,(p.total||0)-(p.edited||0)),0);
   const totalGoal = state.projects.filter(p=>p.goalDaily>0&&p.stage!=='done'&&p.stage!=='billing').reduce((s,p)=>s+(p.goalDaily||0),0);
   const totalEditedToday = state.projects.reduce((s,p)=>s+(p.editedToday||0),0);
-  document.getElementById('m-edited-today').textContent = totalEditedToday;
+  document.getElementById('m-edited-today').textContent = totalGoal > 0 ? `${totalEditedToday}/${totalGoal}` : totalEditedToday;
   document.getElementById('m-goal-total').textContent = totalGoal;
-  document.getElementById('m-goal-done').textContent = totalEditedToday;
-  document.getElementById('m-goal-left').textContent = Math.max(0, totalGoal - totalEditedToday);
 
   const TASK_GROUPS = [
     {key:'עריכה',  label:'✏️ עריכה'},
