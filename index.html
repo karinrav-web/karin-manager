@@ -2972,7 +2972,7 @@ function renderProjects() {
         <div style="width:1px;height:18px;background:var(--border);flex-shrink:0;"></div>
         <div style="display:flex;align-items:center;gap:4px;">
           <span style="font-size:12px;">🎯</span>
-          <input type="number" value="${gt || ''}" min="0" placeholder="יעד" oninput="updateGoalTarget(${p.id},this.value)"
+          <input type="number" value="${gt || ''}" min="0" placeholder="יעד" onchange="updateGoalTarget(${p.id},this.value)"
             style="width:40px;border:1px solid var(--accent);border-radius:4px;background:var(--accent-light);font-size:13px;font-weight:600;color:var(--accent);font-family:'Rubik',sans-serif;text-align:center;padding:2px 4px;outline:none;" />
           <span style="font-size:11px;color:var(--text3);">/יום</span>
         </div>
