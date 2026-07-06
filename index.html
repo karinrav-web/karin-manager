@@ -2211,10 +2211,22 @@ function renderClientCards() {
 
     const activeRows = activeProjects.map(p => {
       const dateStr = p.date ? p.date.slice(8)+'/'+p.date.slice(5,7)+'/'+p.date.slice(0,4) : '';
-      return `<div style="display:flex;align-items:center;gap:8px;padding:5px 2px;border-bottom:1px solid var(--border);">
-        <span style="flex:1;font-size:13px;">${p.title||'—'}</span>
-        <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:var(--s-${p.stage}-b,var(--border));color:#fff;white-space:nowrap;">${STAGES[p.stage]||p.stage}</span>
-        ${dateStr?`<span style="font-size:11px;color:var(--text3);white-space:nowrap;">${dateStr}</span>`:''}
+      const vendors = (p.payers||[]).filter(x => x.type === 'vendor');
+      const vendorHtml = vendors.length ? `<div style="padding:4px 0 2px 10px;">${vendors.map(v => {
+        const amt = Number(v.amount) || 0;
+        return `<div style="display:flex;gap:6px;align-items:center;font-size:11px;color:var(--text3);padding:1px 0;">
+          <span>↳ ${v.name}</span>
+          ${amt > 0 ? `<span style="color:var(--text2);font-weight:500;">${fmtILS(Math.round(amt*1.18))}</span><span style="color:var(--text3);">כולל מעמ</span>` : '<span>ללא תשלום</span>'}
+          ${v.paid ? '<span style="color:#059669;font-weight:600;">✓ שולם</span>' : '<span style="color:var(--urgent);">טרם שולם</span>'}
+        </div>`;
+      }).join('')}</div>` : '';
+      return `<div style="padding:5px 2px;border-bottom:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="flex:1;font-size:13px;font-weight:500;">${p.title||'—'}</span>
+          <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:var(--s-${p.stage}-b,var(--border));color:#fff;white-space:nowrap;">${STAGES[p.stage]||p.stage}</span>
+          ${dateStr?`<span style="font-size:11px;color:var(--text3);white-space:nowrap;">${dateStr}</span>`:''}
+        </div>
+        ${vendorHtml}
       </div>`;
     }).join('');
 
