@@ -2231,9 +2231,24 @@ function renderClientCards() {
     }).join('');
 
     // All billing records for this client (complete history)
-    const billingRows = clientBilling.map(r => {
+    // Group billing records by projectId (or project name) to avoid one row per vendor
+    const billingByProj = [];
+    const seenProjKey = new Map();
+    clientBilling.forEach(r => {
+      const key = r.projectId ? String(r.projectId) : (r.project||'') + '|' + (r.date||'');
+      if (seenProjKey.has(key)) {
+        const g = seenProjKey.get(key);
+        g.total += r.total || 0;
+        g.suppliers = [...g.suppliers, ...(r.suppliers||[])];
+      } else {
+        const g = { project: r.project, date: r.date, total: r.total || 0, suppliers: [...(r.suppliers||[])] };
+        seenProjKey.set(key, g);
+        billingByProj.push(g);
+      }
+    });
+    const billingRows = billingByProj.map(r => {
       const dateStr = r.date ? r.date.slice(8)+'/'+r.date.slice(5,7)+'/'+r.date.slice(0,4) : '';
-      const suppliersHtml = (r.suppliers||[]).length ? `<div style="padding:4px 0 2px 10px;">${(r.suppliers||[]).map(s =>
+      const suppliersHtml = r.suppliers.length ? `<div style="padding:4px 0 2px 10px;">${r.suppliers.map(s =>
         `<div style="display:flex;gap:6px;align-items:center;font-size:11px;color:var(--text3);padding:1px 0;">
           <span>↳ ${s.name}</span>
           ${(Number(s.amount)||0) > 0 ? `<span style="color:var(--text2);font-weight:500;">${fmtILS(Math.round(Number(s.amount)*1.18))}</span><span>כולל מעמ</span>` : ''}
@@ -2241,7 +2256,7 @@ function renderClientCards() {
       return `<div style="padding:5px 2px;border-bottom:1px solid var(--border);">
         <div style="display:flex;align-items:center;gap:8px;">
           <span style="flex:1;font-size:13px;color:var(--text2);font-weight:500;">${r.project||'—'}</span>
-          <span style="font-size:12px;color:var(--accent);font-weight:600;white-space:nowrap;">${fmtMoney(r.total)}</span>
+          ${r.total > 0 ? `<span style="font-size:12px;color:var(--accent);font-weight:600;white-space:nowrap;">${fmtMoney(r.total)}</span>` : ''}
           ${dateStr?`<span style="font-size:11px;color:var(--text3);white-space:nowrap;">${dateStr}</span>`:''}
         </div>
         ${suppliersHtml}
@@ -2260,7 +2275,7 @@ function renderClientCards() {
         </div>
         <div style="display:flex;gap:14px;align-items:center;flex-shrink:0;">
           ${revenue>0?`<span style="font-size:13px;color:var(--accent);font-weight:600;">${fmtMoney(revenue)}</span>`:''}
-          ${clientBilling.length>0?`<span style="font-size:11px;color:var(--text3);">${clientBilling.length} פרויקטים</span>`:activeProjects.length>0?`<span style="font-size:11px;color:var(--text3);">${activeProjects.length} פרויקטים</span>`:''}
+          ${(billingByProj.length+activeProjects.length)>0?`<span style="font-size:11px;color:var(--text3);">${billingByProj.length+activeProjects.length} פרויקטים</span>`:''}
           <span style="font-size:12px;color:var(--text3);" id="${safeId}-arrow">${isOpen?'▲':'▼'}</span>
         </div>
       </div>
