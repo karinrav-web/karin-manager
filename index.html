@@ -2240,9 +2240,10 @@ function renderClientCards() {
         const g = seenProjKey.get(key);
         g.total += r.total || 0;
         g.suppliers = [...g.suppliers, ...(r.suppliers||[])];
+        if (r.id) g.recordIds.push(r.id);
       } else {
         const linkedProj = r.projectId ? state.projects.find(p => p.id === r.projectId) : null;
-        const g = { project: r.project, location: r.location, date: r.date, total: r.total || 0, suppliers: [...(r.suppliers||[])], projTitle: linkedProj ? linkedProj.title : null };
+        const g = { project: r.project, location: r.location, date: r.date, total: r.total || 0, suppliers: [...(r.suppliers||[])], projTitle: linkedProj ? linkedProj.title : null, recordIds: r.id ? [r.id] : [] };
         seenProjKey.set(key, g);
         billingByProj.push(g);
       }
@@ -2251,17 +2252,19 @@ function renderClientCards() {
       const dateStr = r.date ? r.date.slice(8)+'/'+r.date.slice(5,7)+'/'+r.date.slice(0,4) : '';
       const displayName = r.projTitle || r.project || '—';
       const subLabel = r.projTitle && r.location ? `<span style="font-size:11px;color:var(--text3);">${r.location}</span>` : (!r.projTitle && r.location && r.location !== r.project) ? `<span style="font-size:11px;color:var(--text3);">${r.location}</span>` : '';
+      const editBtn = r.recordIds.length ? `<button onclick="openBillingModal(${r.recordIds[0]})" style="padding:2px 8px;font-size:11px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:4px;background:transparent;color:var(--text3);cursor:pointer;flex-shrink:0;">✏️</button>` : '';
       const suppliersHtml = r.suppliers.length ? `<div style="padding:4px 0 2px 10px;">${r.suppliers.map(s =>
         `<div style="display:flex;gap:6px;align-items:center;font-size:11px;color:var(--text3);padding:1px 0;">
           <span>↳ ${s.name}</span>
           ${(Number(s.amount)||0) > 0 ? `<span style="color:var(--text2);font-weight:500;">${fmtILS(Math.round(Number(s.amount)*1.18))}</span><span>כולל מעמ</span>` : ''}
         </div>`).join('')}</div>` : '';
-      return `<div style="padding:5px 2px;border-bottom:1px solid var(--border);">
+      return `<div style="padding:6px 2px;border-bottom:1px solid var(--border);">
         <div style="display:flex;align-items:center;gap:8px;">
-          <span style="flex:1;font-size:13px;color:var(--text2);font-weight:500;">${displayName}</span>
+          <span style="flex:1;font-size:15px;color:var(--text);font-weight:600;">${displayName}</span>
           ${subLabel}
-          ${r.total > 0 ? `<span style="font-size:12px;color:var(--accent);font-weight:600;white-space:nowrap;">${fmtMoney(r.total)}</span>` : ''}
+          ${r.total > 0 ? `<span style="font-size:13px;color:var(--accent);font-weight:600;white-space:nowrap;">${fmtMoney(r.total)}</span>` : ''}
           ${dateStr?`<span style="font-size:11px;color:var(--text3);white-space:nowrap;">${dateStr}</span>`:''}
+          ${editBtn}
         </div>
         ${suppliersHtml}
       </div>`;
