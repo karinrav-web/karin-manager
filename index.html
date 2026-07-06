@@ -1567,6 +1567,14 @@ function mergeCloudState(d) {
       goalDaily: Math.max(lp.goalDaily||0, cp.goalDaily||0),
       seconds: Math.max(lp.seconds||0, cp.seconds||0),
       sessions: Math.max(lp.sessions||0, cp.sessions||0),
+      // protect billing fields: if Firebase lost the value but local has it, keep local
+      billingBase: (Number(cp.billingBase)||0) > 0 ? cp.billingBase : (lp.billingBase||cp.billingBase),
+      billingAdj: (Number(cp.billingAdj)||0) !== 0 ? cp.billingAdj : (lp.billingAdj||cp.billingAdj),
+      billingDiscount: cp.billingDiscount !== undefined ? cp.billingDiscount : lp.billingDiscount,
+      billingDiscountType: cp.billingDiscountType || lp.billingDiscountType,
+      payers: (cp.payers&&cp.payers.length>0) ? cp.payers : (lp.payers&&lp.payers.length>0 ? lp.payers : cp.payers||[]),
+      adjItems: (cp.adjItems&&cp.adjItems.length>0) ? cp.adjItems : (lp.adjItems||cp.adjItems),
+      shootHours: cp.shootHours || lp.shootHours || 0,
     };
   });
   const mergedSettings = {...(local.settings||{}), ...(p.settings||{})};
