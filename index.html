@@ -2233,10 +2233,18 @@ function renderClientCards() {
     // All billing records for this client (complete history)
     const billingRows = clientBilling.map(r => {
       const dateStr = r.date ? r.date.slice(8)+'/'+r.date.slice(5,7)+'/'+r.date.slice(0,4) : '';
-      return `<div style="display:flex;align-items:center;gap:8px;padding:5px 2px;border-bottom:1px solid var(--border);">
-        <span style="flex:1;font-size:13px;color:var(--text2);">${r.project||'—'}</span>
-        <span style="font-size:12px;color:var(--accent);font-weight:600;white-space:nowrap;">${fmtMoney(r.total)}</span>
-        ${dateStr?`<span style="font-size:11px;color:var(--text3);white-space:nowrap;">${dateStr}</span>`:''}
+      const suppliersHtml = (r.suppliers||[]).length ? `<div style="padding:4px 0 2px 10px;">${(r.suppliers||[]).map(s =>
+        `<div style="display:flex;gap:6px;align-items:center;font-size:11px;color:var(--text3);padding:1px 0;">
+          <span>↳ ${s.name}</span>
+          ${(Number(s.amount)||0) > 0 ? `<span style="color:var(--text2);font-weight:500;">${fmtILS(Math.round(Number(s.amount)*1.18))}</span><span>כולל מעמ</span>` : ''}
+        </div>`).join('')}</div>` : '';
+      return `<div style="padding:5px 2px;border-bottom:1px solid var(--border);">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="flex:1;font-size:13px;color:var(--text2);font-weight:500;">${r.project||'—'}</span>
+          <span style="font-size:12px;color:var(--accent);font-weight:600;white-space:nowrap;">${fmtMoney(r.total)}</span>
+          ${dateStr?`<span style="font-size:11px;color:var(--text3);white-space:nowrap;">${dateStr}</span>`:''}
+        </div>
+        ${suppliersHtml}
       </div>`;
     }).join('');
 
