@@ -559,7 +559,7 @@
     <div style="margin-top:auto;padding:16px 24px;border-top:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">סנכרון ענן</div>
       <div id="sync-status" style="font-size:12px;color:var(--text3);margin-bottom:10px">מתחבר...</div>
-      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-07-17 · 12:45</div>
+      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-07-17 · 12:52</div>
       <div id="other-session-warning" class="hidden" style="font-size:11px;color:#fff;background:var(--urgent);border-radius:6px;padding:6px 8px;margin-bottom:10px;line-height:1.4;">⚠ האפליקציה פתוחה כרגע גם במקום/דפדפן אחר — שינויים עלולים להתנגש. מומלץ לסגור שם.</div>
       <button onclick="exportBackup()" style="width:100%;padding:7px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text2);cursor:pointer;margin-bottom:6px;">💾 ייצוא גיבוי</button>
       <label style="width:100%;display:block;padding:7px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text2);cursor:pointer;text-align:center;margin-bottom:6px;">
@@ -3524,23 +3524,26 @@ function _paymentExportData(projId) {
     payers.filter(x => x.type === 'payment').reduce((s,x) => s + (Number(x.amount)||0), 0);
   const remainAmount = totalWithVat - paidAmount;
   const directPayments = payers.filter(x => x.type === 'payment');
-  // vendors with no amount of their own get paid through me (client pays me their share too);
-  // vendors with an amount were already paid that much directly by the client
-  const vendorsToMe = vendors.filter(x => !Number(x.amount)).map(pay => ({ name: pay.name, paid: !!pay.paid }));
-  const vendorsDirect = vendors.filter(x => Number(x.amount) > 0).map(pay => ({
-    name: pay.name, amount: Math.round(Number(pay.amount) * VAT_RATE)
-  }));
+  // amount 0 means this vendor's share is paid through the client/designer, not settled
+  // separately — anything above 0 is an amount the client paid the vendor directly,
+  // which still needs its own paid/pending tracking
+  const vendorRows = vendors.map(pay => {
+    const amt = Number(pay.amount) || 0;
+    return amt > 0
+      ? { name: pay.name, direct: false, amount: Math.round(amt * VAT_RATE), paid: !!pay.paid }
+      : { name: pay.name, direct: true };
+  });
   const paymentRows = directPayments.map(pay => ({
     name: pay.note || 'תשלום מלקוח', amount: Number(pay.amount) || 0, isCash: !!pay.isCash
   }));
   const adjItems = p.adjItems && p.adjItems.length ? p.adjItems : (p.billingAdj ? [{desc:'תוספת',amount:Number(p.billingAdj)}] : []);
   const adj = adjItems.reduce((s,x) => s + (Number(x.amount)||0), 0);
-  return { p, client, vendorsToMe, vendorsDirect, paymentRows, totalWithVat, paidAmount, remainAmount, discount, creditTotal, adj, adjItems };
+  return { p, client, vendorRows, paymentRows, totalWithVat, paidAmount, remainAmount, discount, creditTotal, adj, adjItems };
 }
 
 function exportPaymentPDF(projId) {
   const d = _paymentExportData(projId); if (!d) return;
-  const { p, vendorsToMe, vendorsDirect, paymentRows, totalWithVat, paidAmount, remainAmount, discount, adj, adjItems } = d;
+  const { p, vendorRows, paymentRows, totalWithVat, paidAmount, remainAmount, discount, adj, adjItems } = d;
   const dateStr = p.date ? new Date(p.date).toLocaleDateString('he-IL') : '';
   const base = Number(p.billingBase) || 0;
   const totalPhotos = Number(p.total) || 0;
@@ -3597,13 +3600,12 @@ function exportPaymentPDF(projId) {
   <table><tbody>
     ${paymentRows.map(r => `<tr><td style="font-weight:500;">${r.name}</td><td style="font-weight:600;">₪${r.amount.toLocaleString()}${r.isCash ? '<span style="font-size:10px;color:#888;font-weight:400;margin-right:4px;">מזומן · ללא מעמ</span>' : ''}</td></tr>`).join('')}
   </tbody></table>` : ''}
-  ${vendorsToMe.length ? `<div class="section-title">ספקים ששילמו לי</div>
+  ${vendorRows.length ? `<div class="section-title">ספקים</div>
   <table><tbody>
-    ${vendorsToMe.map(v => `<tr><td style="font-weight:500;">${v.name}</td><td>${v.paid ? '<span class="badge paid">✓ שולם</span>' : '<span class="badge pending">ממתין</span>'}</td></tr>`).join('')}
-  </tbody></table>` : ''}
-  ${vendorsDirect.length ? `<div class="section-title">ספקים ששולמו ישירות ע"י הלקוחה</div>
-  <table><tbody>
-    ${vendorsDirect.map(v => `<tr><td style="font-weight:500;">${v.name}</td><td style="font-weight:600;">₪${v.amount.toLocaleString()}</td></tr>`).join('')}
+    ${vendorRows.map(v => `<tr><td style="font-weight:500;">${v.name}</td><td>${v.direct
+      ? '<span style="font-size:12px;color:#888;">שילם ללקוח/מעצב</span>'
+      : `<span style="font-weight:600;">₪${v.amount.toLocaleString()}</span> ${v.paid ? '<span class="badge paid">✓ שולם</span>' : '<span class="badge pending">ממתין</span>'}`
+    }</td></tr>`).join('')}
   </tbody></table>` : ''}
   <div class="footer">קרין רבנה — צילום אדריכלות ועיצוב פנים</div>
   <script>window.onload=()=>window.print();<\/script>
@@ -3613,7 +3615,7 @@ function exportPaymentPDF(projId) {
 
 function exportPaymentWhatsApp(projId) {
   const d = _paymentExportData(projId); if (!d) return;
-  const { p, vendorsToMe, vendorsDirect, paymentRows, totalWithVat, paidAmount, remainAmount, discount, adj, adjItems } = d;
+  const { p, vendorRows, paymentRows, totalWithVat, paidAmount, remainAmount, discount, adj, adjItems } = d;
   const base = Number(p.billingBase) || 0;
   const totalPhotos = Number(p.total) || 0;
   const lines = [];
@@ -3632,15 +3634,13 @@ function exportPaymentWhatsApp(projId) {
     lines.push('*תשלומים שהתקבלו:*');
     paymentRows.forEach(r => lines.push(`💵 ${r.name}: ₪${r.amount.toLocaleString()}${r.isCash ? ' (מזומן · ללא מעמ)' : ''}`));
   }
-  if (vendorsToMe.length) {
+  if (vendorRows.length) {
     lines.push('');
-    lines.push('*ספקים ששילמו לי:*');
-    vendorsToMe.forEach(v => lines.push(`${v.paid ? '✅' : '⏳'} ${v.name} — ${v.paid ? 'שולם' : 'ממתין'}`));
-  }
-  if (vendorsDirect.length) {
-    lines.push('');
-    lines.push('*ספקים ששולמו ישירות ע"י הלקוחה:*');
-    vendorsDirect.forEach(v => lines.push(`💵 ${v.name}: ₪${v.amount.toLocaleString()}`));
+    lines.push('*ספקים:*');
+    vendorRows.forEach(v => lines.push(v.direct
+      ? `${v.name} — שילם ללקוח/מעצב`
+      : `${v.paid ? '✅' : '⏳'} ${v.name}: ₪${v.amount.toLocaleString()} — ${v.paid ? 'שולם' : 'ממתין'}`
+    ));
   }
   lines.push('');
   if (remainAmount === 0) lines.push(`✅ שולם במלואו`);
