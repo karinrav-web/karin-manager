@@ -559,7 +559,7 @@
     <div style="margin-top:auto;padding:16px 24px;border-top:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">סנכרון ענן</div>
       <div id="sync-status" style="font-size:12px;color:var(--text3);margin-bottom:10px">מתחבר...</div>
-      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-07-17 · 12:20</div>
+      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-07-17 · 12:45</div>
       <div id="other-session-warning" class="hidden" style="font-size:11px;color:#fff;background:var(--urgent);border-radius:6px;padding:6px 8px;margin-bottom:10px;line-height:1.4;">⚠ האפליקציה פתוחה כרגע גם במקום/דפדפן אחר — שינויים עלולים להתנגש. מומלץ לסגור שם.</div>
       <button onclick="exportBackup()" style="width:100%;padding:7px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text2);cursor:pointer;margin-bottom:6px;">💾 ייצוא גיבוי</button>
       <label style="width:100%;display:block;padding:7px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text2);cursor:pointer;text-align:center;margin-bottom:6px;">
@@ -3524,29 +3524,23 @@ function _paymentExportData(projId) {
     payers.filter(x => x.type === 'payment').reduce((s,x) => s + (Number(x.amount)||0), 0);
   const remainAmount = totalWithVat - paidAmount;
   const directPayments = payers.filter(x => x.type === 'payment');
-  const rows = [
-    ...vendors.map(pay => ({
-      name: pay.name, amount: Math.round(Number(pay.amount) * VAT_RATE),
-      paid: !!pay.paid, isCredit: false, isPayment: false
-    })),
-    ...directPayments.map(pay => ({
-      name: (pay.name||'תשלום') + (pay.note ? ` · ${pay.note}` : ''),
-      amount: Number(pay.amount) || 0,
-      paid: true, isCredit: false, isPayment: true, isCash: !!pay.isCash
-    })),
-    ...(client ? [{
-      name: client.name, amount: Math.round(Number(client.amount) * VAT_RATE),
-      paid: !!client.paid, isCredit: Number(client.amount) < 0, isPayment: false
-    }] : [])
-  ];
+  // vendors with no amount of their own get paid through me (client pays me their share too);
+  // vendors with an amount were already paid that much directly by the client
+  const vendorsToMe = vendors.filter(x => !Number(x.amount)).map(pay => ({ name: pay.name, paid: !!pay.paid }));
+  const vendorsDirect = vendors.filter(x => Number(x.amount) > 0).map(pay => ({
+    name: pay.name, amount: Math.round(Number(pay.amount) * VAT_RATE)
+  }));
+  const paymentRows = directPayments.map(pay => ({
+    name: pay.note || 'תשלום מלקוח', amount: Number(pay.amount) || 0, isCash: !!pay.isCash
+  }));
   const adjItems = p.adjItems && p.adjItems.length ? p.adjItems : (p.billingAdj ? [{desc:'תוספת',amount:Number(p.billingAdj)}] : []);
   const adj = adjItems.reduce((s,x) => s + (Number(x.amount)||0), 0);
-  return { p, rows, totalWithVat, paidAmount, remainAmount, discount, creditTotal, adj, adjItems };
+  return { p, client, vendorsToMe, vendorsDirect, paymentRows, totalWithVat, paidAmount, remainAmount, discount, creditTotal, adj, adjItems };
 }
 
 function exportPaymentPDF(projId) {
   const d = _paymentExportData(projId); if (!d) return;
-  const { p, rows, totalWithVat, paidAmount, remainAmount, discount, adj, adjItems } = d;
+  const { p, vendorsToMe, vendorsDirect, paymentRows, totalWithVat, paidAmount, remainAmount, discount, adj, adjItems } = d;
   const dateStr = p.date ? new Date(p.date).toLocaleDateString('he-IL') : '';
   const base = Number(p.billingBase) || 0;
   const totalPhotos = Number(p.total) || 0;
@@ -3559,19 +3553,22 @@ function exportPaymentPDF(projId) {
     body{font-family:'Rubik',sans-serif;background:#fff;color:#1a1a2e;padding:40px;max-width:620px;margin:0 auto;}
     h1{font-size:22px;font-weight:700;margin-bottom:4px;}
     .sub{font-size:14px;color:#666;margin-bottom:16px;}
-    .meta{display:flex;gap:12px;margin-bottom:28px;flex-wrap:wrap;}
+    .meta{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;}
     .meta-item{background:#f8f9fa;border-radius:8px;padding:8px 16px;font-size:13px;}
     .meta-label{font-size:10px;color:#999;margin-bottom:2px;}
     .meta-val{font-weight:600;}
-    table{width:100%;border-collapse:collapse;margin-bottom:24px;}
+    .client-card{background:#f5f0ff;border:1px solid #ddd6fe;border-radius:10px;padding:14px 20px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;}
+    .client-name{font-size:15px;font-weight:700;color:#4c1d95;}
+    .client-nums{display:flex;gap:20px;flex-wrap:wrap;}
+    .client-nums .s-item{text-align:center;}
+    .section-title{font-size:12px;color:#888;font-weight:600;margin:20px 0 8px;}
+    table{width:100%;border-collapse:collapse;margin-bottom:8px;}
     th{text-align:right;font-size:12px;color:#888;font-weight:500;padding:8px 12px;border-bottom:2px solid #eee;}
-    td{padding:12px;font-size:14px;border-bottom:1px solid #f0f0f0;}
-    td.num{color:#bbb;font-size:12px;width:28px;}
+    td{padding:10px 12px;font-size:14px;border-bottom:1px solid #f0f0f0;}
     .badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600;}
     .paid{background:#dcfce7;color:#15803d;}
     .pending{background:#fef3c7;color:#92400e;}
-    .credit{background:#f5f0ff;color:#7c3aed;}
-    .summary{background:#f8f9fa;border-radius:10px;padding:16px 20px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+    .summary{background:#f8f9fa;border-radius:10px;padding:16px 20px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:16px;}
     .s-item{text-align:center;}
     .s-label{font-size:11px;color:#888;margin-bottom:4px;}
     .s-val{font-size:18px;font-weight:700;}
@@ -3588,22 +3585,26 @@ function exportPaymentPDF(projId) {
     ${discount > 0 ? `<div class="meta-item" style="background:#fff5f5;"><div class="meta-label">הנחה</div><div class="meta-val" style="color:#dc2626;">−₪${discount.toLocaleString()}</div></div>` : ''}
     ${totalPhotos ? `<div class="meta-item"><div class="meta-label">תמונות</div><div class="meta-val">${totalPhotos} תמונות</div></div>` : ''}
   </div>
-  <table>
-    <thead><tr><th></th><th>שם</th><th>סכום כולל מעמ</th><th>סטטוס</th></tr></thead>
-    <tbody>
-    ${rows.map((r, i) => `<tr>
-      <td class="num">${i + 1}</td>
-      <td style="font-weight:500;">${r.name}</td>
-      <td style="font-weight:600;">${r.isCredit ? '−' : ''}₪${Math.abs(r.amount).toLocaleString()}${r.isPayment && r.isCash ? '<span style="font-size:10px;color:#888;font-weight:400;margin-right:4px;">ללא מעמ</span>' : ''}</td>
-      <td>${r.isCredit ? `<span class="badge credit">זיכוי</span>` : r.isPayment ? `<span class="badge paid">✓ ${r.isCash ? 'מזומן' : 'שולם'}</span>` : r.paid ? `<span class="badge paid">✓ שולם</span>` : `<span class="badge pending">ממתין</span>`}</td>
-    </tr>`).join('')}
-    </tbody>
-  </table>
-  <div class="summary">
-    <div class="s-item"><div class="s-label">סה"כ כולל מעמ</div><div class="s-val">₪${totalWithVat.toLocaleString()}</div></div>
-    <div class="s-item"><div class="s-label">התקבל</div><div class="s-val green">₪${paidAmount.toLocaleString()}</div></div>
-    <div class="s-item"><div class="s-label">${remainAmount < 0 ? 'זיכוי ללקוח' : 'נשאר לתשלום'}</div><div class="s-val ${remainAmount > 0 ? 'red' : 'green'}">₪${Math.abs(remainAmount).toLocaleString()}</div></div>
+  <div class="client-card">
+    <div class="client-name">👤 ${p.client}</div>
+    <div class="client-nums">
+      <div class="s-item"><div class="s-label">סה"כ</div><div class="s-val">₪${totalWithVat.toLocaleString()}</div></div>
+      <div class="s-item"><div class="s-label">שולם</div><div class="s-val green">₪${paidAmount.toLocaleString()}</div></div>
+      <div class="s-item"><div class="s-label">${remainAmount < 0 ? 'זיכוי ללקוח' : 'נשאר'}</div><div class="s-val ${remainAmount > 0 ? 'red' : 'green'}">₪${Math.abs(remainAmount).toLocaleString()}</div></div>
+    </div>
   </div>
+  ${paymentRows.length ? `<div class="section-title">תשלומים שהתקבלו</div>
+  <table><tbody>
+    ${paymentRows.map(r => `<tr><td style="font-weight:500;">${r.name}</td><td style="font-weight:600;">₪${r.amount.toLocaleString()}${r.isCash ? '<span style="font-size:10px;color:#888;font-weight:400;margin-right:4px;">מזומן · ללא מעמ</span>' : ''}</td></tr>`).join('')}
+  </tbody></table>` : ''}
+  ${vendorsToMe.length ? `<div class="section-title">ספקים ששילמו לי</div>
+  <table><tbody>
+    ${vendorsToMe.map(v => `<tr><td style="font-weight:500;">${v.name}</td><td>${v.paid ? '<span class="badge paid">✓ שולם</span>' : '<span class="badge pending">ממתין</span>'}</td></tr>`).join('')}
+  </tbody></table>` : ''}
+  ${vendorsDirect.length ? `<div class="section-title">ספקים ששולמו ישירות ע"י הלקוחה</div>
+  <table><tbody>
+    ${vendorsDirect.map(v => `<tr><td style="font-weight:500;">${v.name}</td><td style="font-weight:600;">₪${v.amount.toLocaleString()}</td></tr>`).join('')}
+  </tbody></table>` : ''}
   <div class="footer">קרין רבנה — צילום אדריכלות ועיצוב פנים</div>
   <script>window.onload=()=>window.print();<\/script>
   </body></html>`);
@@ -3612,7 +3613,7 @@ function exportPaymentPDF(projId) {
 
 function exportPaymentWhatsApp(projId) {
   const d = _paymentExportData(projId); if (!d) return;
-  const { p, rows, totalWithVat, paidAmount, remainAmount, discount, adj, adjItems } = d;
+  const { p, vendorsToMe, vendorsDirect, paymentRows, totalWithVat, paidAmount, remainAmount, discount, adj, adjItems } = d;
   const base = Number(p.billingBase) || 0;
   const totalPhotos = Number(p.total) || 0;
   const lines = [];
@@ -3624,17 +3625,25 @@ function exportPaymentWhatsApp(projId) {
   if (discount > 0) lines.push(`🏷️ הנחה: −₪${discount.toLocaleString()}`);
   if (totalPhotos) lines.push(`📷 ${totalPhotos} תמונות`);
   lines.push('');
-  rows.forEach((r, i) => {
-    const icon = r.isCredit ? '💜' : r.isPayment ? '💵' : r.paid ? '✅' : '⏳';
-    const status = r.isCredit ? 'זיכוי' : r.isPayment ? (r.isCash ? 'מזומן ללא מעמ' : 'שולם') : r.paid ? 'שולם' : 'ממתין';
-    lines.push(`${i + 1}. ${icon} ${r.name}: ₪${Math.abs(r.amount).toLocaleString()} — ${status}`);
-  });
+  lines.push(`👤 *${p.client}*`);
+  lines.push(`סה"כ: ₪${totalWithVat.toLocaleString()} · שולם: ₪${paidAmount.toLocaleString()} · ${remainAmount < 0 ? 'זיכוי' : 'נשאר'}: ₪${Math.abs(remainAmount).toLocaleString()}`);
+  if (paymentRows.length) {
+    lines.push('');
+    lines.push('*תשלומים שהתקבלו:*');
+    paymentRows.forEach(r => lines.push(`💵 ${r.name}: ₪${r.amount.toLocaleString()}${r.isCash ? ' (מזומן · ללא מעמ)' : ''}`));
+  }
+  if (vendorsToMe.length) {
+    lines.push('');
+    lines.push('*ספקים ששילמו לי:*');
+    vendorsToMe.forEach(v => lines.push(`${v.paid ? '✅' : '⏳'} ${v.name} — ${v.paid ? 'שולם' : 'ממתין'}`));
+  }
+  if (vendorsDirect.length) {
+    lines.push('');
+    lines.push('*ספקים ששולמו ישירות ע"י הלקוחה:*');
+    vendorsDirect.forEach(v => lines.push(`💵 ${v.name}: ₪${v.amount.toLocaleString()}`));
+  }
   lines.push('');
-  lines.push(`סה"כ: ₪${totalWithVat.toLocaleString()} כולל מעמ`);
-  lines.push(`התקבל: ₪${paidAmount.toLocaleString()}`);
-  if (remainAmount > 0) lines.push(`נשאר לתשלום: ₪${remainAmount.toLocaleString()}`);
-  else if (remainAmount < 0) lines.push(`💜 זיכוי ללקוח: ₪${Math.abs(remainAmount).toLocaleString()}`);
-  else lines.push(`✅ שולם במלואו`);
+  if (remainAmount === 0) lines.push(`✅ שולם במלואו`);
   navigator.clipboard.writeText(lines.join('\n')).then(() => {
     const btn = document.querySelector(`button[onclick="exportPaymentWhatsApp(${projId})"]`);
     if (btn) { const orig = btn.textContent; btn.textContent = '✓ הועתק!'; setTimeout(() => btn.textContent = orig, 2000); }
