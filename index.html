@@ -559,7 +559,7 @@
     <div style="margin-top:auto;padding:16px 24px;border-top:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">סנכרון ענן</div>
       <div id="sync-status" style="font-size:12px;color:var(--text3);margin-bottom:10px">מתחבר...</div>
-      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-07-17</div>
+      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-07-17 · 12:20</div>
       <div id="other-session-warning" class="hidden" style="font-size:11px;color:#fff;background:var(--urgent);border-radius:6px;padding:6px 8px;margin-bottom:10px;line-height:1.4;">⚠ האפליקציה פתוחה כרגע גם במקום/דפדפן אחר — שינויים עלולים להתנגש. מומלץ לסגור שם.</div>
       <button onclick="exportBackup()" style="width:100%;padding:7px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text2);cursor:pointer;margin-bottom:6px;">💾 ייצוא גיבוי</button>
       <label style="width:100%;display:block;padding:7px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text2);cursor:pointer;text-align:center;margin-bottom:6px;">
@@ -911,9 +911,13 @@
     <div class="modal-title">💵 תשלום שהתקבל מלקוח</div>
     <div id="cpm-info" style="font-size:13px;color:var(--text2);margin-bottom:14px;"></div>
     <div class="modal-field">
-      <label>סכום שהתקבל ₪ (ללא מעמ — מזומן)</label>
+      <label id="cpm-amount-label">סכום שהתקבל ₪ (כולל מעמ)</label>
       <input id="cpm-amount" type="number" min="0" placeholder="0" oninput="updateClientPaymentCalc()" />
     </div>
+    <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);margin-bottom:14px;cursor:pointer;">
+      <input id="cpm-is-cash" type="checkbox" onchange="toggleCpmCash()" style="width:auto;" />
+      מזומן (ללא חשבונית/מעמ)
+    </label>
     <div class="modal-field">
       <label>הערה (אופציונלי — למשל "מזומן ביום צילום")</label>
       <input id="cpm-note" type="text" placeholder="" />
@@ -3401,7 +3405,7 @@ function renderBillingSection(p) {
       <span class="billing-name" style="color:#065f46;">${pay.name}${pay.note ? ` · <em style="font-weight:400">${pay.note}</em>` : ''}</span>
       <div style="display:flex;align-items:center;gap:6px;">
         <span style="font-size:14px;font-weight:600;color:#059669;">₪${amt.toLocaleString()}</span>
-        <span style="font-size:11px;color:var(--text3);">מזומן · ללא מעמ</span>
+        <span style="font-size:11px;color:var(--text3);">${pay.isCash ? 'מזומן · ללא מעמ' : 'כולל מעמ'}</span>
       </div>
       <button class="billing-delete-btn" onclick="deletePayer(${p.id},${realIdx})" style="margin-right:auto;">✕</button>
     </div>`;
@@ -3528,7 +3532,7 @@ function _paymentExportData(projId) {
     ...directPayments.map(pay => ({
       name: (pay.name||'תשלום') + (pay.note ? ` · ${pay.note}` : ''),
       amount: Number(pay.amount) || 0,
-      paid: true, isCredit: false, isPayment: true
+      paid: true, isCredit: false, isPayment: true, isCash: !!pay.isCash
     })),
     ...(client ? [{
       name: client.name, amount: Math.round(Number(client.amount) * VAT_RATE),
@@ -3590,8 +3594,8 @@ function exportPaymentPDF(projId) {
     ${rows.map((r, i) => `<tr>
       <td class="num">${i + 1}</td>
       <td style="font-weight:500;">${r.name}</td>
-      <td style="font-weight:600;">${r.isCredit ? '−' : ''}₪${Math.abs(r.amount).toLocaleString()}${r.isPayment ? '<span style="font-size:10px;color:#888;font-weight:400;margin-right:4px;">ללא מעמ</span>' : ''}</td>
-      <td>${r.isCredit ? `<span class="badge credit">זיכוי</span>` : r.isPayment ? `<span class="badge paid">✓ מזומן</span>` : r.paid ? `<span class="badge paid">✓ שולם</span>` : `<span class="badge pending">ממתין</span>`}</td>
+      <td style="font-weight:600;">${r.isCredit ? '−' : ''}₪${Math.abs(r.amount).toLocaleString()}${r.isPayment && r.isCash ? '<span style="font-size:10px;color:#888;font-weight:400;margin-right:4px;">ללא מעמ</span>' : ''}</td>
+      <td>${r.isCredit ? `<span class="badge credit">זיכוי</span>` : r.isPayment ? `<span class="badge paid">✓ ${r.isCash ? 'מזומן' : 'שולם'}</span>` : r.paid ? `<span class="badge paid">✓ שולם</span>` : `<span class="badge pending">ממתין</span>`}</td>
     </tr>`).join('')}
     </tbody>
   </table>
@@ -3622,7 +3626,7 @@ function exportPaymentWhatsApp(projId) {
   lines.push('');
   rows.forEach((r, i) => {
     const icon = r.isCredit ? '💜' : r.isPayment ? '💵' : r.paid ? '✅' : '⏳';
-    const status = r.isCredit ? 'זיכוי' : r.isPayment ? 'מזומן ללא מעמ' : r.paid ? 'שולם' : 'ממתין';
+    const status = r.isCredit ? 'זיכוי' : r.isPayment ? (r.isCash ? 'מזומן ללא מעמ' : 'שולם') : r.paid ? 'שולם' : 'ממתין';
     lines.push(`${i + 1}. ${icon} ${r.name}: ₪${Math.abs(r.amount).toLocaleString()} — ${status}`);
   });
   lines.push('');
@@ -3842,7 +3846,13 @@ function openAddClientPaymentModal(projId) {
   document.getElementById('cpm-amount').value = '';
   document.getElementById('cpm-note').value = '';
   document.getElementById('cpm-summary').innerHTML = '';
+  document.getElementById('cpm-is-cash').checked = false;
+  document.getElementById('cpm-amount-label').textContent = 'סכום שהתקבל ₪ (כולל מעמ)';
   document.getElementById('client-payment-modal').style.display = 'flex';
+}
+function toggleCpmCash() {
+  const isCash = document.getElementById('cpm-is-cash').checked;
+  document.getElementById('cpm-amount-label').textContent = isCash ? 'סכום שהתקבל ₪ (מזומן — ללא מעמ)' : 'סכום שהתקבל ₪ (כולל מעמ)';
 }
 function updateClientPaymentCalc() {
   const p = state.projects.find(p => p.id === _cpmProjId); if (!p) return;
@@ -3876,8 +3886,9 @@ function confirmClientPayment() {
   const amt = parseFloat(document.getElementById('cpm-amount').value) || 0;
   if (!amt) return;
   const note = document.getElementById('cpm-note').value.trim();
+  const isCash = document.getElementById('cpm-is-cash').checked;
   if (!p.payers) p.payers = [];
-  p.payers.push({ name: p.client || p.title, amount: amt, type: 'payment', note, paid: true });
+  p.payers.push({ name: p.client || p.title, amount: amt, type: 'payment', note, paid: true, isCash });
   recalcClientShare(p);
   document.getElementById('client-payment-modal').style.display = 'none';
   save(); renderProjects(); renderBillingSummaryMorning(); renderBillingPage();
