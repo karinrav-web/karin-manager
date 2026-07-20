@@ -7,6 +7,7 @@
 <link rel="manifest" href="manifest.json">
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="קרין מנג׳ר">
@@ -1025,7 +1026,10 @@ function fbSave() {
   setSyncStatus('שומר...','var(--text3)');
   _fbSaveTimer = setTimeout(() => {
     // use state at fire-time, not at schedule-time — avoids overwriting cloud deletions
-    fbDb.ref(FB_PATH).set(state)
+    // JSON round-trip strips any stray `undefined` fields — Firebase .set() throws
+    // synchronously (not a rejected promise) if any property is undefined, which
+    // silently aborts the entire save for every project, not just the bad one
+    fbDb.ref(FB_PATH).set(JSON.parse(JSON.stringify(state)))
       .then(() => setSyncStatus('✓ נשמר לענן','var(--accent)'))
       .catch(e => { console.warn('FB save error', e); setSyncStatus('מקומי בלבד','var(--text3)'); });
   }, 800);
@@ -1678,22 +1682,26 @@ function load() {
 
   setSyncStatus('מתחבר...','var(--text3)');
 
-  // Connect to Firebase for real-time sync
-  fbDb.ref(FB_PATH).on('value', snapshot => {
-    if (!_fbInitialized) startSessionWatch();
-    _fbInitialized = true; // now safe to save — we know what Firebase has
-    const fbData = snapshot.val();
-    if (fbData && fbData.projects && fbData.projects.length > 0) {
-      mergeCloudState({ok:true, state:fbData});
-    } else if (state.projects && state.projects.length > 0) {
-      // Firebase empty but we have local data — push it up (first-time upload only)
-      fbDb.ref(FB_PATH).set(state);
-      applyPinToState(); render();
-      setSyncStatus('✓ נשמר לענן','var(--accent)');
-    } else {
-      loadFallback();
-    }
-  }, err => { loadFallback(); });
+  // Sign in anonymously first — the database rules require an authenticated
+  // request, so the listener must wait for this to resolve before attaching.
+  firebase.auth().signInAnonymously().then(() => {
+    // Connect to Firebase for real-time sync
+    fbDb.ref(FB_PATH).on('value', snapshot => {
+      if (!_fbInitialized) startSessionWatch();
+      _fbInitialized = true; // now safe to save — we know what Firebase has
+      const fbData = snapshot.val();
+      if (fbData && fbData.projects && fbData.projects.length > 0) {
+        mergeCloudState({ok:true, state:fbData});
+      } else if (state.projects && state.projects.length > 0) {
+        // Firebase empty but we have local data — push it up (first-time upload only)
+        fbDb.ref(FB_PATH).set(JSON.parse(JSON.stringify(state)));
+        applyPinToState(); render();
+        setSyncStatus('✓ נשמר לענן','var(--accent)');
+      } else {
+        loadFallback();
+      }
+    }, err => { loadFallback(); });
+  }).catch(e => { console.warn('FB auth error', e); loadFallback(); });
 }
 
 function showPage(p, el) {
