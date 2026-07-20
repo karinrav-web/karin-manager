@@ -480,7 +480,7 @@
   .lock-msg { font-size:12px; color:var(--urgent); min-height:18px; margin-top:8px; }
 
   /* Daily Report */
-  .report-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:20px; }
+  .report-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
   .report-stat { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; text-align:center; }
   .report-stat-val { font-size:28px; font-weight:600; color:var(--accent); }
   .report-stat-label { font-size:12px; color:var(--text3); margin-top:4px; }
@@ -1836,6 +1836,7 @@ function renderReport() {
     }
   });
 
+  const sentToClientToday = state.projects.filter(p=>p.sentToClientDate===today).length;
   const doneProjects = state.projects.filter(p=>p.stage==='done');
   const openTasks = state.tasks.filter(t=>!t.done).length;
   const doneTasks = state.tasks.filter(t=>t.done).length;
@@ -1866,6 +1867,10 @@ function renderReport() {
       <div class="report-stat">
         <div class="report-stat-val">${workedOn.length}</div>
         <div class="report-stat-label">פרויקטים פעילים היום</div>
+      </div>
+      <div class="report-stat">
+        <div class="report-stat-val">${sentToClientToday}</div>
+        <div class="report-stat-label">נשלחו ללקוח היום</div>
       </div>
     </div>
     <div class="card" style="margin-bottom:16px;">
@@ -3142,7 +3147,17 @@ function renderProjects(searchVal) {
 }
 
 function setStageBtn(btn){const id=Number(btn.dataset.pid);const s=btn.dataset.stage;setStage(id,s);}
-function setStage(id,s){const p=state.projects.find(p=>p.id===id);if(p){p.stage=s;save();renderProjects();}}
+function setStage(id,s){
+  const p=state.projects.find(p=>p.id===id);
+  if(p){
+    const wasPreSend = p.stage==='edit' || p.stage==='deliver';
+    const nowSent = s==='billing' || s==='notes';
+    if(wasPreSend && nowSent && p.stage!==s) p.sentToClientDate = todayStr();
+    p.stage=s;
+    save();
+    renderProjects();
+  }
+}
 
 function updateEditedToday(id,v){
   const p=state.projects.find(p=>p.id===id); if(!p) return;
