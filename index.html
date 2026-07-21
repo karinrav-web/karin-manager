@@ -552,7 +552,7 @@
       <div class="logo-sub">צלמת אדריכלות ועיצוב פנים</div>
     </div>
     <div class="nav-item active" id="nav-morning" onclick="showPage('morning',this)"><span class="nav-icon"><span class="material-symbols-outlined">wb_sunny</span></span><span>בוקר טוב</span></div>
-    <div class="nav-item" id="nav-projects" onclick="showPage('projects',this)"><span class="nav-icon"><span class="material-symbols-outlined">camera_alt</span></span><span>פרויקטים</span></div>
+    <div class="nav-item" id="nav-projects" onclick="openProjectsDefault(this)"><span class="nav-icon"><span class="material-symbols-outlined">camera_alt</span></span><span>פרויקטים</span></div>
     <div class="nav-item" id="nav-calendar" onclick="showPage('calendar',this)"><span class="nav-icon"><span class="material-symbols-outlined">calendar_view_day</span></span><span>לוח עריכה</span></div>
     <div class="nav-item" id="nav-report" onclick="showPage('report',this)"><span class="nav-icon"><span class="material-symbols-outlined">bar_chart</span></span><span>דוח יומי</span></div>
     <div class="nav-item" id="nav-billing" onclick="showPage('billing',this)"><span class="nav-icon"><span class="material-symbols-outlined">payments</span></span><span>הכנסות</span></div>
@@ -852,7 +852,7 @@
 
 <nav class="mobile-nav">
   <button class="mobile-nav-item active" id="mnav-morning" onclick="showPageMobile('morning',this)"><span class="mobile-nav-icon">☀</span>בוקר טוב</button>
-  <button class="mobile-nav-item" id="mnav-projects" onclick="showPageMobile('projects',this)"><span class="mobile-nav-icon">📁</span>פרויקטים</button>
+  <button class="mobile-nav-item" id="mnav-projects" onclick="openProjectsDefaultMobile(this)"><span class="mobile-nav-icon">📁</span>פרויקטים</button>
   <button class="mobile-nav-item" id="mnav-calendar" onclick="showPageMobile('calendar',this)"><span class="mobile-nav-icon">📅</span>לוח</button>
   <button class="mobile-nav-item" id="mnav-report" onclick="showPageMobile('report',this)"><span class="mobile-nav-icon">📊</span>דוח</button>
   <button class="mobile-nav-item" id="mnav-billing" onclick="showPageMobile('billing',this)"><span class="mobile-nav-icon">💰</span>הכנסות</button>
@@ -1733,6 +1733,8 @@ function filterStage(stage) {
   showPage('projects', document.getElementById('nav-projects'));
   renderProjects();
 }
+function openProjectsDefault(el) { stageFilter = 'edit'; showPage('projects', el); }
+function openProjectsDefaultMobile(el) { stageFilter = 'edit'; showPageMobile('projects', el); }
 function toggleEl(id) { document.getElementById(id).classList.toggle('hidden'); }
 
 function openProjectFromUrgency(projId) {
