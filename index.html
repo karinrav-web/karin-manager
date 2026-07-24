@@ -3369,8 +3369,20 @@ function recalcClientShare(p) {
     client.amount = clientShare;
     // keep "paid" in sync with the live balance — if new costs (e.g. a vendor added
     // after the client was marked paid) push the share back above 0, un-mark it so
-    // the UI/badges reflect that a partial balance is owed again
-    client.paid = clientShare <= 0;
+    // the UI/badges reflect that a partial balance is owed again.
+    // Marking paid (togglePaid/confirmReceivePayment) doesn't itself reduce
+    // clientShare — only vendor/credit/direct-payment entries do — so we snapshot
+    // the balance at the moment of marking paid and only auto-unmark once a new
+    // cost pushes clientShare above that snapshot. Without the snapshot, clientShare
+    // being >0 right after marking paid would revert the flag on every re-render.
+    if (client.paid) {
+      if (client.paidAtShare === undefined) client.paidAtShare = clientShare;
+      else if (clientShare > client.paidAtShare) client.paid = false;
+    }
+    if (!client.paid) {
+      delete client.paidAtShare;
+      if (clientShare <= 0) { client.paid = true; client.paidAtShare = clientShare; }
+    }
   }
 }
 
