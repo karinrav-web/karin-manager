@@ -504,6 +504,9 @@
   .billing-bar-wrap { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; height:100%; justify-content:flex-end; }
   .billing-bar { width:100%; border-radius:4px 4px 0 0; background:var(--accent); min-height:2px; transition:height 0.3s; cursor:pointer; }
   .billing-bar:hover { background:var(--normal); }
+  .billing-bar.active { background:var(--normal); box-shadow:0 0 0 2px var(--normal); }
+  .billing-month-filter-badge { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; font-size:12px; background:var(--accent-light); color:var(--accent); border-radius:20px; }
+  .billing-month-filter-badge button { background:none; border:none; cursor:pointer; color:inherit; font-size:13px; padding:0; line-height:1; }
   .billing-bar-label { font-size:10px; color:var(--text3); }
   .billing-bar-val { font-size:9px; color:var(--text3); }
   .billing-record { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); }
@@ -814,6 +817,7 @@
               <option value="amount-asc">לפי סכום (נמוך)</option>
             </select>
             <button onclick="toggleBillingClientView()" id="billing-client-view-btn" style="padding:5px 12px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">לפי לקוח</button>
+            <span id="billing-month-filter-badge"></span>
             <span id="billing-count" style="font-weight:400;color:var(--text3);font-size:13px;"></span>
           </div>
         </div>
@@ -1905,6 +1909,7 @@ let billingYear = new Date().getFullYear();
 let billingAllYears = false;
 let editingBillingId = null;
 let billingClientView = false;
+let billingMonthFilter = null;
 
 function fmtMoney(n) { return Math.round(n).toLocaleString('he-IL') + ' ₪'; }
 
@@ -2153,9 +2158,9 @@ function renderBillingPage() {
     const maxVal = Math.max(...byMonth, 1);
     if (chartEl) chartEl.innerHTML = byMonth.map((v,i) => {
       const pct = Math.round((v/maxVal)*100);
-      return `<div class="billing-bar-wrap">
+      return `<div class="billing-bar-wrap" onclick="setMonthFilter(${i})" style="cursor:pointer;">
         <div class="billing-bar-val">${v>0?fmtMoney(v).replace(' ₪',''):''}</div>
-        <div class="billing-bar" style="height:${Math.max(pct,v>0?4:1)}%" title="${months[i]}: ${fmtMoney(v)}"></div>
+        <div class="billing-bar${billingMonthFilter===i?' active':''}" style="height:${Math.max(pct,v>0?4:1)}%" title="${months[i]}: ${fmtMoney(v)}"></div>
         <div class="billing-bar-label">${months[i]}</div>
       </div>`;
     }).join('');
@@ -2174,7 +2179,15 @@ function renderBillingPage() {
   const sortMode = document.getElementById('billing-sort')?.value || 'date-desc';
 
   // Filter
-  let filtered = selectedClient ? yearRecs.filter(r => r.client === selectedClient) : [...yearRecs];
+  let filtered = billingMonthFilter !== null
+    ? yearRecs.filter(r => (parseInt(r.date?.slice(5,7)) - 1) === billingMonthFilter)
+    : [...yearRecs];
+  if (selectedClient) filtered = filtered.filter(r => r.client === selectedClient);
+
+  const monthBadgeEl = document.getElementById('billing-month-filter-badge');
+  if (monthBadgeEl) monthBadgeEl.innerHTML = billingMonthFilter !== null
+    ? `<span class="billing-month-filter-badge">${months[billingMonthFilter]} <button onclick="clearMonthFilter()">✕</button></span>`
+    : '';
 
   // Sort
   if (sortMode === 'date-desc') filtered.sort((a,b) => (b.date||'').localeCompare(a.date||''));
@@ -2389,8 +2402,15 @@ function setClientFilter(clientName) {
   if (el) { el.value = clientName; renderBillingPage(); }
 }
 
-function setBillingYear(y) { billingYear = y; billingAllYears = false; renderBillingPage(); }
-function setBillingAllYears() { billingAllYears = true; renderBillingPage(); }
+function setBillingYear(y) { billingYear = y; billingAllYears = false; billingMonthFilter = null; renderBillingPage(); }
+function setBillingAllYears() { billingAllYears = true; billingMonthFilter = null; renderBillingPage(); }
+
+function setMonthFilter(monthIndex) {
+  billingMonthFilter = billingMonthFilter === monthIndex ? null : monthIndex;
+  billingClientView = false;
+  renderBillingPage();
+}
+function clearMonthFilter() { billingMonthFilter = null; renderBillingPage(); }
 
 function openBillingModal(id) {
   editingBillingId = id || null;
