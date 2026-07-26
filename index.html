@@ -505,8 +505,6 @@
   .billing-bar { width:100%; border-radius:4px 4px 0 0; background:var(--accent); min-height:2px; transition:height 0.3s; cursor:pointer; }
   .billing-bar:hover { background:var(--normal); }
   .billing-bar.active { background:var(--normal); box-shadow:0 0 0 2px var(--normal); }
-  .billing-month-filter-badge { display:inline-flex; align-items:center; gap:6px; padding:4px 10px; font-size:12px; background:var(--accent-light); color:var(--accent); border-radius:20px; }
-  .billing-month-filter-badge button { background:none; border:none; cursor:pointer; color:inherit; font-size:13px; padding:0; line-height:1; }
   .billing-bar-label { font-size:10px; color:var(--text3); }
   .billing-bar-val { font-size:9px; color:var(--text3); }
   .billing-record { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); }
@@ -795,6 +793,7 @@
       <div class="card" style="margin-bottom:18px;">
         <div class="card-title">לפי חודש</div>
         <div class="billing-chart" id="billing-chart"></div>
+        <div id="billing-month-detail"></div>
       </div>
       <div class="card" style="margin-bottom:18px;">
         <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
@@ -817,7 +816,6 @@
               <option value="amount-asc">לפי סכום (נמוך)</option>
             </select>
             <button onclick="toggleBillingClientView()" id="billing-client-view-btn" style="padding:5px 12px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">לפי לקוח</button>
-            <span id="billing-month-filter-badge"></span>
             <span id="billing-count" style="font-weight:400;color:var(--text3);font-size:13px;"></span>
           </div>
         </div>
@@ -2184,16 +2182,38 @@ function renderBillingPage() {
     : [...yearRecs];
   if (selectedClient) filtered = filtered.filter(r => r.client === selectedClient);
 
-  const monthBadgeEl = document.getElementById('billing-month-filter-badge');
-  if (monthBadgeEl) monthBadgeEl.innerHTML = billingMonthFilter !== null
-    ? `<span class="billing-month-filter-badge">${months[billingMonthFilter]} <button onclick="clearMonthFilter()">✕</button></span>`
-    : '';
-
   // Sort
   if (sortMode === 'date-desc') filtered.sort((a,b) => (b.date||'').localeCompare(a.date||''));
   else if (sortMode === 'date-asc') filtered.sort((a,b) => (a.date||'').localeCompare(b.date||''));
   else if (sortMode === 'amount-desc') filtered.sort((a,b) => (b.total||0) - (a.total||0));
   else if (sortMode === 'amount-asc') filtered.sort((a,b) => (a.total||0) - (b.total||0));
+
+  const monthDetailEl = document.getElementById('billing-month-detail');
+  if (monthDetailEl) {
+    if (billingMonthFilter === null) {
+      monthDetailEl.innerHTML = '';
+    } else {
+      const monthTotal = filtered.reduce((s,r) => s + (r.total||0), 0);
+      monthDetailEl.innerHTML = `
+        <div style="margin-top:14px;padding:14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <div style="font-weight:600;font-size:14px;">${months[billingMonthFilter]} ${billingYear} · ${filtered.length} רשומות · ${fmtMoney(monthTotal)}</div>
+            <button onclick="clearMonthFilter()" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;padding:0 4px;">✕</button>
+          </div>
+          ${filtered.length ? filtered.map(r => {
+            const dateStr = r.date ? r.date.slice(8)+'/'+r.date.slice(5,7) : '';
+            return `<div class="billing-record">
+              <div class="billing-record-date">${dateStr}</div>
+              <div style="flex:1;min-width:0;">
+                <div class="billing-record-client">${r.client||'—'} ${r.project?'· '+r.project:''}</div>
+              </div>
+              <div class="billing-record-amount">${fmtMoney(r.total)}</div>
+              <button class="billing-record-edit" onclick="openBillingModal(${r.id})">✏️</button>
+            </div>`;
+          }).join('') : '<div style="color:var(--text3);font-size:13px;padding:8px 0;text-align:center;">אין רשומות בחודש זה</div>'}
+        </div>`;
+    }
+  }
 
   const recEl = document.getElementById('billing-records');
   const cntEl = document.getElementById('billing-count');
