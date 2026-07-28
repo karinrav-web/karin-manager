@@ -1422,7 +1422,7 @@ function renderUrgency(){
   const s=state.settings||{};
   const photosPerProj=s.photosPerProj||10;
   const today=new Date(); today.setHours(0,0,0,0);
-  const active=state.projects.filter(p=>p.stage!=='done'&&p.stage!=='s-done'&&p.stage!=='billing'&&p.stage!=='s-billing'&&p.deadline);
+  const active=state.projects.filter(p=>p.stage!=='done'&&p.stage!=='s-done'&&p.stage!=='billing'&&p.stage!=='s-billing'&&p.stage!=='notes'&&p.deadline);
   if(!active.length){el.innerHTML='<p style="font-size:13px;color:var(--text3)">אין פרויקטים עם דדליין</p>';return;}
   const rows=active.map(p=>{
     const deadline=new Date(p.deadline); deadline.setHours(0,0,0,0);
@@ -2976,7 +2976,7 @@ function renderDeadlineAlerts() {
   const el = document.getElementById('deadline-alerts'); if (!el) return;
   const today = new Date(); today.setHours(0,0,0,0);
   const urgent = state.projects
-    .filter(p => p.deadline && p.stage !== 'done' && p.stage !== 'billing')
+    .filter(p => p.deadline && p.stage !== 'done' && p.stage !== 'billing' && p.stage !== 'notes')
     .map(p => { const d = new Date(p.deadline); d.setHours(0,0,0,0); return {p, days: Math.round((d-today)/(1000*60*60*24))}; })
     .filter(({days}) => days <= 7)
     .sort((a,b) => a.days - b.days);
