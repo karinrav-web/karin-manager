@@ -3554,17 +3554,18 @@ function renderBillingSection(p) {
     const total = qty * price;
     const excess = Math.max(0, qty * (price - 250));
     return `<div class="billing-row" style="background:#fff7ed;border-radius:var(--radius-sm);padding:6px 10px;">
-      <span class="billing-type" style="background:#ea580c;color:#fff;">תמונה בודדת</span>
+      <span class="billing-type">ספק</span>
+      <span style="font-size:11px;color:#ea580c;font-weight:600;background:#ffe8d5;padding:1px 7px;border-radius:10px;white-space:nowrap;">תמונה בודדת</span>
       <input type="text" value="${pay.name||''}" placeholder="שם הספק" style="width:100px;padding:4px 8px;font-size:13px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-family:'Rubik',sans-serif;background:var(--surface);color:var(--text);" onchange="updatePhotoName(${p.id},${realIdx},this.value)" />
-      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-inline-start:auto;">
         <input type="number" min="1" value="${qty}" title="כמות תמונות" style="width:44px;padding:4px 6px;font-size:13px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-family:'Rubik',sans-serif;text-align:center;" onchange="updatePhotoQty(${p.id},${realIdx},this.value)" />
         <span style="font-size:11px;color:var(--text3);">תמונות ×</span>
         <input type="number" min="0" value="${price}" title="מחיר לתמונה אחת" style="width:70px;padding:4px 8px;font-size:13px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-family:'Rubik',sans-serif;text-align:center;" onchange="updatePhotoAmount(${p.id},${realIdx},this.value)" />
-        <span style="font-size:12px;color:var(--text2);font-weight:500;">= ${fmtILS(total)}</span>
         ${excess > 0
           ? `<span style="font-size:11px;color:var(--urgent);font-weight:500;">−${fmtILS(excess)} מהמעצבת</span>`
           : `<span style="font-size:11px;color:var(--high);font-weight:500;">נטו</span>`
         }
+        <span style="font-size:14px;font-weight:600;color:var(--text);">${fmtILS(total)}</span>
       </div>
       <button class="billing-paid-btn ${pay.paid ? 'paid' : ''}" onclick="togglePaid(${p.id},${realIdx})">${pay.paid ? '✓' : ''}</button>
       <button class="billing-delete-btn" onclick="deletePayer(${p.id},${realIdx})">✕</button>
