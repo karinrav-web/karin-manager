@@ -973,6 +973,7 @@
       <div style="font-size:12px;color:var(--text3);margin-bottom:6px;font-weight:500;">ספקים</div>
       <div id="bm-suppliers"></div>
       <button onclick="addBillingSupplier()" style="font-size:12px;color:var(--accent);background:none;border:1px dashed var(--accent);border-radius:6px;padding:4px 12px;cursor:pointer;font-family:'Rubik',sans-serif;">+ ספק</button>
+      <button onclick="addBillingPhotoSupplier()" style="font-size:12px;color:#ea580c;background:none;border:1px dashed #ea580c;border-radius:6px;padding:4px 12px;cursor:pointer;font-family:'Rubik',sans-serif;margin-inline-start:6px;">+ תמונה בודדת</button>
     </div>
     <div style="padding:12px 0;border-top:1px solid var(--border);margin-top:8px;display:flex;justify-content:space-between;align-items:center;">
       <span style="font-size:13px;color:var(--text2);">סה"כ</span>
@@ -1953,7 +1954,7 @@ function renderBillingSearch() {
   if (matchingRecs.length) {
     const rows = matchingRecs.map(r => {
       const dateStr = r.date ? r.date.slice(8)+'/'+r.date.slice(5,7)+'/'+r.date.slice(0,4) : '';
-      const supplierStr = (r.suppliers||[]).filter(s=>s.name).map(s=>`${s.name} ${fmtMoney(s.amount)}`).join(' · ');
+      const supplierStr = (r.suppliers||[]).filter(s=>s.name).map(s=>`${s.name}${s.photo?` (${s.qty||1} תמונות)`:''} ${fmtMoney(s.amount)}`).join(' · ');
       return `<div class="billing-record">
         <div class="billing-record-date">${dateStr}</div>
         <div style="flex:1;min-width:0;">
@@ -2256,7 +2257,7 @@ function renderBillingPage() {
     if (clientSumEl) clientSumEl.style.display = 'none';
     if (cntEl) cntEl.textContent = filtered.length + ' רשומות' + (selectedClient ? ` · ${selectedClient}` : '');
     if (recEl) recEl.innerHTML = filtered.length ? filtered.map(r => {
-      const supplierStr = (r.suppliers||[]).filter(s=>s.name).map(s=>`${s.name} ${fmtMoney(s.amount)}`).join(' · ');
+      const supplierStr = (r.suppliers||[]).filter(s=>s.name).map(s=>`${s.name}${s.photo?` (${s.qty||1} תמונות)`:''} ${fmtMoney(s.amount)}`).join(' · ');
       const dateStr = r.date ? r.date.slice(8)+'/'+r.date.slice(5,7) : '';
       return `<div class="billing-record">
         <div class="billing-record-date">${dateStr}</div>
@@ -2448,7 +2449,7 @@ function openBillingModal(id) {
   suppEl.innerHTML = '';
   const suppliers = rec?.suppliers || [];
   if (suppliers.length === 0) addBillingSupplier();
-  else suppliers.forEach(s => addBillingSupplier(s.name, s.amount));
+  else suppliers.forEach(s => s.photo ? addBillingPhotoSupplier(s.name, s.qty || 1, s.amount) : addBillingSupplier(s.name, s.amount));
   updateBillingTotal();
   modal.style.display = 'flex';
 }
@@ -2466,11 +2467,63 @@ function addBillingSupplier(name='', amount='') {
   document.getElementById('bm-suppliers').appendChild(row);
 }
 
+// "single photo" purchase — supplier buys N photos at ₪250/photo. The first
+// ₪250×qty is clean income; anything paid above that is money the designer
+// already took, so it comes off the manual designer fee instead of being
+// double-counted. We track each row's own excess (data-lastexcess) so
+// changing qty/amount only adjusts the designer field by the delta.
+function calcPhotoExcess(row) {
+  const qty = parseFloat(row.querySelector('.bm-photo-qty').value) || 1;
+  const amt = parseFloat(row.querySelector('.bm-photo-amount').value) || 0;
+  return Math.max(0, amt - qty * 250);
+}
+
+function addBillingPhotoSupplier(name='', qty=1, amount=250) {
+  const row = document.createElement('div');
+  row.className = 'bm-supplier-row';
+  row.dataset.photo = '1';
+  row.dataset.lastexcess = '0';
+  row.innerHTML = `
+    <input type="text" placeholder="שם ספק" value="${name}" oninput="updateBillingTotal()"/>
+    <input type="number" min="1" class="bm-photo-qty" value="${qty}" style="width:55px" title="כמות תמונות" oninput="updateBillingPhotoRow(this.parentElement)"/>
+    <input type="number" min="0" class="bm-photo-amount" placeholder="סכום ששולם" value="${amount}" style="width:90px" oninput="updateBillingPhotoRow(this.parentElement)"/>
+    <span class="bm-photo-note" style="font-size:11px;color:var(--text3);white-space:nowrap;"></span>
+    <button class="bm-remove" onclick="removeBillingPhotoRow(this.parentElement)">×</button>`;
+  document.getElementById('bm-suppliers').appendChild(row);
+  updateBillingPhotoRow(row, true);
+}
+
+function updateBillingPhotoRow(row, isInit=false) {
+  const newExcess = calcPhotoExcess(row);
+  const oldExcess = parseFloat(row.dataset.lastexcess) || 0;
+  if (!isInit) {
+    const designerEl = document.getElementById('bm-designer');
+    designerEl.value = (parseFloat(designerEl.value) || 0) - (newExcess - oldExcess);
+  }
+  row.dataset.lastexcess = newExcess;
+  const note = row.querySelector('.bm-photo-note');
+  note.textContent = newExcess > 0 ? `−₪${newExcess} מהמעצבת` : 'נטו לצלמת';
+  note.style.color = newExcess > 0 ? 'var(--urgent)' : 'var(--high)';
+  updateBillingTotal();
+}
+
+function removeBillingPhotoRow(row) {
+  const excess = parseFloat(row.dataset.lastexcess) || 0;
+  if (excess > 0) {
+    const designerEl = document.getElementById('bm-designer');
+    designerEl.value = (parseFloat(designerEl.value) || 0) + excess;
+  }
+  row.remove();
+  updateBillingTotal();
+}
+
 function updateBillingTotal() {
   const designer = parseFloat(document.getElementById('bm-designer').value)||0;
   let suppTotal = 0;
   document.querySelectorAll('#bm-suppliers .bm-supplier-row').forEach(row => {
-    suppTotal += parseFloat(row.querySelectorAll('input')[1].value)||0;
+    suppTotal += row.dataset.photo === '1'
+      ? (parseFloat(row.querySelector('.bm-photo-amount').value)||0)
+      : (parseFloat(row.querySelectorAll('input')[1].value)||0);
   });
   document.getElementById('bm-total').textContent = fmtMoney(designer + suppTotal);
 }
@@ -2484,8 +2537,14 @@ function saveBillingRecord() {
   const suppliers = [];
   document.querySelectorAll('#bm-suppliers .bm-supplier-row').forEach(row => {
     const name = row.querySelectorAll('input')[0].value.trim();
-    const amount = parseFloat(row.querySelectorAll('input')[1].value)||0;
-    if (name || amount) suppliers.push({name, amount});
+    if (row.dataset.photo === '1') {
+      const qty = parseFloat(row.querySelector('.bm-photo-qty').value)||1;
+      const amount = parseFloat(row.querySelector('.bm-photo-amount').value)||0;
+      if (name || amount) suppliers.push({name, amount, qty, photo:true});
+    } else {
+      const amount = parseFloat(row.querySelectorAll('input')[1].value)||0;
+      if (name || amount) suppliers.push({name, amount});
+    }
   });
   const total = designerFee + suppliers.reduce((s,x)=>s+x.amount,0);
   if (!state.billing) state.billing = [];
@@ -3391,13 +3450,20 @@ function calcDiscount(p) {
   }
   return raw;
 }
+// single-photo sales (payer type 'photo'): first ₪250×qty is clean income,
+// anything paid above that was already taken by the designer, so it comes
+// off the vendor referral bonus instead of inflating the client's total.
+function calcPhotoExcessTotal(payers) {
+  return (payers || []).filter(x => x.type === 'photo')
+    .reduce((s, x) => s + Math.max(0, (Number(x.amount) || 0) - (Number(x.qty) || 1) * 250), 0);
+}
 function recalcClientShare(p) {
   const base = Number(p.billingBase) || 0;
   const adj = Number(p.billingAdj) || 0;
   const vendors = (p.payers || []).filter(x => x.type === 'vendor');
   const creditsUsed = (p.payers || []).filter(x => x.type === 'credit');
   const directPayments = (p.payers || []).filter(x => x.type === 'payment');
-  const vendorBonus = vendors.length * 500;
+  const vendorBonus = Math.max(0, vendors.length * 500 - calcPhotoExcessTotal(p.payers));
   const vendorPaid = vendors.reduce((s, x) => s + (Number(x.amount) || 0), 0);
   const creditTotal = creditsUsed.reduce((s, x) => s + (Number(x.amount) || 0), 0);
   // direct payments are actual cash (no VAT) — divide by 1.18 to get pre-VAT equivalent
@@ -3440,7 +3506,7 @@ function renderBillingSection(p) {
   const directPayments = payers.filter(x => x.type === 'payment');
   const client = payers.find(x => x.type === 'client');
   const vendorPaid = vendors.reduce((s, x) => s + (Number(x.amount) || 0), 0);
-  const vendorBonus = vendors.length * 500;
+  const vendorBonus = Math.max(0, vendors.length * 500 - calcPhotoExcessTotal(payers));
   const creditTotal = credits.reduce((s, x) => s + (Number(x.amount) || 0), 0);
   const totalBeforeVat = Math.max(0, base + vendorBonus + adj - discount);
   const clientShare = client ? (Number(client.amount) || 0) : totalBeforeVat - vendorPaid - creditTotal;
@@ -3467,6 +3533,29 @@ function renderBillingSection(p) {
         ${paidToDesigner
           ? `<span style="font-size:11px;color:var(--high);font-weight:500;">שילם למעצבת</span>`
           : `<span style="font-size:11px;color:var(--text3);">(${fmtILS(amt*VAT_RATE)} כולל מעמ)</span>`
+        }
+      </div>
+      <button class="billing-paid-btn ${pay.paid ? 'paid' : ''}" onclick="togglePaid(${p.id},${realIdx})">${pay.paid ? '✓' : ''}</button>
+      <button class="billing-delete-btn" onclick="deletePayer(${p.id},${realIdx})">✕</button>
+    </div>`;
+  }).join('');
+
+  const photoSales = payers.filter(x => x.type === 'photo');
+  const photoRows = photoSales.map((pay) => {
+    const realIdx = payers.indexOf(pay);
+    const qty = Number(pay.qty) || 1;
+    const amt = Number(pay.amount) || 0;
+    const excess = Math.max(0, amt - qty * 250);
+    return `<div class="billing-row" style="background:#fff7ed;border-radius:var(--radius-sm);padding:6px 10px;">
+      <span class="billing-type" style="background:#ea580c;color:#fff;">תמונה בודדת</span>
+      <input type="text" value="${pay.name||''}" placeholder="שם הספק" style="width:100px;padding:4px 8px;font-size:13px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-family:'Rubik',sans-serif;background:var(--surface);color:var(--text);" onchange="updatePhotoName(${p.id},${realIdx},this.value)" />
+      <div style="display:flex;align-items:center;gap:6px;">
+        <input type="number" min="1" value="${qty}" title="כמות תמונות" style="width:44px;padding:4px 6px;font-size:13px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-family:'Rubik',sans-serif;text-align:center;" onchange="updatePhotoQty(${p.id},${realIdx},this.value)" />
+        <span style="font-size:11px;color:var(--text3);">× ₪250</span>
+        <input type="number" min="0" value="${amt}" title="סכום ששולם בפועל" style="width:75px;padding:4px 8px;font-size:13px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-family:'Rubik',sans-serif;text-align:center;" onchange="updatePhotoAmount(${p.id},${realIdx},this.value)" />
+        ${excess > 0
+          ? `<span style="font-size:11px;color:var(--urgent);font-weight:500;">−${fmtILS(excess)} מהמעצבת</span>`
+          : `<span style="font-size:11px;color:var(--high);font-weight:500;">נטו</span>`
         }
       </div>
       <button class="billing-paid-btn ${pay.paid ? 'paid' : ''}" onclick="togglePaid(${p.id},${realIdx})">${pay.paid ? '✓' : ''}</button>
@@ -3556,6 +3645,7 @@ function renderBillingSection(p) {
       </div>
 
       ${vendorRows}
+      ${photoRows}
       ${paymentRows}
       ${creditRows}
       ${clientRow}
@@ -3564,6 +3654,7 @@ function renderBillingSection(p) {
         <input type="text" id="bname-${p.id}" placeholder="שם ספק" style="width:130px" />
         <input type="number" id="bamount-${p.id}" placeholder="סכום ₪ (0 אם שילם למעצבת)" value="0" style="width:80px" />
         <button class="btn-save" style="font-size:12px;padding:6px 14px" onclick="addVendor(${p.id})">+ הוסף ספק</button>
+        <button class="edit-btn" style="font-size:12px;border-color:#ea580c;color:#ea580c;" onclick="addPhotoSale(${p.id})">+ תמונה בודדת</button>
         <button class="edit-btn" style="font-size:12px;border-color:#059669;color:#059669;" onclick="openAddClientPaymentModal(${p.id})">+ תשלום מלקוח</button>
         <button class="edit-btn" style="font-size:12px;border-color:#c4b5fd;color:#7c3aed;" onclick="openAddCreditModal(${p.id})">+ זיכוי לקוח</button>
         ${!client ? `<button class="edit-btn" onclick="addClient(${p.id})">+ הוסף לקוח</button>` : ''}
@@ -3591,7 +3682,7 @@ function _paymentExportData(projId) {
   const vendors = payers.filter(x => x.type === 'vendor');
   const credits = payers.filter(x => x.type === 'credit');
   const client = payers.find(x => x.type === 'client');
-  const vendorBonus = vendors.length * 500;
+  const vendorBonus = Math.max(0, vendors.length * 500 - calcPhotoExcessTotal(payers));
   const vendorPaid = vendors.reduce((s, x) => s + (Number(x.amount) || 0), 0);
   const creditTotal = credits.reduce((s, x) => s + (Number(x.amount) || 0), 0);
   const totalBeforeVat = Math.max(0, (Number(p.billingBase)||0) + vendorBonus + (Number(p.billingAdj)||0) - discount);
@@ -3832,21 +3923,48 @@ function addClient(projId) {
   recalcClientShare(p);
   save(); renderProjects(); renderBillingSummaryMorning();
 }
+function addPhotoSale(projId) {
+  const p = state.projects.find(p => p.id === projId); if (!p) return;
+  if (!p.payers) p.payers = [];
+  p.payers.push({ name: '', qty: 1, amount: 250, type: 'photo', paid: false });
+  recalcClientShare(p);
+  save(); renderProjects(); renderBillingSummaryMorning();
+}
+function updatePhotoName(projId, idx, val) {
+  const p = state.projects.find(p => p.id === projId); if (!p || !p.payers) return;
+  p.payers[idx].name = val;
+  save(); renderProjects();
+}
+function updatePhotoQty(projId, idx, val) {
+  const p = state.projects.find(p => p.id === projId); if (!p || !p.payers) return;
+  p.payers[idx].qty = Math.max(1, Number(val) || 1);
+  recalcClientShare(p);
+  save(); renderProjects(); renderBillingSummaryMorning();
+}
+function updatePhotoAmount(projId, idx, val) {
+  const p = state.projects.find(p => p.id === projId); if (!p || !p.payers) return;
+  p.payers[idx].amount = Number(val) || 0;
+  recalcClientShare(p);
+  save(); renderProjects(); renderBillingSummaryMorning();
+}
 function togglePaid(projId, idx) {
   const p = state.projects.find(p => p.id === projId); if (!p || !p.payers) return;
   const pay = p.payers[idx];
   pay.paid = !pay.paid;
   if (!state.billing) state.billing = [];
   if (pay.paid) {
-    // צור רשומת הכנסה אוטומטית
-    const amount = Math.round((Number(pay.amount)||0) * 1.18);
+    // צור רשומת הכנסה אוטומטית — סכום תמונה בודדת הוא הסכום האמיתי שהתקבל,
+    // ללא הכפלה במעמ (בניגוד לספק/לקוח, שהסכום שלהם לפני מעמ)
+    const amount = pay.type === 'photo' ? (Number(pay.amount)||0) : Math.round((Number(pay.amount)||0) * 1.18);
     const rec = {
       id: Date.now(),
       date: new Date().toISOString().slice(0,10),
       client: p.client || '',
       project: p.title || '',
       designerFee: pay.type === 'client' ? amount : 0,
-      suppliers: pay.type === 'vendor' ? [{name: pay.name, amount}] : [],
+      suppliers: pay.type === 'vendor' ? [{name: pay.name, amount}]
+        : pay.type === 'photo' ? [{name: pay.name, amount, qty: pay.qty||1, photo: true}]
+        : [],
       total: amount,
       projectId: p.id
     };
