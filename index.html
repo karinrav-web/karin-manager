@@ -2351,11 +2351,17 @@ function renderClientCards() {
       const displayName = r.projTitle || r.project || '—';
       const subLabel = r.projTitle && r.location ? `<span style="font-size:11px;color:var(--text3);">${r.location}</span>` : (!r.projTitle && r.location && r.location !== r.project) ? `<span style="font-size:11px;color:var(--text3);">${r.location}</span>` : '';
       const editBtn = r.recordIds.length ? `<button onclick="openBillingModal(${r.recordIds[0]})" style="padding:2px 8px;font-size:11px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:4px;background:transparent;color:var(--text3);cursor:pointer;flex-shrink:0;">✏️</button>` : '';
-      const suppliersHtml = r.suppliers.length ? `<div style="padding:4px 0 2px 10px;">${r.suppliers.map(s =>
-        `<div style="display:flex;gap:6px;align-items:center;font-size:11px;color:var(--text3);padding:1px 0;">
-          <span>↳ ${s.name}</span>
-          ${(Number(s.amount)||0) > 0 ? `<span style="color:var(--text2);font-weight:500;">${fmtILS(Math.round(Number(s.amount)*1.18))}</span><span>כולל מעמ</span>` : ''}
-        </div>`).join('')}</div>` : '';
+      // s.amount is already the stored total for vendor suppliers (VAT-inclusive,
+      // set once when marked paid) — don't re-apply VAT here, that was double-counting
+      // it on screen (though never in the actual r.total). Photo suppliers store a
+      // per-photo price, so their real total is qty×price with no VAT markup.
+      const suppliersHtml = r.suppliers.length ? `<div style="padding:4px 0 2px 10px;">${r.suppliers.map(s => {
+        const shown = s.photo ? (Number(s.qty)||1) * (Number(s.amount)||0) : (Number(s.amount)||0);
+        return `<div style="display:flex;gap:6px;align-items:center;font-size:11px;color:var(--text3);padding:1px 0;">
+          <span>↳ ${s.name}${s.photo?` (${s.qty||1} תמונות)`:''}</span>
+          ${shown > 0 ? `<span style="color:var(--text2);font-weight:500;">${fmtILS(shown)}</span>${s.photo?'':'<span>כולל מעמ</span>'}` : ''}
+        </div>`;
+      }).join('')}</div>` : '';
       return `<div style="padding:6px 2px;border-bottom:1px solid var(--border);">
         <div style="display:flex;align-items:center;gap:8px;">
           <span style="flex:1;font-size:15px;color:var(--text);font-weight:600;">${displayName}</span>
