@@ -3674,16 +3674,16 @@ function renderBillingSection(p) {
         ${!client ? `<button class="edit-btn" onclick="addClient(${p.id})">+ הוסף לקוח</button>` : ''}
       </div>
 
-      ${payers.length && totalBeforeVat ? `
+      ${payers.length && (totalBeforeVat || paidAmount) ? `
       <div class="billing-summary" style="margin-top:10px;">
-        <div class="billing-summary-item"><div>סה״כ כולל מעמ</div><strong>${fmtILS(totalWithVat)}</strong></div>
-        <div class="billing-summary-item green"><div>התקבל</div><strong>${fmtILS(paidAmount)}</strong></div>
-        <div class="billing-summary-item ${remainAmount>0?'red':'green'}"><div>${remainAmount<0?'זיכוי ללקוח':'נשאר'}</div><strong>${fmtILS(Math.abs(remainAmount))}</strong></div>
+        ${client ? `<div class="billing-summary-item"><div>סה״כ כולל מעמ</div><strong>${fmtILS(totalWithVat)}</strong></div>` : ''}
+        <div class="billing-summary-item green"><div>${client ? 'התקבל' : 'הכנסה מספקים'}</div><strong>${fmtILS(paidAmount)}</strong></div>
+        ${client ? `<div class="billing-summary-item ${remainAmount>0?'red':'green'}"><div>${remainAmount<0?'זיכוי ללקוח':'נשאר'}</div><strong>${fmtILS(Math.abs(remainAmount))}</strong></div>` : ''}
       </div>
-      <div style="display:flex;gap:8px;margin-top:10px;">
+      ${client ? `<div style="display:flex;gap:8px;margin-top:10px;">
         <button onclick="exportPaymentPDF(${p.id})" style="flex:1;padding:7px 12px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">📄 שמור PDF</button>
         <button onclick="exportPaymentWhatsApp(${p.id})" style="flex:1;padding:7px 12px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid #25D366;border-radius:var(--radius-sm);background:#f0fdf4;color:#15803d;cursor:pointer;">💬 העתק לוואצאפ</button>
-      </div>` : ''}
+      </div>` : ''}` : ''}
     </div>
   `;
 }
