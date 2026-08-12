@@ -3439,10 +3439,25 @@ function toggleDiscountType(projId) {
   recalcClientShare(p);
   save(); renderProjects(); renderBillingSummaryMorning();
 }
+// if this payer was already marked paid, its auto-generated billing/income
+// record was created as a one-time snapshot — editing the amount afterwards
+// left that record stale (still showing the old number). Keep them in sync.
+function syncPayerBillingRecord(p, pay) {
+  if (!pay.paid || !pay.billingRecordId || !state.billing) return;
+  const rec = state.billing.find(r => r.id === pay.billingRecordId);
+  if (!rec) return;
+  const amount = pay.type === 'photo' ? (Number(pay.qty)||1) * (Number(pay.amount)||0) : Math.round((Number(pay.amount)||0) * 1.18);
+  rec.designerFee = pay.type === 'client' ? amount : 0;
+  rec.suppliers = pay.type === 'vendor' ? [{name: pay.name, amount}]
+    : pay.type === 'photo' ? [{name: pay.name, amount: Number(pay.amount)||0, qty: pay.qty||1, photo: true}]
+    : [];
+  rec.total = amount;
+}
 function updateVendorAmount(projId, idx, val) {
   const p = state.projects.find(p => p.id === projId); if (!p || !p.payers) return;
   p.payers[idx].amount = Number(val) || 0;
   recalcClientShare(p);
+  syncPayerBillingRecord(p, p.payers[idx]);
   save(); renderProjects(); renderBillingSummaryMorning();
 }
 function calcDiscount(p) {
@@ -3948,18 +3963,21 @@ function addPhotoSale(projId) {
 function updatePhotoName(projId, idx, val) {
   const p = state.projects.find(p => p.id === projId); if (!p || !p.payers) return;
   p.payers[idx].name = val;
+  syncPayerBillingRecord(p, p.payers[idx]);
   save(); renderProjects();
 }
 function updatePhotoQty(projId, idx, val) {
   const p = state.projects.find(p => p.id === projId); if (!p || !p.payers) return;
   p.payers[idx].qty = Math.max(1, Number(val) || 1);
   recalcClientShare(p);
+  syncPayerBillingRecord(p, p.payers[idx]);
   save(); renderProjects(); renderBillingSummaryMorning();
 }
 function updatePhotoAmount(projId, idx, val) {
   const p = state.projects.find(p => p.id === projId); if (!p || !p.payers) return;
   p.payers[idx].amount = Number(val) || 0;
   recalcClientShare(p);
+  syncPayerBillingRecord(p, p.payers[idx]);
   save(); renderProjects(); renderBillingSummaryMorning();
 }
 function togglePaid(projId, idx) {
