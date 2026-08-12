@@ -3469,14 +3469,16 @@ function recalcClientShare(p) {
   const vendors = (p.payers || []).filter(x => x.type === 'vendor');
   const creditsUsed = (p.payers || []).filter(x => x.type === 'credit');
   const directPayments = (p.payers || []).filter(x => x.type === 'payment');
-  const vendorBonus = Math.max(0, vendors.length * 500 - calcPhotoExcessTotal(p.payers));
+  const client = (p.payers || []).find(x => x.type === 'client');
+  // the vendor bonus is a referral fee baked into the CLIENT's invoice — with no
+  // client on this project there's nothing to bake it into, so it doesn't apply
+  const vendorBonus = client ? Math.max(0, vendors.length * 500 - calcPhotoExcessTotal(p.payers)) : 0;
   const vendorPaid = vendors.reduce((s, x) => s + (Number(x.amount) || 0), 0);
   const creditTotal = creditsUsed.reduce((s, x) => s + (Number(x.amount) || 0), 0);
   // direct payments are actual cash (no VAT) — divide by 1.18 to get pre-VAT equivalent
   const directPaid = directPayments.reduce((s, x) => s + Math.round((Number(x.amount) || 0) / 1.18), 0);
   const discount = calcDiscount(p);
   const clientShare = base + vendorBonus + adj - discount - vendorPaid - creditTotal - directPaid;
-  const client = (p.payers || []).find(x => x.type === 'client');
   if (client) {
     client.amount = clientShare;
     // keep "paid" in sync with the live balance — if new costs (e.g. a vendor added
@@ -3512,7 +3514,8 @@ function renderBillingSection(p) {
   const directPayments = payers.filter(x => x.type === 'payment');
   const client = payers.find(x => x.type === 'client');
   const vendorPaid = vendors.reduce((s, x) => s + (Number(x.amount) || 0), 0);
-  const vendorBonus = Math.max(0, vendors.length * 500 - calcPhotoExcessTotal(payers));
+  // no client on this project → no invoice for the vendor referral bonus to be part of
+  const vendorBonus = client ? Math.max(0, vendors.length * 500 - calcPhotoExcessTotal(payers)) : 0;
   const creditTotal = credits.reduce((s, x) => s + (Number(x.amount) || 0), 0);
   const totalBeforeVat = Math.max(0, base + vendorBonus + adj - discount);
   const clientShare = client ? (Number(client.amount) || 0) : totalBeforeVat - vendorPaid - creditTotal;
@@ -3693,7 +3696,7 @@ function _paymentExportData(projId) {
   const vendors = payers.filter(x => x.type === 'vendor');
   const credits = payers.filter(x => x.type === 'credit');
   const client = payers.find(x => x.type === 'client');
-  const vendorBonus = Math.max(0, vendors.length * 500 - calcPhotoExcessTotal(payers));
+  const vendorBonus = client ? Math.max(0, vendors.length * 500 - calcPhotoExcessTotal(payers)) : 0;
   const vendorPaid = vendors.reduce((s, x) => s + (Number(x.amount) || 0), 0);
   const creditTotal = credits.reduce((s, x) => s + (Number(x.amount) || 0), 0);
   const totalBeforeVat = Math.max(0, (Number(p.billingBase)||0) + vendorBonus + (Number(p.billingAdj)||0) - discount);
