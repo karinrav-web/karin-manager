@@ -2087,8 +2087,8 @@ function renderBillingPage() {
       <div class="billing-stat"><div class="billing-stat-val">${fmtMoney(totalYear)}</div><div class="billing-stat-label">סה"כ ${billingYear}</div></div>
       <div class="billing-stat"><div class="billing-stat-val">${fmtMoney(monthlyAvg)}</div><div class="billing-stat-label">ממוצע חודשי${billingYear==nowYear?' (עד כה)':''}</div></div>
       <div class="billing-stat"><div class="billing-stat-val">${fmtMoney(avgPerProject)}</div><div class="billing-stat-label">ממוצע לפרויקט · ${uniqueYearProjects} פרויקטים</div></div>
-      <div class="billing-stat"><div class="billing-stat-val">${fmtMoney(totalThisMonth)}</div><div class="billing-stat-label">${months[nowMonth]} (החודש)</div></div>
-      <div class="billing-stat"><div class="billing-stat-val">${fmtMoney(totalLastMonth)}</div><div class="billing-stat-label">${months[nowMonth>0?nowMonth-1:11]} (חודש קודם)</div></div>
+      <div class="billing-stat" style="cursor:pointer;" onclick="setMonthFilter(${nowMonth})" title="לחצי לפירוט"><div class="billing-stat-val">${fmtMoney(totalThisMonth)}</div><div class="billing-stat-label">${months[nowMonth]} (החודש)</div></div>
+      <div class="billing-stat" style="cursor:pointer;" onclick="setMonthFilter(${nowMonth>0?nowMonth-1:11})" title="לחצי לפירוט"><div class="billing-stat-val">${fmtMoney(totalLastMonth)}</div><div class="billing-stat-label">${months[nowMonth>0?nowMonth-1:11]} (חודש קודם)</div></div>
       ${billingYear==nowYear && prevYearToDate>0 ? `
       <div class="billing-stat" style="grid-column:1/-1;background:${diff>=0?'var(--accent-light)':'var(--urgent-light)'};border-color:${diff>=0?'var(--accent)':'var(--urgent)'};">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
