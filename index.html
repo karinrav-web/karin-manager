@@ -2329,11 +2329,15 @@ function renderClientCards() {
     }).join('');
 
     // All billing records for this client (complete history)
-    // Group billing records by projectId (or project name) to avoid one row per vendor
+    // Group billing records by projectId (or project name) to avoid one row per vendor.
+    // Also require the project name to match even when projectId matches — two records
+    // sharing a projectId but disagreeing on project name are almost certainly not the
+    // same real transaction (e.g. an id collision from a sync/recovery glitch), and
+    // merging them silently combined unrelated suppliers/totals into one row.
     const billingByProj = [];
     const seenProjKey = new Map();
     clientBilling.forEach(r => {
-      const key = r.projectId ? String(r.projectId) : (r.project||'') + '|' + (r.date||'');
+      const key = r.projectId ? String(r.projectId) + '|' + (r.project||'') : (r.project||'') + '|' + (r.date||'');
       if (seenProjKey.has(key)) {
         const g = seenProjKey.get(key);
         g.total += r.total || 0;
