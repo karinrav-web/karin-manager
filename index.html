@@ -771,6 +771,11 @@
         <button id="billing-search-clear" onclick="clearBillingSearch()" style="display:none;position:absolute;left:10px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:16px;color:var(--text3);cursor:pointer;">✕</button>
       </div>
       <div id="billing-search-results" style="display:none;margin-bottom:18px;"></div>
+      <div class="card" id="duplicate-check-card" style="margin-bottom:18px;border-color:var(--urgent);display:none;">
+        <div class="card-title" style="color:var(--urgent);">⚠️ כפילויות אפשריות בהכנסות</div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:10px;">אותו לקוח + פרויקט + סכום מופיעים ביותר מרשומה אחת. רשומה עם התג "לא מקושר" היא כנראה שריד ישן — בטוח יותר למחוק אותה ולהשאיר את המקושרת.</div>
+        <div id="duplicate-check-results"></div>
+      </div>
       <div id="billing-main-content">
       <div class="billing-year-tabs" id="billing-year-tabs"></div>
       <div class="billing-summary" id="billing-summary"></div>
@@ -2016,10 +2021,66 @@ function renderBillingSearch() {
     : `<div class="card" style="text-align:center;color:var(--text3);font-size:14px;padding:24px;">אין תוצאות עבור "${q}"</div>`;
 }
 
+// Flags income records that likely got created twice for the same real payment
+// (e.g. a toggle-paid whose billingRecordId link got lost, so un-marking it
+// couldn't find/delete the old record and re-marking created a new one).
+// Groups by client+project+total — a record whose payer no longer points back
+// to it (isOrphanedBillingRecord) is the near-certain duplicate to remove.
+function isOrphanedBillingRecord(r) {
+  if (!r.projectId) return false; // standalone record (not tied to a project payer) — can't tell
+  const p = state.projects.find(x => x.id === r.projectId);
+  if (!p) return true; // project itself is gone — nothing references this record anymore
+  return !(p.payers||[]).some(pay => pay.billingRecordId === r.id);
+}
+function renderDuplicateCheck() {
+  const card = document.getElementById('duplicate-check-card');
+  const el = document.getElementById('duplicate-check-results');
+  if (!card || !el) return;
+  const recs = state.billing || [];
+  const groups = new Map();
+  recs.forEach(r => {
+    if (!r.client || !r.project || !(r.total > 0)) return;
+    const key = r.client.trim() + '|' + r.project.trim() + '|' + r.total;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(r);
+  });
+  const dupGroups = [...groups.values()].filter(g => g.length > 1);
+  if (!dupGroups.length) { card.style.display = 'none'; el.innerHTML = ''; return; }
+  card.style.display = '';
+  el.innerHTML = dupGroups.map(g => {
+    const rows = g.map(r => {
+      const dateStr = r.date ? r.date.slice(8)+'/'+r.date.slice(5,7)+'/'+r.date.slice(0,4) : '—';
+      const orphan = isOrphanedBillingRecord(r);
+      return `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);flex-wrap:wrap;">
+        <span style="font-size:12px;color:var(--text3);width:70px;">${dateStr}</span>
+        <span style="font-size:13px;font-weight:600;">${fmtMoney(r.total)}</span>
+        ${orphan
+          ? '<span style="font-size:11px;color:var(--urgent);background:var(--urgent-light);padding:2px 8px;border-radius:10px;">לא מקושר לתשלום פעיל</span>'
+          : '<span style="font-size:11px;color:var(--high);background:var(--accent-light);padding:2px 8px;border-radius:10px;">מקושר לתשלום פעיל</span>'
+        }
+        <span style="margin-inline-start:auto;display:flex;gap:6px;">
+          <button onclick="openBillingModal(${r.id})" style="padding:2px 8px;font-size:11px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:4px;background:transparent;color:var(--text3);cursor:pointer;">✏️</button>
+          <button onclick="deleteBillingRecordById(${r.id})" style="padding:2px 8px;font-size:11px;font-family:'Rubik',sans-serif;border:1px solid var(--urgent);border-radius:4px;background:transparent;color:var(--urgent);cursor:pointer;">🗑 מחק</button>
+        </span>
+      </div>`;
+    }).join('');
+    return `<div style="margin-bottom:14px;padding:10px 12px;background:var(--surface2);border-radius:var(--radius-sm);">
+      <div style="font-size:13px;font-weight:600;margin-bottom:4px;">${g[0].client} · ${g[0].project}</div>
+      ${rows}
+    </div>`;
+  }).join('');
+}
+function deleteBillingRecordById(id) {
+  if (!confirm('למחוק את רשומת ההכנסה הזו? הפעולה לא הפיכה.')) return;
+  state.billing = (state.billing||[]).filter(r => r.id !== id);
+  state.projects.forEach(p => (p.payers||[]).forEach(pay => { if (pay.billingRecordId === id) delete pay.billingRecordId; }));
+  save(); renderBillingPage();
+}
 function renderBillingPage() {
   if (!document.getElementById('page-billing')) return;
   renderCreditsSection();
   renderClientCards();
+  renderDuplicateCheck();
   const records = getBillingRecords();
 
   // Year tabs
