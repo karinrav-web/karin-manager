@@ -1009,6 +1009,7 @@ const FB_CONFIG = {
 firebase.initializeApp(FB_CONFIG);
 const fbDb = firebase.database();
 const FB_PATH = 'karin-manager-data';
+const FB_EMAIL = 'karinravenna@gmail.com'; // single-user app — real login is email+password under the hood, UI only asks for the password
 let _fbSaveTimer = null;
 let _fbInitialized = false; // blocks saves until we receive first Firebase response
 
@@ -1048,62 +1049,22 @@ function fbSave() {
   }, 800);
 }
 
-/* ===== Password Lock ===== */
-// BOOTSTRAP_HASH: hash של הסיסמה הראשית — נטען אם הענן ריק לגמרי
-const BOOTSTRAP_HASH = '03817dec5715d4da022c124c42163d55d410e0da520d699d5a93ce73b112ebb3';
-
-let cloudPinHash = null;
-let prefetchedState = null;
+/* ===== Password Lock (backed by real Firebase email+password auth) ===== */
 let lastCloudBillingCount = 0;
-
-async function hashPin(pw) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw + 'karin2026'));
-  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-}
 
 function toggleLockVis() {
   const inp = document.getElementById('lock-input');
   inp.type = inp.type === 'password' ? 'text' : 'password';
 }
 
-async function pinInit() {
-  if (window.PasswordCredential && navigator.credentials?.get) {
-    try {
-      const cred = await navigator.credentials.get({ password: true, mediation: 'optional' });
-      if (cred?.password) document.getElementById('lock-input').value = cred.password;
-    } catch(e) {}
-  }
-  document.getElementById('lock-sub').textContent = 'מתחברת...';
-  document.getElementById('pin-pad').style.opacity = '0.4';
-  document.getElementById('pin-pad').style.pointerEvents = 'none';
-  let cloudLoaded = false;
-  try {
-    const ctrl = new AbortController();
-    setTimeout(()=>ctrl.abort(), 6000);
-    if(!getAPI()) throw new Error('no api');
-    const r = await fetch(getAPI()+'?t='+Date.now(), {signal:ctrl.signal});
-    const d = await r.json();
-    if (d.ok && d.state) { prefetchedState = d.state; cloudPinHash = d.state.settings?.pinHash || null; cloudLoaded = true; }
-  } catch(e) {}
-  // fallback: localStorage (למקרה שהענן לא עודכן עדיין)
-  if (!cloudPinHash) {
-    try { const l=JSON.parse(localStorage.getItem('karin_pm')||'{}'); if(l.settings?.pinHash) cloudPinHash=l.settings.pinHash; } catch(e) {}
-  }
-  // fallback אחרון: bootstrap hash — תמיד מאפשר כניסה גם ללא חיבור
-  if (!cloudPinHash) { cloudPinHash = BOOTSTRAP_HASH; }
-  document.getElementById('pin-pad').style.opacity = '';
-  document.getElementById('pin-pad').style.pointerEvents = '';
-  document.getElementById('lock-sub').textContent = cloudLoaded ? 'ניהול פרויקטים 2026' : 'ניהול פרויקטים 2026';
-}
-
 async function pinSubmit() {
   const inp = document.getElementById('lock-input');
   const pw = inp.value.trim();
   if (!pw) return;
-  const h = await hashPin(pw);
-  if (h === cloudPinHash) {
-    pinUnlock();
-  } else {
+  try {
+    // success is handled by the onAuthStateChanged listener below (pinUnlock + load)
+    await firebase.auth().signInWithEmailAndPassword(FB_EMAIL, pw);
+  } catch(e) {
     document.getElementById('lock-msg').textContent = 'סיסמה שגויה';
     inp.classList.add('error');
     setTimeout(() => { inp.classList.remove('error'); }, 800);
@@ -1112,9 +1073,10 @@ async function pinSubmit() {
 }
 
 async function pinUnlock() {
-  if (window.PasswordCredential) {
+  const pwVal = document.getElementById('lock-input').value;
+  if (pwVal && window.PasswordCredential) {
     try {
-      const cred = new PasswordCredential({ id: 'karin', password: document.getElementById('lock-input').value });
+      const cred = new PasswordCredential({ id: 'karin', password: pwVal });
       await navigator.credentials.store(cred);
     } catch(e) {}
   }
@@ -1123,7 +1085,26 @@ async function pinUnlock() {
   setTimeout(() => { ls.style.display = 'none'; document.getElementById('app-shell').style.display = ''; }, 300);
 }
 
-pinInit();
+// Prefill from the browser's saved-password manager, if available
+(async () => {
+  if (window.PasswordCredential && navigator.credentials?.get) {
+    try {
+      const cred = await navigator.credentials.get({ password: true, mediation: 'optional' });
+      if (cred?.password) document.getElementById('lock-input').value = cred.password;
+    } catch(e) {}
+  }
+})();
+
+// Data only ever loads once real auth succeeds — a persisted session (default
+// Firebase LOCAL persistence) skips straight past the lock screen; otherwise
+// pinSubmit() above drives the sign-in and this fires once it succeeds.
+// Reject anything that isn't the real account — e.g. a stale Anonymous Auth
+// session left over from before this upgrade — by signing it out, which
+// re-fires this listener with user=null and shows the lock screen.
+firebase.auth().onAuthStateChanged(user => {
+  if (user && !user.isAnonymous && user.email === FB_EMAIL) { pinUnlock(); load(); }
+  else if (user) { firebase.auth().signOut(); }
+});
 
 /* ===== App ===== */
 const STAGES = {send:'לשלוח לסינון',wait:'מחכה לסינון לקוח',edit:'עריכה',deliver:'שליחה ללקוח',notes:'הערות',billing:'גביה',done:'הסתיים'};
@@ -1559,30 +1540,13 @@ function mergeBilling(local, cloud) {
   return Object.values(map);
 }
 
-function applyPinToState() {
-  const pending = sessionStorage.getItem('karin_pin_pending');
-  if (pending) {
-    state.settings = {...(state.settings||{}), pinHash: pending};
-    sessionStorage.removeItem('karin_pin_pending');
-    save();
-  }
-}
-
-// שינוי סיסמה — מתוך האפליקציה בלבד (דורש ידיעת הסיסמה הנוכחית)
 async function changePin() {
-  const oldPw = prompt('סיסמה נוכחית:');
-  if (!oldPw) return;
-  const oldH = await hashPin(oldPw);
-  if (oldH !== cloudPinHash) { alert('סיסמה שגויה'); return; }
-  const newPw = prompt('סיסמה חדשה:');
-  if (!newPw) return;
-  const newPw2 = prompt('הזיני שוב לאישור:');
-  if (newPw !== newPw2) { alert('הסיסמאות לא תואמות'); return; }
-  const newH = await hashPin(newPw);
-  cloudPinHash = newH;
-  state.settings = {...(state.settings||{}), pinHash: newH};
-  save();
-  alert('הסיסמה עודכנה');
+  try {
+    await firebase.auth().sendPasswordResetEmail(FB_EMAIL);
+    alert('נשלח מייל לאיפוס הסיסמה ל-' + FB_EMAIL);
+  } catch(e) {
+    alert('שליחת המייל נכשלה, נסי שוב');
+  }
 }
 
 function mergeCloudState(d) {
@@ -1637,7 +1601,6 @@ function mergeCloudState(d) {
     };
   });
   const mergedSettings = {...(local.settings||{}), ...(p.settings||{})};
-  if (!mergedSettings.pinHash && local.settings?.pinHash) mergedSettings.pinHash = local.settings.pinHash;
   // union both editDays maps so calendar marks from any device are kept
   const mergedEditDays = {...(p.editDays||{}), ...(local.editDays||{})};
   state = applyDayReset({
@@ -1653,7 +1616,6 @@ function mergeCloudState(d) {
   lastCloudBillingCount = Math.max(lastCloudBillingCount, (state.billing||[]).length);
   try{localStorage.setItem('karin_pm',JSON.stringify(state));}catch(e){}
   setSyncStatus('✓ סונכרן','var(--accent)');
-  applyPinToState();
   render();
   // restore focused input value after render rebuilt the DOM
   if (_savedId) {
@@ -1664,7 +1626,6 @@ function mergeCloudState(d) {
 }
 
 function loadFallback() {
-  applyPinToState();
   if (!state.projects || state.projects.length === 0) {
     // גם localStorage וגם הענן לא החזירו נתונים — נסה שוב מהענן
     setSyncStatus('⚠ מנסה שוב...','var(--high)');
@@ -1692,29 +1653,27 @@ function load() {
       state = applyDayReset({projects:p.projects||[],tasks:p.tasks||[],settings:p.settings||{hoursPerDay:6,photosPerDay:20,workDays:[0,1,2,3,4]},editDays:p.editDays||{},billing:p.billing||[],credits:p.credits||[],clients:p.clients||{},lastReset:p.lastReset||''});
     }
   } catch(e) {}
+  render(); // instant paint from local cache while Firebase catches up
 
   setSyncStatus('מתחבר...','var(--text3)');
 
-  // Sign in anonymously first — the database rules require an authenticated
-  // request, so the listener must wait for this to resolve before attaching.
-  firebase.auth().signInAnonymously().then(() => {
-    // Connect to Firebase for real-time sync
-    fbDb.ref(FB_PATH).on('value', snapshot => {
-      if (!_fbInitialized) startSessionWatch();
-      _fbInitialized = true; // now safe to save — we know what Firebase has
-      const fbData = snapshot.val();
-      if (fbData && fbData.projects && fbData.projects.length > 0) {
-        mergeCloudState({ok:true, state:fbData});
-      } else if (state.projects && state.projects.length > 0) {
-        // Firebase empty but we have local data — push it up (first-time upload only)
-        fbDb.ref(FB_PATH).set(JSON.parse(JSON.stringify(state)));
-        applyPinToState(); render();
-        setSyncStatus('✓ נשמר לענן','var(--accent)');
-      } else {
-        loadFallback();
-      }
-    }, err => { loadFallback(); });
-  }).catch(e => { console.warn('FB auth error', e); loadFallback(); });
+  // By the time load() runs, real auth (onAuthStateChanged) has already
+  // succeeded — just attach the listener.
+  fbDb.ref(FB_PATH).on('value', snapshot => {
+    if (!_fbInitialized) startSessionWatch();
+    _fbInitialized = true; // now safe to save — we know what Firebase has
+    const fbData = snapshot.val();
+    if (fbData && fbData.projects && fbData.projects.length > 0) {
+      mergeCloudState({ok:true, state:fbData});
+    } else if (state.projects && state.projects.length > 0) {
+      // Firebase empty but we have local data — push it up (first-time upload only)
+      fbDb.ref(FB_PATH).set(JSON.parse(JSON.stringify(state)));
+      render();
+      setSyncStatus('✓ נשמר לענן','var(--accent)');
+    } else {
+      loadFallback();
+    }
+  }, err => { loadFallback(); });
 }
 
 function showPage(p, el) {
@@ -4401,8 +4360,6 @@ function updateSortBtns() {
   }
 }
 
-load();
-render();
 </script>
 </body>
 </html>
