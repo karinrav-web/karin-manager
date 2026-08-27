@@ -3488,6 +3488,11 @@ function toggleDiscountType(projId) {
   recalcClientShare(p);
   save(); renderProjects(); renderBillingSummaryMorning();
 }
+function toggleInvoiceSent(projId) {
+  const p = state.projects.find(p => p.id === projId); if (!p) return;
+  p.invoiceSent = !p.invoiceSent;
+  save(); renderProjects();
+}
 // if this payer was already marked paid, its auto-generated billing/income
 // record was created as a one-time snapshot — editing the amount afterwards
 // left that record stale (still showing the old number). Keep them in sync.
@@ -3744,6 +3749,10 @@ function renderBillingSection(p) {
         <div class="billing-summary-item green"><div>${client ? 'התקבל' : 'הכנסה מספקים'}</div><strong>${fmtILS(paidAmount)}</strong></div>
         ${client ? `<div class="billing-summary-item ${remainAmount>0?'red':'green'}"><div>${remainAmount<0?'זיכוי ללקוח':'נשאר'}</div><strong>${fmtILS(Math.abs(remainAmount))}</strong></div>` : ''}
       </div>
+      ${client ? `<label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:var(--text2);cursor:pointer;width:fit-content;">
+        <input type="checkbox" ${p.invoiceSent ? 'checked' : ''} onchange="toggleInvoiceSent(${p.id})" style="cursor:pointer;" />
+        נשלחה חשבונית
+      </label>` : ''}
       ${client ? `<div style="display:flex;gap:8px;margin-top:10px;">
         <button onclick="exportPaymentPDF(${p.id})" style="flex:1;padding:7px 12px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">📄 שמור PDF</button>
         <button onclick="exportPaymentWhatsApp(${p.id})" style="flex:1;padding:7px 12px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid #25D366;border-radius:var(--radius-sm);background:#f0fdf4;color:#15803d;cursor:pointer;">💬 העתק לוואצאפ</button>
