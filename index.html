@@ -1827,20 +1827,20 @@ function renderReport() {
     const gt = p.goalDaily || 0;
     const et = p.editedToday || 0;
     const leftToGoal = gt > 0 ? Math.max(0, gt - et) : null;
-    return `<div class="report-proj-row" style="align-items:center;">
-      <div style="min-width:0;flex:1;">
+    return `<div class="report-proj-row" style="align-items:center;gap:16px;">
+      <div style="min-width:0;">
         <div class="report-proj-name">${p.client||'ללא שם'}${p.title?' — '+p.title:''}</div>
         <div style="font-size:11px;color:var(--text3);margin-top:2px;">
           נשארו ${rem} בסה״כ${p.deadline?` · דדליין ${new Date(p.deadline).toLocaleDateString('he-IL')}`:''}
         </div>
       </div>
-      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
-        <div style="display:flex;align-items:center;gap:4px;">
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+        <div style="display:flex;align-items:center;gap:3px;">
           <span style="font-size:11px;color:var(--text3);">היום</span>
           <input type="number" value="${et}" min="0" onchange="updateEditedToday(${p.id},this.value)"
             style="width:44px;border:1px solid var(--border2);border-radius:4px;background:var(--surface);font-size:13px;font-weight:600;color:var(--text);font-family:'Rubik',sans-serif;text-align:center;padding:2px 4px;outline:none;" />
         </div>
-        <div style="display:flex;align-items:center;gap:4px;">
+        <div style="display:flex;align-items:center;gap:3px;">
           <span style="font-size:11px;color:var(--accent);">יעד</span>
           <input type="number" value="${gt||''}" min="0" placeholder="—" onchange="updateGoalTarget(${p.id},this.value)"
             style="width:40px;border:1px solid var(--accent);border-radius:4px;background:var(--accent-light);font-size:13px;font-weight:600;color:var(--accent);font-family:'Rubik',sans-serif;text-align:center;padding:2px 4px;outline:none;" />
@@ -1858,7 +1858,7 @@ function renderReport() {
 
   const goalRows = (activeGoalProjects.length > 0 ? activeGoalProjects.map(goalRow).join('') : '<div class="report-empty">אין פרויקטים בעריכה כרגע</div>')
     + (doneGoalProjects.length > 0 ? `
-      <div style="font-size:11px;font-weight:600;color:var(--text3);padding:10px 0 4px 2px;border-top:1px solid var(--border);margin-top:6px;letter-spacing:0.03em;">✓ הושלם היום (${doneGoalProjects.length})</div>
+      <div style="font-size:15px;font-weight:700;color:var(--accent);padding:12px 0 6px 2px;border-top:1px solid var(--border);margin-top:8px;">✓ הושלם היום (${doneGoalProjects.length})</div>
       ${doneGoalProjects.map(goalRow).join('')}` : '');
 
   // שורות פרויקטים
