@@ -1815,6 +1815,12 @@ function renderReport() {
   const openTasks = state.tasks.filter(t=>!t.done).length;
   const doneTasks = state.tasks.filter(t=>t.done).length;
 
+  // אותם 4 מדדים בדיוק כמו בעמוד "בוקר טוב" (m-projects/m-remaining/m-edited-today/m-goal-total)
+  const mProjects = state.projects.filter(p=>['send','wait','edit','deliver','notes'].includes(p.stage)).length;
+  const mRemaining = state.projects.filter(p=>p.stage==='edit').reduce((s,p)=>s+Math.max(0,(p.total||0)-(p.edited||0)),0);
+  const mTotalGoal = state.projects.filter(p=>p.goalDaily>0&&p.stage!=='done'&&p.stage!=='billing').reduce((s,p)=>s+(p.goalDaily||0),0);
+  const mEditedToday = state.projects.reduce((s,p)=>s+(p.editedToday||0),0);
+
   // מה לעבוד עליו היום — כל פרויקט בעריכה, ממויין לפי דדליין (הכי דחוף קודם),
   // עם יעד ניתן לעריכה ידי קרין וקלט "היום" — אותם שדות בדיוק כמו בכרטיס
   // הפרויקט המורחב, אז עדכון כאן משתקף שם ולהפך, בלי שום עותק נפרד
@@ -1827,7 +1833,7 @@ function renderReport() {
     const gt = p.goalDaily || 0;
     const et = p.editedToday || 0;
     const leftToGoal = gt > 0 ? Math.max(0, gt - et) : null;
-    return `<div class="report-proj-row" style="align-items:center;gap:16px;">
+    return `<div class="report-proj-row" style="align-items:center;justify-content:space-between;gap:10px;">
       <div style="min-width:0;">
         <div class="report-proj-name">${p.client||'ללא שם'}${p.title?' — '+p.title:''}</div>
         <div style="font-size:11px;color:var(--text3);margin-top:2px;">
@@ -1875,13 +1881,21 @@ function renderReport() {
     : '<div class="report-empty">לא עבדת על פרויקטים היום עדיין</div>';
 
   el.innerHTML = `
-    <div class="card" style="margin-bottom:16px;">
-      <div class="card-title">🎯 יעדי עריכה להיום</div>
-      ${goalRows}
+    <div class="morning-metrics" style="margin-bottom:16px;">
+      <div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#fdf0ec;"><span class="material-symbols-outlined" style="color:var(--accent);">camera_alt</span></div><div><div class="metric-val">${mProjects}</div><div class="metric-label">פרויקטים פעילים</div></div></div>
+      <div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#fdf0ec;"><span class="material-symbols-outlined" style="color:var(--accent);">photo_library</span></div><div><div class="metric-val">${mRemaining}</div><div class="metric-label">תמונות לעריכה</div></div></div>
+      <div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#e8f4ee;"><span class="material-symbols-outlined" style="color:#2D6A4F;">check_circle</span></div><div><div class="metric-val">${mTotalGoal > 0 ? `${mEditedToday}/${mTotalGoal}` : mEditedToday}</div><div class="metric-label">נערכו היום</div></div></div>
+      <div class="metric-card metric-card-icon" style="border:2px dashed var(--border2);"><div class="metric-icon-circle" style="background:#fdf0ec;"><span class="material-symbols-outlined" style="color:var(--accent);">flag</span></div><div><div class="metric-val">${mTotalGoal}</div><div class="metric-label">יעד יומי</div></div></div>
     </div>
-    <div class="card" style="margin-bottom:16px;">
-      <div class="card-title">משימות פתוחות</div>
-      ${buildTasksHtml()}
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+      <div class="card">
+        <div class="card-title">🎯 יעדי עריכה להיום</div>
+        ${goalRows}
+      </div>
+      <div class="card">
+        <div class="card-title">משימות פתוחות</div>
+        ${buildTasksHtml()}
+      </div>
     </div>
     <div class="report-grid">
       <div class="report-stat">
