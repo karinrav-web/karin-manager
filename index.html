@@ -1821,12 +1821,17 @@ function renderReport() {
   const mTotalGoal = state.projects.filter(p=>p.goalDaily>0&&p.stage!=='done'&&p.stage!=='billing').reduce((s,p)=>s+(p.goalDaily||0),0);
   const mEditedToday = state.projects.reduce((s,p)=>s+(p.editedToday||0),0);
 
-  // מה לעבוד עליו היום — כל פרויקט בעריכה, ממויין לפי דדליין (הכי דחוף קודם),
-  // עם יעד ניתן לעריכה ידי קרין וקלט "היום" — אותם שדות בדיוק כמו בכרטיס
-  // הפרויקט המורחב, אז עדכון כאן משתקף שם ולהפך, בלי שום עותק נפרד
+  // מה לעבוד עליו היום — כל פרויקט בעריכה. פרויקטים שקרין שמה להם יעד היום
+  // עולים למעלה (זה מה שהיא בחרה להתמקד בו), ובתוך כל קבוצה ממויין לפי דדליין
+  // (הכי דחוף קודם). עם יעד ניתן לעריכה ידי קרין וקלט "היום" — אותם שדות
+  // בדיוק כמו בכרטיס הפרויקט המורחב, אז עדכון כאן משתקף שם ולהפך, בלי שום עותק נפרד
   const editProjects = [...state.projects]
     .filter(p => p.stage === 'edit')
-    .sort((a,b) => (a.deadline||'9999-99-99').localeCompare(b.deadline||'9999-99-99'));
+    .sort((a,b) => {
+      const ag = (a.goalDaily||0) > 0 ? 1 : 0, bg = (b.goalDaily||0) > 0 ? 1 : 0;
+      if (ag !== bg) return bg - ag;
+      return (a.deadline||'9999-99-99').localeCompare(b.deadline||'9999-99-99');
+    });
 
   const goalRow = p => {
     const rem = Math.max(0, (p.total||0) - (p.edited||0));
