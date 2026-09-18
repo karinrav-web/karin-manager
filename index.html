@@ -3907,10 +3907,14 @@ function _paymentExportData(projId) {
   const vendorBonus = client ? Math.max(0, vendors.length * 500 - calcPhotoExcessTotal(payers)) : 0;
   const vendorPaid = vendors.reduce((s, x) => s + (Number(x.amount) || 0), 0);
   const creditTotal = credits.reduce((s, x) => s + (Number(x.amount) || 0), 0);
-  const totalBeforeVat = Math.max(0, (Number(p.billingBase)||0) + vendorBonus + (Number(p.billingAdj)||0) - discount);
+  // this is the client/designer's own invoice, so the supplier's cut is excluded
+  // regardless of whether that supplier has paid yet — matches recalcClientShare,
+  // which is the source of truth for client.amount. Previously this didn't
+  // subtract vendorPaid, so an unpaid supplier line inflated "how much the
+  // designer still owes" by the supplier's own unrelated balance.
+  const totalBeforeVat = Math.max(0, (Number(p.billingBase)||0) + vendorBonus + (Number(p.billingAdj)||0) - discount - vendorPaid);
   const totalWithVat = Math.round((totalBeforeVat - creditTotal) * VAT_RATE);
   const paidAmount =
-    payers.filter(x => x.paid && x.type === 'vendor').reduce((s,x) => s + Math.round(Number(x.amount)*VAT_RATE), 0) +
     payers.filter(x => x.type === 'payment').reduce((s,x) => s + (Number(x.amount)||0), 0) +
     payers.filter(x => x.paid && x.type === 'client').reduce((s,x) => s + Math.round(Math.max(0, Number(x.amount)||0) * VAT_RATE), 0);
   const remainAmount = totalWithVat - paidAmount;
