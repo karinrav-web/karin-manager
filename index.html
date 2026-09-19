@@ -508,8 +508,8 @@
   .wp-day-col.wp-today { background:var(--accent-light); }
   .wp-input { width:36px; border:1px solid var(--border2); border-radius:4px; background:var(--surface); font-size:12px; font-weight:600; color:var(--text); font-family:'Rubik',sans-serif; text-align:center; padding:3px 2px; outline:none; }
   .wp-input:focus { border-color:var(--accent); }
-  .wp-finish-cell { background:var(--accent-light) !important; }
-  .wp-finish-cell .wp-input { border-color:var(--accent); color:var(--accent); }
+  .wp-finish-cell { background:var(--s-done) !important; }
+  .wp-finish-cell .wp-input { border-color:var(--s-done-b); color:var(--s-done-b); font-weight:700; }
   .wp-total-row td, .wp-total-row th { border-top:2px solid var(--border); font-weight:600; }
   .wp-over { color:var(--urgent); }
 
@@ -1568,19 +1568,30 @@ function renderWorkPlan() {
   const wrapEl = document.getElementById('wp-table-wrap'); if (!wrapEl) return;
   const titleEl = document.getElementById('wp-title');
   const months=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
-  if (titleEl) titleEl.textContent = months[wpMonth]+' '+wpYear;
 
   const workDays = state.settings.workDays || [0,1,2,3,4];
   const dailyCap = state.settings.photosPerDay || 20;
-  const daysInMonth = new Date(wpYear, wpMonth+1, 0).getDate();
   const dowLabels=['א','ב','ג','ד','ה','ו','ש'];
-  // show every day of the month (not just the configured work days) — Karin
+  const now = new Date(); now.setHours(0,0,0,0);
+  const anchorFirst = new Date(wpYear, wpMonth, 1);
+  const anchorLast = new Date(wpYear, wpMonth+1, 0);
+  // the window always spans the anchor month plus the one after it (so "next
+  // month" is always in view); when the anchor is the real current month it
+  // starts at today instead of the 1st, so past days of this month don't show
+  const rangeStart = (now >= anchorFirst && now <= anchorLast) ? new Date(now) : anchorFirst;
+  const rangeEnd = new Date(wpYear, wpMonth+2, 0);
+
+  if (titleEl) titleEl.textContent = rangeEnd.getMonth()===wpMonth
+    ? months[wpMonth]+' '+wpYear
+    : `${months[wpMonth]}–${months[rangeEnd.getMonth()]} ${rangeEnd.getFullYear()}`;
+
+  // show every day of the range (not just the configured work days) — Karin
   // wants the full week visible so she can also plan the occasional session
   // on an off day; non-work days are just visually dimmed
   const days = [];
-  for (let d=1; d<=daysInMonth; d++) {
-    const dt = new Date(wpYear, wpMonth, d);
-    days.push({ d, dateStr: `${wpYear}-${String(wpMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`, dow: dt.getDay(), isWorkDay: workDays.includes(dt.getDay()) });
+  for (let dt = new Date(rangeStart); dt <= rangeEnd; dt.setDate(dt.getDate()+1)) {
+    const y = dt.getFullYear(), m = dt.getMonth(), d = dt.getDate();
+    days.push({ d, dateStr: `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`, dow: dt.getDay(), isWorkDay: workDays.includes(dt.getDay()) });
   }
   const today = todayStr();
 
