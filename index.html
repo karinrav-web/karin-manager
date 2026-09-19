@@ -495,6 +495,23 @@
   .report-empty { color:var(--text3); font-size:13px; padding:12px 0; }
   @media(max-width:700px){ .report-grid { grid-template-columns:repeat(2,1fr); } }
 
+  .wp-scroll { overflow-x:auto; border:1px solid var(--border); border-radius:var(--radius); }
+  .wp-table { border-collapse:collapse; font-size:12px; white-space:nowrap; }
+  .wp-table th, .wp-table td { border-bottom:1px solid var(--border); padding:4px 6px; text-align:center; }
+  .wp-table thead th { position:sticky; top:0; background:var(--surface); color:var(--text3); font-weight:600; font-size:11px; z-index:2; }
+  .wp-proj-cell { position:sticky; right:0; background:var(--surface); text-align:right; z-index:1; padding:6px 12px; border-left:1px solid var(--border); min-width:170px; max-width:220px; white-space:normal; }
+  .wp-table thead .wp-proj-cell { z-index:3; }
+  .wp-proj-name { font-size:13px; font-weight:600; color:var(--text); }
+  .wp-proj-meta { font-size:11px; color:var(--text3); margin-top:2px; }
+  .wp-day-col { min-width:44px; }
+  .wp-day-col.wp-today { background:var(--accent-light); }
+  .wp-input { width:36px; border:1px solid var(--border2); border-radius:4px; background:var(--surface); font-size:12px; font-weight:600; color:var(--text); font-family:'Rubik',sans-serif; text-align:center; padding:3px 2px; outline:none; }
+  .wp-input:focus { border-color:var(--accent); }
+  .wp-finish-cell { background:var(--accent-light) !important; }
+  .wp-finish-cell .wp-input { border-color:var(--accent); color:var(--accent); }
+  .wp-total-row td, .wp-total-row th { border-top:2px solid var(--border); font-weight:600; }
+  .wp-over { color:var(--urgent); }
+
   /* Billing / Revenue */
   .billing-summary { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
   .billing-stat { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; text-align:center; }
@@ -558,6 +575,7 @@
     <div class="nav-item active" id="nav-morning" onclick="showPage('morning',this)"><span class="nav-icon"><span class="material-symbols-outlined">wb_sunny</span></span><span>בוקר טוב</span></div>
     <div class="nav-item" id="nav-projects" onclick="openProjectsDefault(this)"><span class="nav-icon"><span class="material-symbols-outlined">camera_alt</span></span><span>פרויקטים</span></div>
     <div class="nav-item" id="nav-calendar" onclick="showPage('calendar',this)"><span class="nav-icon"><span class="material-symbols-outlined">calendar_view_day</span></span><span>לוח עריכה</span></div>
+    <div class="nav-item" id="nav-workplan" onclick="showPage('workplan',this)"><span class="nav-icon"><span class="material-symbols-outlined">timeline</span></span><span>לוח עבודה</span></div>
     <div class="nav-item" id="nav-report" onclick="showPage('report',this)"><span class="nav-icon"><span class="material-symbols-outlined">bar_chart</span></span><span>דוח יומי</span></div>
     <div class="nav-item" id="nav-billing" onclick="showPage('billing',this)"><span class="nav-icon"><span class="material-symbols-outlined">payments</span></span><span>הכנסות</span></div>
     <div class="nav-item" id="nav-scheduler" onclick="showPage('scheduler',this)"><span class="nav-icon"><span class="material-symbols-outlined">event</span></span><span>תאריכים</span></div>
@@ -732,6 +750,24 @@
       </div>
     </div>
 
+    <!-- WORK PLAN -->
+    <div id="page-workplan" class="page">
+      <div class="page-header"><div class="page-title">לוח עבודה חודשי</div></div>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">כמה תמונות מתכננת לערוך בכל פרויקט, בכל יום עבודה</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <button onclick="wpPrevMonth()" style="padding:4px 12px;font-size:13px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:6px;background:var(--surface2);cursor:pointer;">→</button>
+          <div id="wp-title" style="font-size:15px;font-weight:600;"></div>
+          <button onclick="wpNextMonth()" style="padding:4px 12px;font-size:13px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:6px;background:var(--surface2);cursor:pointer;">←</button>
+        </div>
+        <div id="wp-table-wrap"></div>
+        <div style="margin-top:10px;font-size:12px;color:var(--text3);">
+          <span style="display:inline-block;width:12px;height:12px;background:var(--accent-light);border:1px solid var(--accent);border-radius:3px;margin-left:4px;vertical-align:middle;"></span>
+          התא בו הצפי המצטבר מגיע לכמות שנשארה בפרויקט — יום הסיום המתוכנן
+        </div>
+      </div>
+    </div>
+
     <!-- REPORT -->
     <div id="page-report" class="page">
       <div class="page-header">
@@ -869,6 +905,7 @@
   <button class="mobile-nav-item active" id="mnav-morning" onclick="showPageMobile('morning',this)"><span class="mobile-nav-icon">☀</span>בוקר טוב</button>
   <button class="mobile-nav-item" id="mnav-projects" onclick="openProjectsDefaultMobile(this)"><span class="mobile-nav-icon">📁</span>פרויקטים</button>
   <button class="mobile-nav-item" id="mnav-calendar" onclick="showPageMobile('calendar',this)"><span class="mobile-nav-icon">📅</span>לוח</button>
+  <button class="mobile-nav-item" id="mnav-workplan" onclick="showPageMobile('workplan',this)"><span class="mobile-nav-icon">📈</span>תכנון</button>
   <button class="mobile-nav-item" id="mnav-report" onclick="showPageMobile('report',this)"><span class="mobile-nav-icon">📊</span>דוח</button>
   <button class="mobile-nav-item" id="mnav-billing" onclick="showPageMobile('billing',this)"><span class="mobile-nav-icon">💰</span>הכנסות</button>
   <button class="mobile-nav-item" id="mnav-scheduler" onclick="showPageMobile('scheduler',this)"><span class="mobile-nav-icon">📸</span>תאריכים</button>
@@ -1160,7 +1197,8 @@ function normalizeProject(x) {
     seconds: Number(x.seconds)||0,
     sessions: Number(x.sessions)||0,
     order: x.order !== undefined ? Number(x.order) : 9999,
-    priorityOrder: x.priorityOrder !== undefined ? Number(x.priorityOrder) : 9999
+    priorityOrder: x.priorityOrder !== undefined ? Number(x.priorityOrder) : 9999,
+    dailyPlan: x.dailyPlan && typeof x.dailyPlan === 'object' ? x.dailyPlan : {}
   };
 }
 
@@ -1488,6 +1526,109 @@ function renderCalendar(){
   }
   renderShootYearSummary();
 }
+
+/* ===== Monthly Work Plan — Gantt-style editing-capacity planner =====
+   Separate from the daily goal (goalDaily) on the report page: this lets
+   Karin manually pencil in exactly how many photos she plans to edit on
+   each upcoming work day, per project, so she can see for herself when a
+   project's plan adds up to its remaining count. */
+let wpMonth = new Date().getMonth();
+let wpYear = new Date().getFullYear();
+function wpPrevMonth(){ wpMonth--; if(wpMonth<0){wpMonth=11;wpYear--;} renderWorkPlan(); }
+function wpNextMonth(){ wpMonth++; if(wpMonth>11){wpMonth=0;wpYear++;} renderWorkPlan(); }
+
+function updateDailyPlan(projId, dateStr, val) {
+  const p = state.projects.find(p => p.id === projId); if (!p) return;
+  if (!p.dailyPlan) p.dailyPlan = {};
+  const n = Math.max(0, parseInt(val) || 0);
+  if (n > 0) p.dailyPlan[dateStr] = n; else delete p.dailyPlan[dateStr];
+  save(); renderWorkPlan();
+}
+
+// Walks a project's planned days (today forward, chronologically) and returns
+// the date the cumulative planned total first reaches the remaining photo
+// count — null if what's planned so far doesn't cover the remainder yet.
+function computeProjectPlanFinish(p) {
+  const rem = Math.max(0, (p.total||0) - (p.edited||0));
+  if (rem <= 0) return null;
+  const today = todayStr();
+  const entries = Object.entries(p.dailyPlan||{})
+    .filter(([d,n]) => d >= today && Number(n) > 0)
+    .sort((a,b) => a[0].localeCompare(b[0]));
+  let cum = 0;
+  for (const [d,n] of entries) {
+    cum += Number(n);
+    if (cum >= rem) return d;
+  }
+  return null;
+}
+
+function renderWorkPlan() {
+  const wrapEl = document.getElementById('wp-table-wrap'); if (!wrapEl) return;
+  const titleEl = document.getElementById('wp-title');
+  const months=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+  if (titleEl) titleEl.textContent = months[wpMonth]+' '+wpYear;
+
+  const workDays = state.settings.workDays || [0,1,2,3,4];
+  const dailyCap = state.settings.photosPerDay || 20;
+  const daysInMonth = new Date(wpYear, wpMonth+1, 0).getDate();
+  const dowLabels=['א','ב','ג','ד','ה','ו','ש'];
+  const days = [];
+  for (let d=1; d<=daysInMonth; d++) {
+    const dt = new Date(wpYear, wpMonth, d);
+    if (!workDays.includes(dt.getDay())) continue;
+    days.push({ d, dateStr: `${wpYear}-${String(wpMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`, dow: dt.getDay() });
+  }
+  const today = todayStr();
+
+  // same priority order as the daily report's goal list, so the two views agree
+  const projects = [...state.projects]
+    .filter(p => p.stage === 'edit' && (p.total||0) > (p.edited||0))
+    .sort((a,b) => {
+      const ao = a.priorityOrder!==undefined?a.priorityOrder:9999, bo = b.priorityOrder!==undefined?b.priorityOrder:9999;
+      if (ao !== bo) return ao - bo;
+      const ag = (a.goalDaily||0) > 0 ? 1 : 0, bg = (b.goalDaily||0) > 0 ? 1 : 0;
+      if (ag !== bg) return bg - ag;
+      return (a.deadline||'9999-99-99').localeCompare(b.deadline||'9999-99-99');
+    });
+
+  if (!days.length) { wrapEl.innerHTML = '<p style="font-size:13px;color:var(--text3);padding:12px 0;">אין ימי עבודה מוגדרים בחודש זה (אפשר לשנות ב״לוח עריכה״ → הגדרות עריכה)</p>'; return; }
+  if (!projects.length) { wrapEl.innerHTML = '<p style="font-size:13px;color:var(--text3);padding:12px 0;">אין פרויקטים בעריכה כרגע</p>'; return; }
+
+  const finishByProj = {};
+  projects.forEach(p => { finishByProj[p.id] = computeProjectPlanFinish(p); });
+
+  let html = '<div class="wp-scroll"><table class="wp-table"><thead><tr>';
+  html += '<th class="wp-proj-cell">פרויקט</th>';
+  days.forEach(({d,dateStr,dow}) => {
+    html += `<th class="wp-day-col${dateStr===today?' wp-today':''}">${d}<br>${dowLabels[dow]}</th>`;
+  });
+  html += '</tr></thead><tbody>';
+
+  projects.forEach(p => {
+    const rem = Math.max(0, (p.total||0)-(p.edited||0));
+    const finishDate = finishByProj[p.id];
+    html += `<tr><td class="wp-proj-cell"><div class="wp-proj-name">${p.client||'ללא שם'}${p.title?' — '+p.title:''}</div><div class="wp-proj-meta">נשאר ${rem}${p.deadline?` · דדליין ${new Date(p.deadline).toLocaleDateString('he-IL')}`:''}</div></td>`;
+    days.forEach(({dateStr}) => {
+      const val = (p.dailyPlan||{})[dateStr] || '';
+      const isFinish = dateStr === finishDate;
+      html += `<td class="wp-day-col${dateStr===today?' wp-today':''}${isFinish?' wp-finish-cell':''}"><input class="wp-input" type="number" min="0" value="${val}" onchange="updateDailyPlan(${p.id},'${dateStr}',this.value)" /></td>`;
+    });
+    html += '</tr>';
+  });
+
+  html += `<tr class="wp-total-row"><th class="wp-proj-cell">סה״כ ביום</th>`;
+  days.forEach(({dateStr}) => {
+    const total = projects.reduce((s,p) => s + (Number((p.dailyPlan||{})[dateStr]) || 0), 0);
+    const over = total > dailyCap;
+    html += `<td class="wp-day-col${dateStr===today?' wp-today':''}"><span class="${over?'wp-over':''}">${total||''}</span></td>`;
+  });
+  html += '</tr>';
+
+  html += '</tbody></table></div>';
+  wrapEl.innerHTML = html;
+}
+
 function renderShootYearSummary() {
   const now = new Date();
   const year = now.getFullYear();
@@ -1690,6 +1831,7 @@ function showPage(p, el) {
   if (p==='billing') renderBillingPage();
   if (p==='projects') renderProjects();
   if (p==='calendar') renderCalendar();
+  if (p==='workplan') renderWorkPlan();
 }
 function showPageMobile(p, el) {
   document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));
@@ -1703,6 +1845,7 @@ function showPageMobile(p, el) {
   if (p==='billing') renderBillingPage();
   if (p==='projects') renderProjects();
   if (p==='calendar') renderCalendar();
+  if (p==='workplan') renderWorkPlan();
 }
 function filterStage(stage) {
   stageFilter = stage;
@@ -1763,7 +1906,7 @@ async function syncShootDates() {
 }
 
 
-function render() { setGreeting(); state.projects.forEach(p => recalcClientShare(p)); renderTasks(); renderProjects(); refreshSelects(); renderUrgency(); renderDailyFocus(); renderCalendar(); loadSettings(); renderBillingSummaryMorning(); renderShootYearSummary(); renderReport(); renderBillingPage(); document.querySelector('.main').classList.add('dashboard-mode'); initThemeSwatches(); loadDashboardSettings(); syncShootDates(); restoreTimer(); }
+function render() { setGreeting(); state.projects.forEach(p => recalcClientShare(p)); renderTasks(); renderProjects(); refreshSelects(); renderUrgency(); renderDailyFocus(); renderCalendar(); loadSettings(); renderBillingSummaryMorning(); renderShootYearSummary(); renderReport(); renderBillingPage(); renderWorkPlan(); document.querySelector('.main').classList.add('dashboard-mode'); initThemeSwatches(); loadDashboardSettings(); syncShootDates(); restoreTimer(); }
 
 function restoreTimer() {
   try {
