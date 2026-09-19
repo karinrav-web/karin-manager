@@ -499,10 +499,13 @@
   .wp-table { border-collapse:collapse; font-size:12px; white-space:nowrap; }
   .wp-table th, .wp-table td { border-bottom:1px solid var(--border); padding:4px 6px; text-align:center; }
   .wp-table thead th { position:sticky; top:0; background:var(--surface); color:var(--text3); font-weight:600; font-size:11px; z-index:2; }
-  .wp-proj-cell { position:sticky; right:0; background:var(--surface); text-align:right; z-index:1; padding:6px 12px; border-left:1px solid var(--border); min-width:170px; max-width:220px; white-space:normal; }
+  .wp-proj-cell { position:sticky; right:0; background:var(--surface); text-align:right; z-index:1; padding:6px 12px; border-left:1px solid var(--border); min-width:190px; max-width:240px; white-space:normal; }
   .wp-table thead .wp-proj-cell { z-index:3; }
   .wp-proj-name { font-size:13px; font-weight:600; color:var(--text); }
   .wp-proj-meta { font-size:11px; color:var(--text3); margin-top:2px; }
+  .wp-goal-row { display:flex; align-items:center; gap:5px; flex-wrap:wrap; margin-top:5px; font-size:11px; color:var(--text3); }
+  .wp-goal-left { color:var(--accent); font-weight:600; }
+  .wp-goal-done { color:var(--s-done-b); font-weight:600; }
   .wp-day-col { min-width:44px; }
   .wp-day-col.wp-nonwork { background:var(--surface2); color:var(--text3); }
   .wp-day-col.wp-today { background:var(--accent-light); }
@@ -510,6 +513,8 @@
   .wp-input:focus { border-color:var(--accent); }
   .wp-finish-cell { background:var(--s-done) !important; }
   .wp-finish-cell .wp-input { border-color:var(--s-done-b); color:var(--s-done-b); font-weight:700; }
+  .wp-deadline-cell { box-shadow:inset 0 0 0 2px var(--urgent); }
+  .wp-deadline-cell .wp-input { border-color:var(--urgent); }
   .wp-total-row td, .wp-total-row th { border-top:2px solid var(--border); font-weight:600; }
   .wp-over { color:var(--urgent); }
 
@@ -762,9 +767,11 @@
           <button onclick="wpNextMonth()" style="padding:4px 12px;font-size:13px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:6px;background:var(--surface2);cursor:pointer;">←</button>
         </div>
         <div id="wp-table-wrap"></div>
-        <div style="margin-top:10px;font-size:12px;color:var(--text3);">
-          <span style="display:inline-block;width:12px;height:12px;background:var(--accent-light);border:1px solid var(--accent);border-radius:3px;margin-left:4px;vertical-align:middle;"></span>
-          התא בו הצפי המצטבר מגיע לכמות שנשארה בפרויקט — יום הסיום המתוכנן
+        <div style="margin-top:10px;font-size:12px;color:var(--text3);display:flex;flex-direction:column;gap:4px;">
+          <div><span style="display:inline-block;width:12px;height:12px;background:var(--s-done);border:1px solid var(--s-done-b);border-radius:3px;margin-left:4px;vertical-align:middle;"></span>
+          התא בו הצפי המצטבר מגיע לכמות שנשארה בפרויקט — יום הסיום המתוכנן</div>
+          <div><span style="display:inline-block;width:12px;height:12px;background:var(--surface);border:2px solid var(--urgent);border-radius:3px;margin-left:4px;vertical-align:middle;"></span>
+          התא של תאריך הדדליין של הפרויקט</div>
         </div>
       </div>
     </div>
@@ -1199,7 +1206,8 @@ function normalizeProject(x) {
     sessions: Number(x.sessions)||0,
     order: x.order !== undefined ? Number(x.order) : 9999,
     priorityOrder: x.priorityOrder !== undefined ? Number(x.priorityOrder) : 9999,
-    dailyPlan: x.dailyPlan && typeof x.dailyPlan === 'object' ? x.dailyPlan : {}
+    dailyPlan: x.dailyPlan && typeof x.dailyPlan === 'object' ? x.dailyPlan : {},
+    monthlyGoals: x.monthlyGoals && typeof x.monthlyGoals === 'object' ? x.monthlyGoals : {}
   };
 }
 
@@ -1546,6 +1554,26 @@ function updateDailyPlan(projId, dateStr, val) {
   save(); renderWorkPlan();
 }
 
+function updateMonthlyGoal(projId, monthKey, val) {
+  const p = state.projects.find(p => p.id === projId); if (!p) return;
+  if (!p.monthlyGoals) p.monthlyGoals = {};
+  const n = Math.max(0, parseInt(val) || 0);
+  if (n > 0) p.monthlyGoals[monthKey] = n; else delete p.monthlyGoals[monthKey];
+  save(); renderWorkPlan();
+}
+
+// How much of a project's monthly goal (for monthKey, "YYYY-MM") hasn't been
+// placed into specific days yet — the number Karin still needs to distribute
+// across the grid for that project this month.
+function monthlyGoalLeft(p, monthKey) {
+  const goal = (p.monthlyGoals||{})[monthKey];
+  if (!goal) return null;
+  const entered = Object.entries(p.dailyPlan||{})
+    .filter(([d]) => d.startsWith(monthKey))
+    .reduce((s,[,n]) => s + (Number(n)||0), 0);
+  return goal - entered;
+}
+
 // Walks a project's planned days (today forward, chronologically) and returns
 // the date the cumulative planned total first reaches the remaining photo
 // count — null if what's planned so far doesn't cover the remainder yet.
@@ -1610,6 +1638,9 @@ function renderWorkPlan() {
 
   const finishByProj = {};
   projects.forEach(p => { finishByProj[p.id] = computeProjectPlanFinish(p); });
+  // "יעד חודשי" is scoped to the anchor month shown in the title, even though
+  // the grid itself rolls into the following month too
+  const monthKey = `${wpYear}-${String(wpMonth+1).padStart(2,'0')}`;
 
   let html = '<div class="wp-scroll"><table class="wp-table"><thead><tr>';
   html += '<th class="wp-proj-cell">פרויקט</th>';
@@ -1621,11 +1652,22 @@ function renderWorkPlan() {
   projects.forEach(p => {
     const rem = Math.max(0, (p.total||0)-(p.edited||0));
     const finishDate = finishByProj[p.id];
-    html += `<tr><td class="wp-proj-cell"><div class="wp-proj-name">${p.client||'ללא שם'}${p.title?' — '+p.title:''}</div><div class="wp-proj-meta">נשאר ${rem}${p.deadline?` · דדליין ${new Date(p.deadline).toLocaleDateString('he-IL')}`:''}</div></td>`;
+    const goalVal = (p.monthlyGoals||{})[monthKey] || '';
+    const left = monthlyGoalLeft(p, monthKey);
+    html += `<tr><td class="wp-proj-cell">
+      <div class="wp-proj-name">${p.client||'ללא שם'}${p.title?' — '+p.title:''}</div>
+      <div class="wp-proj-meta">נשאר ${rem}${p.deadline?` · דדליין ${new Date(p.deadline).toLocaleDateString('he-IL')}`:''}</div>
+      <div class="wp-goal-row">
+        <span>יעד לחודש</span>
+        <input class="wp-input" type="number" min="0" value="${goalVal}" onchange="updateMonthlyGoal(${p.id},'${monthKey}',this.value)" />
+        ${left !== null ? `<span class="${left>0?'wp-goal-left':'wp-goal-done'}">${left>0?'נשאר להזין '+left:'✓ הוזן במלואו'}</span>` : ''}
+      </div>
+    </td>`;
     days.forEach(({dateStr,isWorkDay}) => {
       const val = (p.dailyPlan||{})[dateStr] || '';
       const isFinish = dateStr === finishDate;
-      html += `<td class="wp-day-col${dateStr===today?' wp-today':''}${isWorkDay?'':' wp-nonwork'}${isFinish?' wp-finish-cell':''}"><input class="wp-input" type="number" min="0" value="${val}" onchange="updateDailyPlan(${p.id},'${dateStr}',this.value)" /></td>`;
+      const isDeadline = p.deadline && dateStr === p.deadline;
+      html += `<td class="wp-day-col${dateStr===today?' wp-today':''}${isWorkDay?'':' wp-nonwork'}${isFinish?' wp-finish-cell':''}${isDeadline?' wp-deadline-cell':''}" ${isDeadline?'title="דדליין"':''}><input class="wp-input" type="number" min="0" value="${val}" onchange="updateDailyPlan(${p.id},'${dateStr}',this.value)" /></td>`;
     });
     html += '</tr>';
   });
