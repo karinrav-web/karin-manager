@@ -582,7 +582,6 @@
     </div>
     <div class="nav-item active" id="nav-morning" onclick="showPage('morning',this)"><span class="nav-icon"><span class="material-symbols-outlined">wb_sunny</span></span><span>בוקר טוב</span></div>
     <div class="nav-item" id="nav-projects" onclick="openProjectsDefault(this)"><span class="nav-icon"><span class="material-symbols-outlined">camera_alt</span></span><span>פרויקטים</span></div>
-    <div class="nav-item" id="nav-calendar" onclick="showPage('calendar',this)"><span class="nav-icon"><span class="material-symbols-outlined">calendar_view_day</span></span><span>לוח עריכה</span></div>
     <div class="nav-item" id="nav-report" onclick="showPage('report',this)"><span class="nav-icon"><span class="material-symbols-outlined">bar_chart</span></span><span>לוח עבודה</span></div>
     <div class="nav-item" id="nav-billing" onclick="showPage('billing',this)"><span class="nav-icon"><span class="material-symbols-outlined">payments</span></span><span>הכנסות</span></div>
     <div class="nav-item" id="nav-scheduler" onclick="showPage('scheduler',this)"><span class="nav-icon"><span class="material-symbols-outlined">event</span></span><span>תאריכים</span></div>
@@ -697,9 +696,32 @@
       </div>
     </div>
 
-    <!-- CALENDAR -->
-    <div id="page-calendar" class="page">
-      <div class="page-header"><div class="page-title">לוח עריכה חודשי</div></div>
+    <!-- WORK BOARD (daily report metrics/goals + the monthly work plan + the edit/shoot-day calendar) -->
+    <div id="page-report" class="page">
+      <div class="page-header">
+        <div>
+          <div class="page-title">לוח עבודה</div>
+          <div class="page-date" id="report-date"></div>
+        </div>
+      </div>
+      <div id="report-top"></div>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">לוח עבודה חודשי — כמה תמונות מתכננת לערוך בכל פרויקט, בכל יום עבודה</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <button onclick="wpPrevMonth()" style="padding:4px 12px;font-size:13px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:6px;background:var(--surface2);cursor:pointer;">→</button>
+          <div id="wp-title" style="font-size:15px;font-weight:600;"></div>
+          <button onclick="wpNextMonth()" style="padding:4px 12px;font-size:13px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:6px;background:var(--surface2);cursor:pointer;">←</button>
+        </div>
+        <div id="wp-table-wrap"></div>
+        <div style="margin-top:10px;font-size:12px;color:var(--text3);display:flex;flex-direction:column;gap:4px;">
+          <div><span style="display:inline-block;width:12px;height:12px;background:var(--s-done);border:1px solid var(--s-done-b);border-radius:3px;margin-left:4px;vertical-align:middle;"></span>
+          התא בו הצפי המצטבר מגיע לכמות שנשארה בפרויקט — יום הסיום המתוכנן</div>
+          <div><span style="display:inline-block;width:12px;height:12px;background:var(--surface);border:2px solid var(--urgent);border-radius:3px;margin-left:4px;vertical-align:middle;"></span>
+          התא של תאריך הדדליין של הפרויקט</div>
+          <div><span style="display:inline-block;width:12px;height:12px;background:#7c3aed;border-radius:3px;margin-left:4px;vertical-align:middle;"></span>
+          יום צילום (מסונכרן מלוח הצילומים למטה)</div>
+        </div>
+      </div>
       <div class="card" style="margin-bottom:16px;">
         <div class="card-title">סמני את ימי העריכה שלך החודש</div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
@@ -715,16 +737,13 @@
           <span style="display:inline-block;width:12px;height:12px;background:var(--accent);border-radius:3px;margin-left:4px;vertical-align:middle;"></span>יום עריכה מסומן
           <span style="display:inline-block;width:12px;height:12px;background:var(--urgent-light);border:1px solid var(--urgent);border-radius:3px;margin-right:12px;margin-left:4px;vertical-align:middle;"></span>היום
         </div>
+        <div id="cal-summary" style="margin-top:12px;font-size:13px;color:var(--text2);"></div>
       </div>
-      <div class="card">
-        <div class="card-title">סיכום ימי עריכה החודש</div>
-        <div id="cal-summary" style="font-size:13px;color:var(--text2);"></div>
-      </div>
-      <div class="card">
+      <div class="card" style="margin-bottom:16px;">
         <div class="card-title">📸 ימי צילום השנה</div>
         <div id="shoot-year-summary" style="font-size:13px;color:var(--text2);"></div>
       </div>
-      <div class="card">
+      <div class="card" style="margin-bottom:16px;">
         <div class="card-title">⚙ הגדרות עריכה</div>
         <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;">
           <div style="display:flex;flex-direction:column;gap:8px;">
@@ -753,34 +772,6 @@
               <button class="wday-btn" data-day="6" onclick="toggleWorkDay(6,this)">ש</button>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- WORK BOARD (daily report metrics/goals + the monthly work plan) -->
-    <div id="page-report" class="page">
-      <div class="page-header">
-        <div>
-          <div class="page-title">לוח עבודה</div>
-          <div class="page-date" id="report-date"></div>
-        </div>
-      </div>
-      <div id="report-top"></div>
-      <div class="card" style="margin-bottom:16px;">
-        <div class="card-title">לוח עבודה חודשי — כמה תמונות מתכננת לערוך בכל פרויקט, בכל יום עבודה</div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-          <button onclick="wpPrevMonth()" style="padding:4px 12px;font-size:13px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:6px;background:var(--surface2);cursor:pointer;">→</button>
-          <div id="wp-title" style="font-size:15px;font-weight:600;"></div>
-          <button onclick="wpNextMonth()" style="padding:4px 12px;font-size:13px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:6px;background:var(--surface2);cursor:pointer;">←</button>
-        </div>
-        <div id="wp-table-wrap"></div>
-        <div style="margin-top:10px;font-size:12px;color:var(--text3);display:flex;flex-direction:column;gap:4px;">
-          <div><span style="display:inline-block;width:12px;height:12px;background:var(--s-done);border:1px solid var(--s-done-b);border-radius:3px;margin-left:4px;vertical-align:middle;"></span>
-          התא בו הצפי המצטבר מגיע לכמות שנשארה בפרויקט — יום הסיום המתוכנן</div>
-          <div><span style="display:inline-block;width:12px;height:12px;background:var(--surface);border:2px solid var(--urgent);border-radius:3px;margin-left:4px;vertical-align:middle;"></span>
-          התא של תאריך הדדליין של הפרויקט</div>
-          <div><span style="display:inline-block;width:12px;height:12px;background:#7c3aed;border-radius:3px;margin-left:4px;vertical-align:middle;"></span>
-          יום צילום (מסונכרן מ״לוח עריכה חודשי״)</div>
         </div>
       </div>
       <div id="report-bottom"></div>
@@ -911,7 +902,6 @@
 <nav class="mobile-nav">
   <button class="mobile-nav-item active" id="mnav-morning" onclick="showPageMobile('morning',this)"><span class="mobile-nav-icon">☀</span>בוקר טוב</button>
   <button class="mobile-nav-item" id="mnav-projects" onclick="openProjectsDefaultMobile(this)"><span class="mobile-nav-icon">📁</span>פרויקטים</button>
-  <button class="mobile-nav-item" id="mnav-calendar" onclick="showPageMobile('calendar',this)"><span class="mobile-nav-icon">📅</span>לוח</button>
   <button class="mobile-nav-item" id="mnav-report" onclick="showPageMobile('report',this)"><span class="mobile-nav-icon">📊</span>תכנון</button>
   <button class="mobile-nav-item" id="mnav-billing" onclick="showPageMobile('billing',this)"><span class="mobile-nav-icon">💰</span>הכנסות</button>
   <button class="mobile-nav-item" id="mnav-scheduler" onclick="showPageMobile('scheduler',this)"><span class="mobile-nav-icon">📸</span>תאריכים</button>
@@ -1891,10 +1881,9 @@ function showPage(p, el) {
   document.getElementById('page-'+p).classList.add('active');
   el.classList.add('active');
   document.querySelector('.main').classList.toggle('dashboard-mode', p==='morning');
-  if (p==='report') { renderReport(); renderWorkPlan(); }
+  if (p==='report') { renderReport(); renderWorkPlan(); renderCalendar(); }
   if (p==='billing') renderBillingPage();
   if (p==='projects') renderProjects();
-  if (p==='calendar') renderCalendar();
 }
 function showPageMobile(p, el) {
   document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));
@@ -1904,10 +1893,9 @@ function showPageMobile(p, el) {
   document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
   const dn = document.getElementById('nav-'+p); if(dn) dn.classList.add('active');
   document.querySelector('.main').classList.toggle('dashboard-mode', p==='morning');
-  if (p==='report') { renderReport(); renderWorkPlan(); }
+  if (p==='report') { renderReport(); renderWorkPlan(); renderCalendar(); }
   if (p==='billing') renderBillingPage();
   if (p==='projects') renderProjects();
-  if (p==='calendar') renderCalendar();
 }
 function filterStage(stage) {
   stageFilter = stage;
