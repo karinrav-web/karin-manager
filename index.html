@@ -1551,7 +1551,10 @@ function updateDailyPlan(projId, dateStr, val) {
   if (!p.dailyPlan) p.dailyPlan = {};
   const n = Math.max(0, parseInt(val) || 0);
   if (n > 0) p.dailyPlan[dateStr] = n; else delete p.dailyPlan[dateStr];
-  save(); renderWorkPlan();
+  // editing today's cell here is the same thing as editing "today's goal"
+  // everywhere else — keep goalDaily in sync so the report page reflects it
+  if (dateStr === todayStr()) p.goalDaily = n;
+  save(); renderWorkPlan(); renderReport(); renderProjects();
 }
 
 function updateMonthlyGoal(projId, monthKey, val) {
@@ -3643,7 +3646,19 @@ function updateEditedToday(id,v){
   p.edited=Math.max(0,Math.min(p.total||9999,(p.edited||0)+diff));
   save();renderProjects();renderTasks();renderUrgency();renderReport();
 }
-function updateGoalTarget(id,v){const p=state.projects.find(p=>p.id===id);if(p){p.goalDaily=Math.max(0,parseInt(v)||0);renderTasks();save();renderProjects();renderReport();}}
+// "Today's goal" (goalDaily) and the work plan's dailyPlan entry for today are
+// the same number shown in two places — this keeps both in sync no matter
+// which one Karin edits, so a plan made ahead of time on the work-plan grid
+// shows up as today's goal automatically once that day arrives, and editing
+// the goal quick-input anywhere also updates the work plan for today.
+function setTodayGoal(p, v) {
+  const n = Math.max(0, parseInt(v) || 0);
+  const today = todayStr();
+  if (!p.dailyPlan) p.dailyPlan = {};
+  if (n > 0) p.dailyPlan[today] = n; else delete p.dailyPlan[today];
+  p.goalDaily = n;
+}
+function updateGoalTarget(id,v){const p=state.projects.find(p=>p.id===id);if(p){setTodayGoal(p,v);renderTasks();save();renderProjects();renderReport();renderWorkPlan();}}
 function updateNotes(id,v){const p=state.projects.find(p=>p.id===id);if(p){p.notes=v;save();}}
 
 function bumpEdited(id,d){
@@ -3659,7 +3674,8 @@ function addProject() {
   const title=document.getElementById('np-title').value.trim();
   if(!client||!title) return;
   const maxOrder = state.projects.reduce((m,p) => Math.max(m, p.order !== undefined ? p.order : 0), 0);
-  state.projects.push({id:Date.now(),client,title,date:document.getElementById('np-date').value,stage:'send',total:parseInt(document.getElementById('np-total').value)||0,edited:0,editedToday:0,goalDaily:parseInt(document.getElementById('np-goal').value)||0,goalDone:0,notes:'',seconds:0,sessions:0,order:maxOrder+1,payers:[]});
+  const goalVal = Math.max(0, parseInt(document.getElementById('np-goal').value) || 0);
+  state.projects.push({id:Date.now(),client,title,date:document.getElementById('np-date').value,stage:'send',total:parseInt(document.getElementById('np-total').value)||0,edited:0,editedToday:0,goalDaily:goalVal,dailyPlan:goalVal>0?{[todayStr()]:goalVal}:{},goalDone:0,notes:'',seconds:0,sessions:0,order:maxOrder+1,payers:[]});
   ['np-client','np-title','np-date','np-total','np-goal'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('add-proj-form').classList.add('hidden');
   save(); renderProjects(); refreshSelects();
@@ -3685,7 +3701,7 @@ function saveEdit(){
   p.title=document.getElementById('e-title').value.trim()||p.title;
   p.date=document.getElementById('e-date').value;
   p.total=parseInt(document.getElementById('e-total').value)||p.total;
-  p.goalDaily=parseInt(document.getElementById('e-goal').value)||0;
+  setTodayGoal(p, document.getElementById('e-goal').value);
   p.deadline=document.getElementById('e-deadline').value||'';
   p.shootHours=parseFloat(document.getElementById('e-shoot-hours').value)||0;
   p.stage=document.getElementById('e-stage').value;
@@ -3703,16 +3719,19 @@ function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.get
 function applyDayReset(s){
   const today = todayStr();
   if(s.lastReset !== today){
-    s.projects.forEach(p=>{ p.goalDone=0; p.editedToday=0; p.goalDaily=0; });
+    // goalDaily isn't zeroed anymore — it's re-derived from whatever was
+    // already planned for today on the work-plan grid (0 if nothing was)
+    s.projects.forEach(p=>{ p.goalDone=0; p.editedToday=0; p.goalDaily=(p.dailyPlan||{})[today]||0; });
     s.lastReset = today;
   }
   return s;
 }
 
 function newDay(){
-  if(!confirm('יום חדש:\n• יעדים יומיים ו"ערכתי היום" יאופסו\nשאר המידע נשמר.'))return;
-  state.lastReset = todayStr();
-  state.projects.forEach(p=>{ p.goalDone=0; p.editedToday=0; p.goalDaily=0; });
+  if(!confirm('יום חדש:\n• "ערכתי היום" יתאפס\n• יעד היום יתעדכן לפי מה שתכננת בלוח העבודה\nשאר המידע נשמר.'))return;
+  const today = todayStr();
+  state.lastReset = today;
+  state.projects.forEach(p=>{ p.goalDone=0; p.editedToday=0; p.goalDaily=(p.dailyPlan||{})[today]||0; });
   blockCloudLoad = true;
   setTimeout(()=>{ blockCloudLoad = false; }, 30000);
   save();render();
