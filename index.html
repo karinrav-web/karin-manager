@@ -504,6 +504,7 @@
   .wp-proj-name { font-size:13px; font-weight:600; color:var(--text); }
   .wp-proj-meta { font-size:11px; color:var(--text3); margin-top:2px; }
   .wp-day-col { min-width:44px; }
+  .wp-day-col.wp-nonwork { background:var(--surface2); color:var(--text3); }
   .wp-day-col.wp-today { background:var(--accent-light); }
   .wp-input { width:36px; border:1px solid var(--border2); border-radius:4px; background:var(--surface); font-size:12px; font-weight:600; color:var(--text); font-family:'Rubik',sans-serif; text-align:center; padding:3px 2px; outline:none; }
   .wp-input:focus { border-color:var(--accent); }
@@ -1573,11 +1574,13 @@ function renderWorkPlan() {
   const dailyCap = state.settings.photosPerDay || 20;
   const daysInMonth = new Date(wpYear, wpMonth+1, 0).getDate();
   const dowLabels=['א','ב','ג','ד','ה','ו','ש'];
+  // show every day of the month (not just the configured work days) — Karin
+  // wants the full week visible so she can also plan the occasional session
+  // on an off day; non-work days are just visually dimmed
   const days = [];
   for (let d=1; d<=daysInMonth; d++) {
     const dt = new Date(wpYear, wpMonth, d);
-    if (!workDays.includes(dt.getDay())) continue;
-    days.push({ d, dateStr: `${wpYear}-${String(wpMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`, dow: dt.getDay() });
+    days.push({ d, dateStr: `${wpYear}-${String(wpMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`, dow: dt.getDay(), isWorkDay: workDays.includes(dt.getDay()) });
   }
   const today = todayStr();
 
@@ -1592,7 +1595,6 @@ function renderWorkPlan() {
       return (a.deadline||'9999-99-99').localeCompare(b.deadline||'9999-99-99');
     });
 
-  if (!days.length) { wrapEl.innerHTML = '<p style="font-size:13px;color:var(--text3);padding:12px 0;">אין ימי עבודה מוגדרים בחודש זה (אפשר לשנות ב״לוח עריכה״ → הגדרות עריכה)</p>'; return; }
   if (!projects.length) { wrapEl.innerHTML = '<p style="font-size:13px;color:var(--text3);padding:12px 0;">אין פרויקטים בעריכה כרגע</p>'; return; }
 
   const finishByProj = {};
@@ -1600,8 +1602,8 @@ function renderWorkPlan() {
 
   let html = '<div class="wp-scroll"><table class="wp-table"><thead><tr>';
   html += '<th class="wp-proj-cell">פרויקט</th>';
-  days.forEach(({d,dateStr,dow}) => {
-    html += `<th class="wp-day-col${dateStr===today?' wp-today':''}">${d}<br>${dowLabels[dow]}</th>`;
+  days.forEach(({d,dateStr,dow,isWorkDay}) => {
+    html += `<th class="wp-day-col${dateStr===today?' wp-today':''}${isWorkDay?'':' wp-nonwork'}">${d}<br>${dowLabels[dow]}</th>`;
   });
   html += '</tr></thead><tbody>';
 
@@ -1609,19 +1611,19 @@ function renderWorkPlan() {
     const rem = Math.max(0, (p.total||0)-(p.edited||0));
     const finishDate = finishByProj[p.id];
     html += `<tr><td class="wp-proj-cell"><div class="wp-proj-name">${p.client||'ללא שם'}${p.title?' — '+p.title:''}</div><div class="wp-proj-meta">נשאר ${rem}${p.deadline?` · דדליין ${new Date(p.deadline).toLocaleDateString('he-IL')}`:''}</div></td>`;
-    days.forEach(({dateStr}) => {
+    days.forEach(({dateStr,isWorkDay}) => {
       const val = (p.dailyPlan||{})[dateStr] || '';
       const isFinish = dateStr === finishDate;
-      html += `<td class="wp-day-col${dateStr===today?' wp-today':''}${isFinish?' wp-finish-cell':''}"><input class="wp-input" type="number" min="0" value="${val}" onchange="updateDailyPlan(${p.id},'${dateStr}',this.value)" /></td>`;
+      html += `<td class="wp-day-col${dateStr===today?' wp-today':''}${isWorkDay?'':' wp-nonwork'}${isFinish?' wp-finish-cell':''}"><input class="wp-input" type="number" min="0" value="${val}" onchange="updateDailyPlan(${p.id},'${dateStr}',this.value)" /></td>`;
     });
     html += '</tr>';
   });
 
   html += `<tr class="wp-total-row"><th class="wp-proj-cell">סה״כ ביום</th>`;
-  days.forEach(({dateStr}) => {
+  days.forEach(({dateStr,isWorkDay}) => {
     const total = projects.reduce((s,p) => s + (Number((p.dailyPlan||{})[dateStr]) || 0), 0);
     const over = total > dailyCap;
-    html += `<td class="wp-day-col${dateStr===today?' wp-today':''}"><span class="${over?'wp-over':''}">${total||''}</span></td>`;
+    html += `<td class="wp-day-col${dateStr===today?' wp-today':''}${isWorkDay?'':' wp-nonwork'}"><span class="${over?'wp-over':''}">${total||''}</span></td>`;
   });
   html += '</tr>';
 
