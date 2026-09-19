@@ -503,6 +503,10 @@
   .wp-table thead .wp-proj-cell { z-index:3; }
   .wp-proj-name { font-size:13px; font-weight:600; color:var(--text); }
   .wp-proj-meta { font-size:11px; color:var(--text3); margin-top:2px; }
+  .wp-unplanned-left, .wp-unplanned-over, .wp-unplanned-done { font-size:11px; font-weight:600; margin-top:3px; }
+  .wp-unplanned-left { color:var(--accent); }
+  .wp-unplanned-over { color:var(--urgent); }
+  .wp-unplanned-done { color:var(--s-done-b); }
   .wp-goal-row { display:flex; align-items:center; gap:5px; flex-wrap:wrap; margin-top:5px; font-size:11px; color:var(--text3); }
   .wp-goal-left { color:var(--accent); font-weight:600; }
   .wp-goal-done { color:var(--s-done-b); font-weight:600; }
@@ -1565,6 +1569,19 @@ function monthlyGoalLeft(p, monthKey) {
   return goal - entered;
 }
 
+// How many of a project's remaining photos haven't been placed onto any
+// future day yet — this is always visible (no monthly goal needs setting
+// first), so Karin can see at a glance how much is still left to distribute
+// across the grid while she's filling in day cells.
+function unplannedRemaining(p) {
+  const rem = Math.max(0, (p.total||0) - (p.edited||0));
+  const today = todayStr();
+  const planned = Object.entries(p.dailyPlan||{})
+    .filter(([d,n]) => d >= today && Number(n) > 0)
+    .reduce((s,[,n]) => s + Number(n), 0);
+  return rem - planned;
+}
+
 // Walks a project's planned days (today forward, chronologically) and returns
 // the date the cumulative planned total first reaches the remaining photo
 // count — null if what's planned so far doesn't cover the remainder yet.
@@ -1652,9 +1669,11 @@ function renderWorkPlan() {
     const finishDate = finishByProj[p.id];
     const goalVal = (p.monthlyGoals||{})[monthKey] || '';
     const left = monthlyGoalLeft(p, monthKey);
+    const unplanned = unplannedRemaining(p);
     html += `<tr><td class="wp-proj-cell">
       <div class="wp-proj-name">${p.client||'ללא שם'}${p.title?' — '+p.title:''}</div>
       <div class="wp-proj-meta">נשאר ${rem}${p.deadline?` · דדליין ${new Date(p.deadline).toLocaleDateString('he-IL')}`:''}</div>
+      <div class="${unplanned>0?'wp-unplanned-left':(unplanned<0?'wp-unplanned-over':'wp-unplanned-done')}">${unplanned>0?'עוד '+unplanned+' לחלק בין הימים':(unplanned<0?'מתוכנן '+(-unplanned)+' יותר מהנדרש':'✓ הכל מחולק לימים')}</div>
       <div class="wp-goal-row">
         <span>יעד לחודש</span>
         <input class="wp-input" type="number" min="0" value="${goalVal}" onchange="updateMonthlyGoal(${p.id},'${monthKey}',this.value)" />
