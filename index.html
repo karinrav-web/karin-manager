@@ -508,6 +508,8 @@
   .wp-goal-done { color:var(--s-done-b); font-weight:600; }
   .wp-day-col { min-width:44px; }
   .wp-day-col.wp-nonwork { background:var(--surface2); color:var(--text3); }
+  .wp-day-col.wp-shoot { background:#7c3aed; color:#fff; }
+  .wp-day-col.wp-shoot .wp-input { background:#fff; }
   .wp-day-col.wp-today { background:var(--accent-light); }
   .wp-input { width:36px; border:1px solid var(--border2); border-radius:4px; background:var(--surface); font-size:12px; font-weight:600; color:var(--text); font-family:'Rubik',sans-serif; text-align:center; padding:3px 2px; outline:none; }
   .wp-input:focus { border-color:var(--accent); }
@@ -581,7 +583,6 @@
     <div class="nav-item active" id="nav-morning" onclick="showPage('morning',this)"><span class="nav-icon"><span class="material-symbols-outlined">wb_sunny</span></span><span>בוקר טוב</span></div>
     <div class="nav-item" id="nav-projects" onclick="openProjectsDefault(this)"><span class="nav-icon"><span class="material-symbols-outlined">camera_alt</span></span><span>פרויקטים</span></div>
     <div class="nav-item" id="nav-calendar" onclick="showPage('calendar',this)"><span class="nav-icon"><span class="material-symbols-outlined">calendar_view_day</span></span><span>לוח עריכה</span></div>
-    <div class="nav-item" id="nav-workplan" onclick="showPage('workplan',this)"><span class="nav-icon"><span class="material-symbols-outlined">timeline</span></span><span>לוח עבודה</span></div>
     <div class="nav-item" id="nav-report" onclick="showPage('report',this)"><span class="nav-icon"><span class="material-symbols-outlined">bar_chart</span></span><span>דוח יומי</span></div>
     <div class="nav-item" id="nav-billing" onclick="showPage('billing',this)"><span class="nav-icon"><span class="material-symbols-outlined">payments</span></span><span>הכנסות</span></div>
     <div class="nav-item" id="nav-scheduler" onclick="showPage('scheduler',this)"><span class="nav-icon"><span class="material-symbols-outlined">event</span></span><span>תאריכים</span></div>
@@ -756,11 +757,16 @@
       </div>
     </div>
 
-    <!-- WORK PLAN -->
-    <div id="page-workplan" class="page">
-      <div class="page-header"><div class="page-title">לוח עבודה חודשי</div></div>
+    <!-- REPORT (includes the monthly work plan) -->
+    <div id="page-report" class="page">
+      <div class="page-header">
+        <div>
+          <div class="page-title">דוח יומי</div>
+          <div class="page-date" id="report-date"></div>
+        </div>
+      </div>
       <div class="card" style="margin-bottom:16px;">
-        <div class="card-title">כמה תמונות מתכננת לערוך בכל פרויקט, בכל יום עבודה</div>
+        <div class="card-title">לוח עבודה חודשי — כמה תמונות מתכננת לערוך בכל פרויקט, בכל יום עבודה</div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
           <button onclick="wpPrevMonth()" style="padding:4px 12px;font-size:13px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:6px;background:var(--surface2);cursor:pointer;">→</button>
           <div id="wp-title" style="font-size:15px;font-weight:600;"></div>
@@ -772,16 +778,8 @@
           התא בו הצפי המצטבר מגיע לכמות שנשארה בפרויקט — יום הסיום המתוכנן</div>
           <div><span style="display:inline-block;width:12px;height:12px;background:var(--surface);border:2px solid var(--urgent);border-radius:3px;margin-left:4px;vertical-align:middle;"></span>
           התא של תאריך הדדליין של הפרויקט</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- REPORT -->
-    <div id="page-report" class="page">
-      <div class="page-header">
-        <div>
-          <div class="page-title">דוח יומי</div>
-          <div class="page-date" id="report-date"></div>
+          <div><span style="display:inline-block;width:12px;height:12px;background:#7c3aed;border-radius:3px;margin-left:4px;vertical-align:middle;"></span>
+          יום צילום (מסונכרן מ״לוח עריכה חודשי״)</div>
         </div>
       </div>
       <div id="report-content"></div>
@@ -913,7 +911,6 @@
   <button class="mobile-nav-item active" id="mnav-morning" onclick="showPageMobile('morning',this)"><span class="mobile-nav-icon">☀</span>בוקר טוב</button>
   <button class="mobile-nav-item" id="mnav-projects" onclick="openProjectsDefaultMobile(this)"><span class="mobile-nav-icon">📁</span>פרויקטים</button>
   <button class="mobile-nav-item" id="mnav-calendar" onclick="showPageMobile('calendar',this)"><span class="mobile-nav-icon">📅</span>לוח</button>
-  <button class="mobile-nav-item" id="mnav-workplan" onclick="showPageMobile('workplan',this)"><span class="mobile-nav-icon">📈</span>תכנון</button>
   <button class="mobile-nav-item" id="mnav-report" onclick="showPageMobile('report',this)"><span class="mobile-nav-icon">📊</span>דוח</button>
   <button class="mobile-nav-item" id="mnav-billing" onclick="showPageMobile('billing',this)"><span class="mobile-nav-icon">💰</span>הכנסות</button>
   <button class="mobile-nav-item" id="mnav-scheduler" onclick="showPageMobile('scheduler',this)"><span class="mobile-nav-icon">📸</span>תאריכים</button>
@@ -1622,7 +1619,8 @@ function renderWorkPlan() {
   const days = [];
   for (let dt = new Date(rangeStart); dt <= rangeEnd; dt.setDate(dt.getDate()+1)) {
     const y = dt.getFullYear(), m = dt.getMonth(), d = dt.getDate();
-    days.push({ d, dateStr: `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`, dow: dt.getDay(), isWorkDay: workDays.includes(dt.getDay()) });
+    const dateStr = `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    days.push({ d, dateStr, dow: dt.getDay(), isWorkDay: workDays.includes(dt.getDay()), isShoot: shootDays.has(dateStr) });
   }
   const today = todayStr();
 
@@ -1645,10 +1643,16 @@ function renderWorkPlan() {
   // the grid itself rolls into the following month too
   const monthKey = `${wpYear}-${String(wpMonth+1).padStart(2,'0')}`;
 
+  // shoot days (from the external shoot-scheduler, same source as "לוח עריכה
+  // חודשי") take priority over the plain non-work dimming — she's out
+  // shooting, not available to edit at all
+  const dayColClass = ({dateStr,isWorkDay,isShoot}) =>
+    (dateStr===today?' wp-today':'') + (isShoot?' wp-shoot':(isWorkDay?'':' wp-nonwork'));
+
   let html = '<div class="wp-scroll"><table class="wp-table"><thead><tr>';
   html += '<th class="wp-proj-cell">פרויקט</th>';
-  days.forEach(({d,dateStr,dow,isWorkDay}) => {
-    html += `<th class="wp-day-col${dateStr===today?' wp-today':''}${isWorkDay?'':' wp-nonwork'}">${d}<br>${dowLabels[dow]}</th>`;
+  days.forEach(day => {
+    html += `<th class="wp-day-col${dayColClass(day)}" ${day.isShoot?'title="יום צילום"':''}>${day.d}<br>${dowLabels[day.dow]}</th>`;
   });
   html += '</tr></thead><tbody>';
 
@@ -1666,20 +1670,21 @@ function renderWorkPlan() {
         ${left !== null ? `<span class="${left>0?'wp-goal-left':'wp-goal-done'}">${left>0?'נשאר להזין '+left:'✓ הוזן במלואו'}</span>` : ''}
       </div>
     </td>`;
-    days.forEach(({dateStr,isWorkDay}) => {
+    days.forEach(day => {
+      const { dateStr } = day;
       const val = (p.dailyPlan||{})[dateStr] || '';
       const isFinish = dateStr === finishDate;
       const isDeadline = p.deadline && dateStr === p.deadline;
-      html += `<td class="wp-day-col${dateStr===today?' wp-today':''}${isWorkDay?'':' wp-nonwork'}${isFinish?' wp-finish-cell':''}${isDeadline?' wp-deadline-cell':''}" ${isDeadline?'title="דדליין"':''}><input class="wp-input" type="number" min="0" value="${val}" onchange="updateDailyPlan(${p.id},'${dateStr}',this.value)" /></td>`;
+      html += `<td class="wp-day-col${dayColClass(day)}${isFinish?' wp-finish-cell':''}${isDeadline?' wp-deadline-cell':''}" ${isDeadline?'title="דדליין"':''}><input class="wp-input" type="number" min="0" value="${val}" onchange="updateDailyPlan(${p.id},'${dateStr}',this.value)" /></td>`;
     });
     html += '</tr>';
   });
 
   html += `<tr class="wp-total-row"><th class="wp-proj-cell">סה״כ ביום</th>`;
-  days.forEach(({dateStr,isWorkDay}) => {
-    const total = projects.reduce((s,p) => s + (Number((p.dailyPlan||{})[dateStr]) || 0), 0);
+  days.forEach(day => {
+    const total = projects.reduce((s,p) => s + (Number((p.dailyPlan||{})[day.dateStr]) || 0), 0);
     const over = total > dailyCap;
-    html += `<td class="wp-day-col${dateStr===today?' wp-today':''}${isWorkDay?'':' wp-nonwork'}"><span class="${over?'wp-over':''}">${total||''}</span></td>`;
+    html += `<td class="wp-day-col${dayColClass(day)}"><span class="${over?'wp-over':''}">${total||''}</span></td>`;
   });
   html += '</tr>';
 
@@ -1885,11 +1890,10 @@ function showPage(p, el) {
   document.getElementById('page-'+p).classList.add('active');
   el.classList.add('active');
   document.querySelector('.main').classList.toggle('dashboard-mode', p==='morning');
-  if (p==='report') renderReport();
+  if (p==='report') { renderReport(); renderWorkPlan(); }
   if (p==='billing') renderBillingPage();
   if (p==='projects') renderProjects();
   if (p==='calendar') renderCalendar();
-  if (p==='workplan') renderWorkPlan();
 }
 function showPageMobile(p, el) {
   document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));
@@ -1899,11 +1903,10 @@ function showPageMobile(p, el) {
   document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
   const dn = document.getElementById('nav-'+p); if(dn) dn.classList.add('active');
   document.querySelector('.main').classList.toggle('dashboard-mode', p==='morning');
-  if (p==='report') renderReport();
+  if (p==='report') { renderReport(); renderWorkPlan(); }
   if (p==='billing') renderBillingPage();
   if (p==='projects') renderProjects();
   if (p==='calendar') renderCalendar();
-  if (p==='workplan') renderWorkPlan();
 }
 function filterStage(stage) {
   stageFilter = stage;
@@ -1960,6 +1963,7 @@ async function syncShootDates() {
     }
     save();
     renderCalendar();
+    renderWorkPlan();
   } catch(e) { /* silent fail */ }
 }
 
