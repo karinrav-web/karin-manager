@@ -1805,10 +1805,21 @@ function mergeCloudState(d) {
   p.projects = p.projects.map(cp => {
     const lp = localProjMap[cp.id];
     if (!lp) return cp;
+    // union so a work-plan edit made on this device before the cloud caught
+    // up isn't lost — local wins on same-day conflicts, matching how billing
+    // fields below protect against the cloud having lost a value
+    const mergedDailyPlan = {...(cp.dailyPlan||{}), ...(lp.dailyPlan||{})};
     return {...cp,
       goalDone: localIsCurrentDay ? Math.max(lp.goalDone||0, cp.goalDone||0) : (cp.goalDone||0),
       editedToday: localIsCurrentDay ? Math.max(lp.editedToday||0, cp.editedToday||0) : (cp.editedToday||0),
-      goalDaily: Math.max(lp.goalDaily||0, cp.goalDaily||0),
+      dailyPlan: mergedDailyPlan,
+      monthlyGoals: {...(cp.monthlyGoals||{}), ...(lp.monthlyGoals||{})},
+      // goalDaily is a derived mirror of dailyPlan[today] (see setTodayGoal) —
+      // it must never be merged as its own number (e.g. via max of local vs
+      // cloud). A stale local value winning that max would then stick for the
+      // rest of the day, since applyDayReset() only re-derives it when the
+      // day actually rolls over, not on every sync.
+      goalDaily: mergedDailyPlan[todayStr()] || 0,
       seconds: Math.max(lp.seconds||0, cp.seconds||0),
       sessions: Math.max(lp.sessions||0, cp.sessions||0),
       // protect billing fields: if Firebase lost the value but local has it, keep local
