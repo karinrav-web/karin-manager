@@ -264,13 +264,6 @@
   .timer-btn:hover { border-color:var(--accent); color:var(--accent); background:var(--accent-light); }
   .timer-btn.running { background:var(--accent); border-color:var(--accent); color:#fff; }
 
-  .new-day-btn {
-    padding:9px 20px; background:var(--accent); color:#fff; border:none;
-    border-radius:var(--radius-sm); font-size:14px; font-weight:500;
-    font-family:'Rubik',sans-serif; cursor:pointer; white-space:nowrap;
-  }
-  .new-day-btn:hover { background:#245C43; }
-
   .edit-btn {
     padding:4px 10px; font-size:12px; font-family:'Rubik',sans-serif;
     border:1px solid var(--border2); border-radius:var(--radius-sm);
@@ -444,7 +437,6 @@
     .page { padding:16px; }
     .app-topbar { padding:12px 16px; }
     .page-header { align-items:center; margin-bottom:12px; }
-    .new-day-btn { padding:7px 14px; font-size:13px; }
     .customize-btn { display:none; }
   }
   @media (min-width: 769px) {
@@ -631,7 +623,6 @@
         </div>
         <div style="display:flex;gap:8px;align-items:center">
           <button class="customize-btn" onclick="toggleEl('dash-customize-bar')" title="התאמה אישית">⚙ התאמה אישית</button>
-          <button class="new-day-btn" onclick="newDay()">☀ יום חדש</button>
         </div>
       </div>
       <div id="dash-customize-bar" class="dash-customize-bar hidden">
@@ -1616,7 +1607,11 @@ function renderWorkPlan() {
   const workDays = state.settings.workDays || [0,1,2,3,4];
   const dailyCap = state.settings.photosPerDay || 20;
   const dowLabels=['א','ב','ג','ד','ה','ו','ש'];
-  const now = new Date(); now.setHours(0,0,0,0);
+  // derived from todayStr() (not a fresh `new Date()`) so this agrees with
+  // dailyPlan's own "today" key — otherwise between midnight and 2am the
+  // range would start a day ahead of the cell todayStr() treats as today
+  const [_ty,_tm,_td] = todayStr().split('-').map(Number);
+  const now = new Date(_ty, _tm-1, _td);
   const anchorFirst = new Date(wpYear, wpMonth, 1);
   const anchorLast = new Date(wpYear, wpMonth+1, 0);
   // the window always spans the anchor month plus the one after it (so "next
@@ -2047,7 +2042,15 @@ function renderReport() {
   const bottomEl = document.getElementById('report-bottom');
   if (!topEl || !bottomEl) return;
   const dateEl = document.getElementById('report-date');
-  if (dateEl) { const d=new Date(); const days=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת']; dateEl.textContent='יום '+days[d.getDay()]+', '+d.toLocaleDateString('he-IL'); }
+  if (dateEl) {
+    // built from todayStr() (the work day, 2am cutoff) rather than a fresh
+    // `new Date()`, so what's shown here always matches the day the counters
+    // below actually belong to — no separate "which day am I on" guessing
+    const [ty,tm,td] = today.split('-').map(Number);
+    const d = new Date(ty, tm-1, td);
+    const days=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+    dateEl.textContent='יום '+days[d.getDay()]+', '+d.toLocaleDateString('he-IL');
+  }
 
   // זמן עבודה כולל היום
   let totalSecsToday = 0;
@@ -3743,8 +3746,21 @@ function refreshSelects(){
   if(cl) cl.innerHTML='<option value="">לקוח</option>'+[...new Set(state.projects.map(p=>p.client))].map(c=>`<option>${c}</option>`).join('');
 }
 
-function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+// The work day doesn't roll over at midnight — a late-night editing session
+// (past 00:00, before 02:00) still counts as the previous calendar day, so
+// "עריכתי היום" and the work-plan's today column don't reset out from under
+// her mid-session. Everything that means "today" for daily-counter purposes
+// (editedToday reset, dailyPlan keys, today's goal) goes through this.
+function todayStr(){
+  const d=new Date();
+  if (d.getHours() < 2) d.setDate(d.getDate()-1);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
 
+// applyDayReset() runs automatically on every load() — this is the only
+// day-rollover mechanism now (no manual "יום חדש" button, which used to
+// unconditionally wipe editedToday even when the day hadn't actually
+// changed yet, discarding real same-day progress).
 function applyDayReset(s){
   const today = todayStr();
   if(s.lastReset !== today){
@@ -3754,16 +3770,6 @@ function applyDayReset(s){
     s.lastReset = today;
   }
   return s;
-}
-
-function newDay(){
-  if(!confirm('יום חדש:\n• "ערכתי היום" יתאפס\n• יעד היום יתעדכן לפי מה שתכננת בלוח העבודה\nשאר המידע נשמר.'))return;
-  const today = todayStr();
-  state.lastReset = today;
-  state.projects.forEach(p=>{ p.goalDone=0; p.editedToday=0; p.goalDaily=(p.dailyPlan||{})[today]||0; });
-  blockCloudLoad = true;
-  setTimeout(()=>{ blockCloudLoad = false; }, 30000);
-  save();render();
 }
 
 function resetAll(){if(!confirm('למחוק את כל הנתונים?'))return;state={projects:[],tasks:[]};try{localStorage.removeItem('karin_pm');}catch(e){}render();}
