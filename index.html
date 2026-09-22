@@ -493,7 +493,15 @@
   .report-proj-meta { font-size:12px; color:var(--text3); display:flex; gap:14px; }
   .report-proj-meta span { display:flex; align-items:center; gap:4px; }
   .report-empty { color:var(--text3); font-size:13px; padding:12px 0; }
+  .report-metrics { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:16px; }
+  .report-metrics .metric-card { padding:10px 14px; }
+  .report-metrics .metric-val { font-size:22px; }
+  .report-2col { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:16px; }
   @media(max-width:700px){ .report-grid { grid-template-columns:repeat(2,1fr); } }
+  @media(max-width:768px){
+    .report-metrics { grid-template-columns:repeat(2,1fr); gap:8px; }
+    .report-2col { grid-template-columns:1fr; }
+  }
 
   .wp-scroll { overflow-x:auto; border:1px solid var(--border); border-radius:var(--radius); }
   .wp-table { border-collapse:collapse; font-size:12px; white-space:nowrap; }
@@ -2147,13 +2155,13 @@ function renderReport() {
   // matters more, but there's no reason to also re-render the goal inputs
   // here on every tick either
   topEl.innerHTML = `
-    <div class="morning-metrics" style="margin-bottom:16px;">
+    <div class="report-metrics">
       <div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#fdf0ec;"><span class="material-symbols-outlined" style="color:var(--accent);">camera_alt</span></div><div><div class="metric-val">${mProjects}</div><div class="metric-label">פרויקטים פעילים</div></div></div>
       <div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#fdf0ec;"><span class="material-symbols-outlined" style="color:var(--accent);">photo_library</span></div><div><div class="metric-val">${mRemaining}</div><div class="metric-label">תמונות לעריכה</div></div></div>
       <div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#e8f4ee;"><span class="material-symbols-outlined" style="color:#2D6A4F;">check_circle</span></div><div><div class="metric-val">${mTotalGoal > 0 ? `${mEditedToday}/${mTotalGoal}` : mEditedToday}</div><div class="metric-label">נערכו היום</div></div></div>
       <div class="metric-card metric-card-icon" style="border:2px dashed var(--border2);"><div class="metric-icon-circle" style="background:#fdf0ec;"><span class="material-symbols-outlined" style="color:var(--accent);">flag</span></div><div><div class="metric-val">${mTotalGoal}</div><div class="metric-label">יעד יומי</div></div></div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;">
+    <div class="report-2col">
       <div class="card">
         <div class="card-title">🎯 יעדי עריכה להיום</div>
         ${goalRows}
@@ -2187,7 +2195,7 @@ function renderReport() {
       <div class="card-title">פרויקטים שעבדת עליהם היום</div>
       ${projRows}
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+    <div class="report-2col" style="margin-bottom:0;">
       <div class="card">
         <div class="card-title">פרויקטים שהסתיימו (סה״כ)</div>
         ${doneProjects.length > 0
