@@ -1882,7 +1882,14 @@ function load() {
       const p = JSON.parse(s);
       if (p.projects) p.projects = dedup(p.projects.map(normalizeProject)).filter(p=>p.client&&p.client.trim());
       if (p.tasks) p.tasks = dedup(p.tasks.map(x=>({...x,done:Number(x.done)||0}))).filter(t=>t.text&&t.text.trim()&&!t.auto&&!t.projId);
+      const hadStaleReset = (p.lastReset||'') !== todayStr();
       state = applyDayReset({projects:p.projects||[],tasks:p.tasks||[],settings:p.settings||{hoursPerDay:6,photosPerDay:20,workDays:[0,1,2,3,4]},editDays:p.editDays||{},billing:p.billing||[],credits:p.credits||[],clients:p.clients||{},lastReset:p.lastReset||''});
+      // applyDayReset() only updated the in-memory state — persist the reset
+      // immediately, or mergeCloudState()'s next localStorage read (moments
+      // away, once the Firebase listener fires) sees yesterday's un-reset
+      // editedToday/lastReset again and can resurrect it via its own
+      // same-day-merge logic before this device ever got to save it itself
+      if (hadStaleReset) { try{localStorage.setItem('karin_pm',JSON.stringify(state));}catch(e){} }
     }
   } catch(e) {}
   render(); // instant paint from local cache while Firebase catches up
