@@ -1193,6 +1193,7 @@ function normalizeProject(x) {
     total: Number(x.total)||0,
     edited: Number(x.edited)||0,
     editedToday: Number(x.editedToday)||0,
+    editedTodayDate: x.editedTodayDate || '',
     seconds: Number(x.seconds)||0,
     sessions: Number(x.sessions)||0,
     order: x.order !== undefined ? Number(x.order) : 9999,
@@ -1794,14 +1795,10 @@ function mergeCloudState(d) {
   p.tasks = [...p.tasks, ...newLocalTasks];
   // prefer the later reset date so "new day" from any device propagates
   const mergedLastReset = (local.lastReset||'') > (p.lastReset||'') ? local.lastReset : (p.lastReset||'');
-  // local's editedToday/goalDone are only trustworthy if this device already rolled over
-  // to the same day as the merge result — otherwise they're leftover from a stale day
-  // (e.g. this device wasn't opened yet today, or just restored an old backup) and must
-  // not overwrite fresher cloud progress with older numbers
-  const localIsCurrentDay = (local.lastReset||'') === mergedLastReset;
   // Firebase is source of truth for project list — merge only runtime session fields from local
   const localProjMap = {};
   (local.projects||[]).forEach(x=>{ localProjMap[x.id]=x; });
+  const _today = todayStr();
   p.projects = p.projects.map(cp => {
     const lp = localProjMap[cp.id];
     if (!lp) return cp;
@@ -1809,9 +1806,20 @@ function mergeCloudState(d) {
     // up isn't lost — local wins on same-day conflicts, matching how billing
     // fields below protect against the cloud having lost a value
     const mergedDailyPlan = {...(cp.dailyPlan||{}), ...(lp.dailyPlan||{})};
+    // editedToday/goalDone are only trustworthy from a side whose own
+    // editedTodayDate stamp says today — a side that hasn't touched them
+    // today yet is stale and must not win a max() against real same-day
+    // progress from the other side. If neither side is stamped for today,
+    // the value is moot anyway: applyDayReset() (called below, on every
+    // load/merge) will zero it out per-project regardless of this merge.
+    const lpToday = lp.editedTodayDate === _today, cpToday = cp.editedTodayDate === _today;
+    const mergedEditedTodayDate = (lpToday || cpToday) ? _today : (cp.editedTodayDate || '');
+    const pick = key => lpToday && cpToday ? Math.max(lp[key]||0, cp[key]||0)
+      : lpToday ? (lp[key]||0) : cpToday ? (cp[key]||0) : 0;
     return {...cp,
-      goalDone: localIsCurrentDay ? Math.max(lp.goalDone||0, cp.goalDone||0) : (cp.goalDone||0),
-      editedToday: localIsCurrentDay ? Math.max(lp.editedToday||0, cp.editedToday||0) : (cp.editedToday||0),
+      goalDone: pick('goalDone'),
+      editedToday: pick('editedToday'),
+      editedTodayDate: mergedEditedTodayDate,
       dailyPlan: mergedDailyPlan,
       monthlyGoals: {...(cp.monthlyGoals||{}), ...(lp.monthlyGoals||{})},
       // goalDaily is a derived mirror of dailyPlan[today] (see setTodayGoal) —
@@ -3690,9 +3698,16 @@ function setStage(id,s){
 
 function updateEditedToday(id,v){
   const p=state.projects.find(p=>p.id===id); if(!p) return;
+  const today = todayStr();
+  // if editedToday isn't actually stamped for today, it doesn't belong to
+  // today no matter what number is sitting in it — diff against 0, not a
+  // leftover value, or the diff would silently claw that leftover back out
+  // of p.edited as if today's fresh entry were "undoing" it
+  const prevVal = p.editedTodayDate === today ? (p.editedToday||0) : 0;
   const newVal=Math.max(0,parseInt(v)||0);
-  const diff=newVal-(p.editedToday||0);
+  const diff=newVal-prevVal;
   p.editedToday=newVal;
+  p.editedTodayDate=today;
   p.edited=Math.max(0,Math.min(p.total||9999,(p.edited||0)+diff));
   save();renderProjects();renderTasks();renderUrgency();renderReport();
 }
@@ -3713,7 +3728,10 @@ function updateNotes(id,v){const p=state.projects.find(p=>p.id===id);if(p){p.not
 
 function bumpEdited(id,d){
   const p=state.projects.find(p=>p.id===id); if(!p) return;
-  p.editedToday=Math.max(0,(p.editedToday||0)+d);
+  const today = todayStr();
+  const prevVal = p.editedTodayDate === today ? (p.editedToday||0) : 0;
+  p.editedToday=Math.max(0,prevVal+d);
+  p.editedTodayDate=today;
   p.edited=Math.max(0,Math.min(p.total||9999,(p.edited||0)+d));
   const i=document.getElementById('editedtoday-'+id); if(i) i.value=p.editedToday;
   save();renderProjects();renderTasks();renderUrgency();renderReport();
@@ -3725,7 +3743,7 @@ function addProject() {
   if(!client||!title) return;
   const maxOrder = state.projects.reduce((m,p) => Math.max(m, p.order !== undefined ? p.order : 0), 0);
   const goalVal = Math.max(0, parseInt(document.getElementById('np-goal').value) || 0);
-  state.projects.push({id:Date.now(),client,title,date:document.getElementById('np-date').value,stage:'send',total:parseInt(document.getElementById('np-total').value)||0,edited:0,editedToday:0,goalDaily:goalVal,dailyPlan:goalVal>0?{[todayStr()]:goalVal}:{},goalDone:0,notes:'',seconds:0,sessions:0,order:maxOrder+1,payers:[]});
+  state.projects.push({id:Date.now(),client,title,date:document.getElementById('np-date').value,stage:'send',total:parseInt(document.getElementById('np-total').value)||0,edited:0,editedToday:0,editedTodayDate:todayStr(),goalDaily:goalVal,dailyPlan:goalVal>0?{[todayStr()]:goalVal}:{},goalDone:0,notes:'',seconds:0,sessions:0,order:maxOrder+1,payers:[]});
   ['np-client','np-title','np-date','np-total','np-goal'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('add-proj-form').classList.add('hidden');
   save(); renderProjects(); refreshSelects();
@@ -3779,14 +3797,28 @@ function todayStr(){
 // day-rollover mechanism now (no manual "יום חדש" button, which used to
 // unconditionally wipe editedToday even when the day hadn't actually
 // changed yet, discarding real same-day progress).
+// Per-project self-healing, not a single global gate: each project carries
+// its own editedTodayDate stamp, and any project whose stamp isn't today
+// gets its counters reset right here, every time this runs (every load()
+// and every mergeCloudState()) — regardless of what state.lastReset says.
+// A single global "already reset today" flag was exactly what let a stale
+// editedToday value from a sync race survive the whole day uncorrected
+// (fixed 2026-09-24): once state.lastReset wrongly said "today" while a
+// project's editedToday still held yesterday's number, nothing re-checked
+// that project again until the next calendar day.
 function applyDayReset(s){
   const today = todayStr();
-  if(s.lastReset !== today){
-    // goalDaily isn't zeroed anymore — it's re-derived from whatever was
-    // already planned for today on the work-plan grid (0 if nothing was)
-    s.projects.forEach(p=>{ p.goalDone=0; p.editedToday=0; p.goalDaily=(p.dailyPlan||{})[today]||0; });
-    s.lastReset = today;
-  }
+  s.projects.forEach(p=>{
+    if (p.editedTodayDate !== today) {
+      p.goalDone = 0;
+      p.editedToday = 0;
+      p.editedTodayDate = today;
+      // goalDaily is re-derived from whatever was already planned for today
+      // on the work-plan grid (0 if nothing was), not zeroed unconditionally
+      p.goalDaily = (p.dailyPlan||{})[today]||0;
+    }
+  });
+  s.lastReset = today;
   return s;
 }
 
