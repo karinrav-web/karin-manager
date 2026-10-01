@@ -683,7 +683,7 @@
     <div style="padding:16px 24px;border-top:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">סנכרון ענן</div>
       <div id="sync-status" style="font-size:12px;color:var(--text3);margin-bottom:10px">מתחבר...</div>
-      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-01 · סימון כפולות</div>
+      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-01 · סימון ידני</div>
       <div id="other-session-warning" class="hidden" style="font-size:11px;color:#fff;background:var(--urgent);border-radius:6px;padding:6px 8px;margin-bottom:10px;line-height:1.4;">⚠ האפליקציה פתוחה כרגע גם במקום/דפדפן אחר — שינויים עלולים להתנגש. מומלץ לסגור שם.</div>
     </div>
   </aside>
@@ -1158,6 +1158,8 @@
     </div>
     <div class="modal-actions">
       <button class="btn-delete" id="bm-delete-btn" onclick="deleteBillingRecord()" style="display:none">🗑 מחק</button>
+      <button class="btn-cancel" id="bm-exclude-dup" onclick="excludeBillingRecord('dup')" style="display:none" title="הרשומה נשארת, רק לא נספרת בסכומים">סמני ככפולה</button>
+      <button class="btn-cancel" id="bm-exclude-other" onclick="excludeBillingRecord('other')" style="display:none" title="למשל פיצוי או מענק — נשאר רשום, לא נספר בהכנסות מעבודה">לא הכנסה מעבודה</button>
       <button class="btn-cancel" onclick="closeBillingModal()">ביטול</button>
       <button class="btn-confirm" onclick="saveBillingRecord()">שמור</button>
     </div>
@@ -2629,10 +2631,10 @@ function renderDuplicateCleanupBanner() {
   el.style.display = '';
   el.innerHTML = (d.length ? `<div class="dup-banner"><div><b>נמצאו ${d.length} רשומות הכנסה כפולות (${fmtMoney(sumD)})</b><div style="font-size:12px;color:var(--text2);margin-top:2px;">העתקים זהים של תשלומים שכבר רשומים. סימון ככפולות לא מוחק אותן — רק מוציא אותן מהסכומים, ואפשר לבטל בכל רגע.</div></div><button class="btn-save" onclick="hideDuplicateAutoRecords()">סמני ככפולות</button></div>` : '')
     + (h.length ? `<div class="dup-hidden-box"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
-        <span><b>${h.length} רשומות מסומנות ככפולות</b> · ${fmtMoney(sumH)} · לא נספרות בהכנסות</span>
+        <span><b>${h.length} רשומות לא נספרות בהכנסות</b> · ${fmtMoney(sumH)}${h.some(r => r.hiddenReason === 'other') ? ` (מתוכן ${fmtMoney(h.filter(r => r.hiddenReason === 'other').reduce((s, r) => s + (r.total||0), 0))} לא מעבודה)` : ''}</span>
         <span style="display:flex;gap:8px;"><button class="panel-link-btn" onclick="toggleEl('dup-hidden-list')">הצג</button><button class="panel-link-btn" onclick="unhideDuplicateRecords()">ביטול סימון לכולן</button></span>
       </div>
-      <div id="dup-hidden-list" class="hidden" style="margin-top:10px;">${h.slice().sort((x, y) => (x.client||'').localeCompare(y.client||'', 'he') || (x.date||'').localeCompare(y.date||'')).map(r => `<div class="dup-hidden-row"><span>${recLine(r)}</span><button class="panel-link-btn" onclick="unhideDuplicateRecords(['${r.id}'])">החזר</button></div>`).join('')}</div>
+      <div id="dup-hidden-list" class="hidden" style="margin-top:10px;">${h.slice().sort((x, y) => (x.client||'').localeCompare(y.client||'', 'he') || (x.date||'').localeCompare(y.date||'')).map(r => `<div class="dup-hidden-row"><span>${recLine(r)} · <i>${r.hiddenReason === 'other' ? 'לא מעבודה' : 'כפולה'}</i></span><button class="panel-link-btn" onclick="unhideDuplicateRecords(['${r.id}'])">החזר</button></div>`).join('')}</div>
     </div>` : '');
 }
 function hideDuplicateAutoRecords() {
@@ -2642,6 +2644,14 @@ function hideDuplicateAutoRecords() {
   const now = Date.now();
   d.forEach(r => { r.dupHidden = true; r.dupHiddenAt = now; });
   save(); renderBillingPage(); renderBillingSummaryMorning();
+}
+// Manually leave one record out of every total — reason 'dup' (duplicate) or 'other' (not work income, e.g. a grant).
+function excludeBillingRecord(reason) {
+  const r = (state.billing||[]).find(x => x.id === editingBillingId); if (!r) return;
+  const label = reason === 'dup' ? 'לסמן את הרשומה ככפולה' : 'לסמן את הרשומה כ"לא הכנסה מעבודה"';
+  if (!confirm(`${label}?\n\nהיא תישאר רשומה, אבל לא תיספר בסכום ההכנסות. אפשר לבטל בכל רגע מהפס במסך הכספים.`)) return;
+  r.dupHidden = true; r.dupHiddenAt = Date.now(); r.hiddenReason = reason;
+  save(); closeBillingModal(); renderBillingPage(); renderBillingSummaryMorning();
 }
 function unhideDuplicateRecords(ids) {
   const set = ids ? new Set(ids.map(String)) : null;
@@ -3104,6 +3114,8 @@ function openBillingModal(id) {
   document.getElementById('bm-location').value = rec?.location || '';
   document.getElementById('bm-designer').value = rec?.designerFee || '';
   document.getElementById('bm-delete-btn').style.display = id ? '' : 'none';
+  document.getElementById('bm-exclude-dup').style.display = id ? '' : 'none';
+  document.getElementById('bm-exclude-other').style.display = id ? '' : 'none';
   // suppliers
   const suppEl = document.getElementById('bm-suppliers');
   suppEl.innerHTML = '';
