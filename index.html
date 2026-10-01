@@ -710,7 +710,7 @@
     <div style="padding:16px 24px;border-top:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">סנכרון ענן</div>
       <div id="sync-status" style="font-size:12px;color:var(--text3);margin-bottom:10px">מתחבר...</div>
-      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-01 · לקוח מול ספקים</div>
+      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-01 · מכירה ישירה</div>
       <div id="other-session-warning" class="hidden" style="font-size:11px;color:#fff;background:var(--urgent);border-radius:6px;padding:6px 8px;margin-bottom:10px;line-height:1.4;">⚠ האפליקציה פתוחה כרגע גם במקום/דפדפן אחר — שינויים עלולים להתנגש. מומלץ לסגור שם.</div>
     </div>
   </aside>
@@ -2572,8 +2572,8 @@ function renderBillingSearch() {
     const rows = payerMatches.map(({p, pay}) => {
       const amt = Number(pay.amount) || 0;
       const amtVat = Math.round(amt * VAT_RATE);
-      const typeLabel = pay.type === 'client' ? 'לקוח' : pay.type === 'vendor' ? 'ספק' : 'זיכוי';
-      const typeBg = pay.type === 'client' ? 'var(--accent)' : pay.type === 'vendor' ? 'var(--s-send-b)' : '#7c3aed';
+      const typeLabel = pay.type === 'client' ? 'לקוח' : pay.type === 'vendor' ? 'ספק' : pay.type === 'direct' ? 'מכירה ישירה' : pay.type === 'photo' ? 'תמונה בודדת' : pay.type === 'payment' ? 'תשלום' : 'זיכוי';
+      const typeBg = pay.type === 'client' ? 'var(--accent)' : (pay.type === 'vendor' || pay.type === 'direct' || pay.type === 'photo') ? 'var(--s-send-b)' : pay.type === 'payment' ? '#059669' : '#7c3aed';
       const stageLabel = STAGES[p.stage] || p.stage;
       return `<div style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid var(--border);flex-wrap:wrap;">
         <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:${typeBg};color:#fff;flex-shrink:0;">${typeLabel}</span>
@@ -3030,7 +3030,7 @@ function computeClientStats() {
     const dates = [...o.projs.map(p => (p.date || '').slice(0, 10)), ...o.recs.map(r => r.date || '')].filter(Boolean).sort();
     let open = 0;
     o.projs.forEach(p => (p.payers || []).forEach(x => {
-      if (x.paid || !(Number(x.amount) > 0) || !['client', 'vendor', 'photo'].includes(x.type)) return;
+      if (x.paid || !(Number(x.amount) > 0) || !['client', 'vendor', 'photo', 'direct'].includes(x.type)) return;
       open += x.type === 'photo' ? (Number(x.qty) || 1) * Number(x.amount) : Math.round(Number(x.amount) * 1.18);
     }));
     return {
@@ -4198,7 +4198,7 @@ function clientPanelHtml(name) {
   const yearTotal = recs.filter(r => (r.date || '').startsWith(thisYear)).reduce((s, r) => s + (r.total || 0), 0);
   let open = 0;
   projs.forEach(p => (p.payers || []).forEach(x => {
-    if (x.paid || !(Number(x.amount) > 0) || !['client', 'vendor', 'photo'].includes(x.type)) return;
+    if (x.paid || !(Number(x.amount) > 0) || !['client', 'vendor', 'photo', 'direct'].includes(x.type)) return;
     open += x.type === 'photo' ? (Number(x.qty) || 1) * Number(x.amount) : Math.round(Number(x.amount) * 1.18);
   }));
   const credit = (typeof getClientCredit === 'function') ? getClientCredit(name) : 0;
@@ -4539,7 +4539,7 @@ function syncPayerBillingRecord(p, pay) {
   if (!rec) return;
   const amount = pay.type === 'photo' ? (Number(pay.qty)||1) * (Number(pay.amount)||0) : Math.round((Number(pay.amount)||0) * 1.18);
   rec.designerFee = pay.type === 'client' ? amount : 0;
-  rec.suppliers = pay.type === 'vendor' ? [{name: pay.name, amount}]
+  rec.suppliers = (pay.type === 'vendor' || pay.type === 'direct') ? [{name: pay.name, amount, ...(pay.type === 'direct' ? {direct: true} : {})}]
     : pay.type === 'photo' ? [{name: pay.name, amount: Number(pay.amount)||0, qty: pay.qty||1, photo: true}]
     : [];
   rec.total = amount;
@@ -4689,6 +4689,27 @@ function renderBillingSection(p) {
     </div>`;
   }).join('');
 
+  // מכירה ישירה: ספק שקנה תמונות ישירות (לא דרך המעצבת) — כל הסכום שלי,
+  // לא נכנס לחשבון הלקוח (אין +500, לא מקטין את חלק הלקוח, לא בסיכום/PDF ללקוח)
+  const directSales = payers.filter(x => x.type === 'direct');
+  const directRows = directSales.map((pay) => {
+    const realIdx = payers.indexOf(pay);
+    const amt = Number(pay.amount) || 0;
+    return `<div class="billing-row" style="background:#eef6fb;border-radius:var(--radius-sm);padding:6px 10px;">
+      <span class="billing-type" style="background:#0e7490;color:#fff;">מכירה ישירה</span>
+      <input type="text" value="${pay.name||''}" placeholder="שם הספק" style="width:110px;padding:4px 8px;font-size:13px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-family:'Rubik',sans-serif;background:var(--surface);color:var(--text);" onchange="updatePhotoName(${p.id},${realIdx},this.value)" />
+      <div style="display:flex;align-items:center;gap:6px;margin-inline-start:auto;">
+        <input type="number" min="0" value="${amt}" title="סכום לפני מעמ" style="width:80px;padding:4px 8px;font-size:13px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-family:'Rubik',sans-serif;text-align:center;" onchange="updateVendorAmount(${p.id},${realIdx},this.value)" />
+        <span style="font-size:11px;color:var(--text3);">(${fmtILS(amt*VAT_RATE)} כולל מעמ)</span>
+      </div>
+      <label title="נשלחה חשבונית" style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--text3);cursor:pointer;">
+        <input type="checkbox" ${pay.invoiceSent ? 'checked' : ''} onchange="toggleInvoiceSent(${p.id},${realIdx})" style="cursor:pointer;" />חשבונית
+      </label>
+      <button class="billing-paid-btn ${pay.paid ? 'paid' : ''}" onclick="togglePaid(${p.id},${realIdx})">${pay.paid ? '✓' : ''}</button>
+      <button class="billing-delete-btn" onclick="deletePayer(${p.id},${realIdx})">✕</button>
+    </div>`;
+  }).join('') + (directSales.length ? `<div style="font-size:11px;color:#0e7490;margin:2px 4px 6px;">מכירה ישירה לא נכללת בחשבון של הלקוח — כל הסכום שלך</div>` : '');
+
   const paymentRows = directPayments.map((pay) => {
     const realIdx = payers.indexOf(pay);
     const amt = Number(pay.amount) || 0;
@@ -4781,6 +4802,7 @@ function renderBillingSection(p) {
 
       ${vendorRows}
       ${photoRows}
+      ${directRows}
       ${paymentRows}
       ${creditRows}
       ${clientRow}
@@ -4790,6 +4812,7 @@ function renderBillingSection(p) {
         <input type="number" id="bamount-${p.id}" placeholder="סכום ₪ (0 אם שילם למעצבת)" value="0" style="width:80px" />
         <button class="btn-save" style="font-size:12px;padding:6px 14px" onclick="addVendor(${p.id})">+ הוסף ספק</button>
         <button class="edit-btn" style="font-size:12px;border-color:#ea580c;color:#ea580c;" onclick="addPhotoSale(${p.id})">+ תמונה בודדת</button>
+        <button class="edit-btn" style="font-size:12px;border-color:#0e7490;color:#0e7490;" onclick="addDirectSale(${p.id})" title="ספק שקנה ישירות ממני, לא דרך המעצבת — לא משפיע על חשבון הלקוח">+ מכירה ישירה</button>
         <button class="edit-btn" style="font-size:12px;border-color:#059669;color:#059669;" onclick="openAddClientPaymentModal(${p.id})">+ תשלום מלקוח</button>
         <button class="edit-btn" style="font-size:12px;border-color:#c4b5fd;color:#7c3aed;" onclick="openAddCreditModal(${p.id})">+ זיכוי לקוח</button>
         ${!client ? `<button class="edit-btn" onclick="addClient(${p.id})">+ הוסף לקוח</button>` : ''}
@@ -5070,6 +5093,14 @@ function addPhotoSale(projId) {
   recalcClientShare(p);
   save(); renderProjects(); renderBillingSummaryMorning();
 }
+function addDirectSale(projId) {
+  const p = state.projects.find(p => p.id === projId); if (!p) return;
+  if (!p.payers) p.payers = [];
+  const name = (document.getElementById('bname-' + projId)?.value || '').trim();
+  const amount = Number(document.getElementById('bamount-' + projId)?.value) || 0;
+  p.payers.push({ name, amount, type: 'direct', paid: false });
+  save(); renderProjects(); renderBillingSummaryMorning();
+}
 function updatePhotoName(projId, idx, val) {
   const p = state.projects.find(p => p.id === projId); if (!p || !p.payers) return;
   p.payers[idx].name = val;
@@ -5106,7 +5137,7 @@ function togglePaid(projId, idx) {
       client: p.client || '',
       project: p.title || '',
       designerFee: pay.type === 'client' ? amount : 0,
-      suppliers: pay.type === 'vendor' ? [{name: pay.name, amount}]
+      suppliers: (pay.type === 'vendor' || pay.type === 'direct') ? [{name: pay.name, amount, ...(pay.type === 'direct' ? {direct: true} : {})}]
         // suppliers[].amount for photo rows is price-per-photo (matches the
         // income-modal convention) — NOT the total, to avoid double-counting qty
         : pay.type === 'photo' ? [{name: pay.name, amount: Number(pay.amount)||0, qty: pay.qty||1, photo: true}]
@@ -5178,10 +5209,10 @@ function confirmReceivePayment() {
   const diff = noVat - (Number(payer.amount) || 0);
   payer.paid = true;
   if (!state.billing) state.billing = [];
-  const rec = { id: Date.now(), date: new Date().toISOString().slice(0,10), client: p.client||'', project: p.title||'', designerFee: payer.type === 'vendor' ? 0 : withVat, suppliers: payer.type === 'vendor' ? [{name: payer.name, amount: withVat}] : [], total: withVat, projectId: p.id };
+  const rec = { id: Date.now(), date: new Date().toISOString().slice(0,10), client: p.client||'', project: p.title||'', designerFee: payer.type === 'client' ? withVat : 0, suppliers: payer.type === 'client' ? [] : [{name: payer.name, amount: withVat, ...(payer.type === 'direct' ? {direct: true} : {})}], total: withVat, projectId: p.id };
   payer.billingRecordId = rec.id;
   state.billing.push(rec);
-  if (diff > 0 && confirm(`יש יתרה של ₪${diff.toLocaleString()} (לפני מעמ). להוסיף כזיכוי ללקוח?`)) {
+  if (payer.type === 'client' && diff > 0 && confirm(`יש יתרה של ₪${diff.toLocaleString()} (לפני מעמ). להוסיף כזיכוי ללקוח?`)) {
     p.payers.push({ name: payer.name, amount: diff, type: 'credit', note: 'יתרה מתשלום', paid: false });
     recalcClientShare(p);
   }
