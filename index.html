@@ -4080,6 +4080,7 @@ function clientPanelHtml(name) {
       <span class="proj-link" style="flex:1;font-weight:500;" onclick="openProjectPanel('${p.id}')">${p.title || '—'}</span>
       ${billingBadgeHtml(p)}
       <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:var(--s-${p.stage}-b,var(--border));color:#fff;white-space:nowrap;">${STAGES[p.stage] || p.stage}</span>
+      ${(() => { const t = recs.filter(r => String(r.projectId) === String(p.id)).reduce((a, r) => a + (r.total || 0), 0); return t ? `<span style="font-size:13px;font-weight:600;color:var(--accent);white-space:nowrap;">${fmtMoney(t)}</span>` : ''; })()}
       <span class="cp-date">${fmtD(p.date)}</span>
     </div>` })),
     ...hist.map(h => ({ d: h.date, html: `<div class="cp-row">
@@ -4120,8 +4121,7 @@ function clientPanelHtml(name) {
       <div class="pp-label">הערות על הלקוח</div>
       <textarea class="cp-notes" placeholder="תיאור / הערות על הלקוח..." onchange="saveClientNote('${jsq(noteKey || name)}', this.value)">${notes}</textarea>
     </div>
-    <div class="pp-pane" style="margin-top:14px;"><div class="pp-label">פרויקטים (${projCount})${hist.length ? ` · <span class="cp-sub">${projs.length} מהאפליקציה, ${hist.length} מהטבלאות הקודמות</span>` : ''}</div>${projRowsAll}</div>
-    ${linkedRecs.length ? `<div class="pp-pane" style="margin-top:14px;"><div class="pp-label">תשלומים על פרויקטים מהאפליקציה (${linkedRecs.length})</div>${recRows}</div>` : ''}
+    <div class="pp-pane" style="margin-top:14px;"><div class="pp-label">פרויקטים (${projCount})</div>${projRowsAll}</div>
   </div>`;
 }
 function openClientRecords(client) {
