@@ -532,6 +532,10 @@
   .billing-year-tabs { display:flex; gap:6px; margin-bottom:18px; }
   .billing-year-tab { padding:6px 16px; font-size:13px; font-family:'Rubik',sans-serif; border:1px solid var(--border2); border-radius:20px; background:var(--surface2); color:var(--text2); cursor:pointer; }
   .billing-year-tab.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .billing-tabs { display:flex; gap:4px; border-bottom:1px solid var(--border); margin:4px 0 18px; overflow-x:auto; }
+  .billing-tab { background:none; border:none; border-bottom:2px solid transparent; padding:10px 16px; font-family:'Rubik',sans-serif; font-size:14px; color:var(--text2); cursor:pointer; white-space:nowrap; }
+  .billing-tab.active { color:var(--accent); border-bottom-color:var(--accent); font-weight:600; }
+  [data-btab].btab-off { display:none !important; }
   .billing-chart { display:flex; align-items:flex-end; gap:4px; height:120px; margin-bottom:20px; padding:0 4px; }
   .billing-bar-wrap { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; height:100%; justify-content:flex-end; }
   .billing-bar { width:100%; border-radius:4px 4px 0 0; background:var(--accent); min-height:2px; transition:height 0.3s; cursor:pointer; }
@@ -587,22 +591,14 @@
     <div class="nav-item active" id="nav-morning" onclick="showPage('morning',this)"><span class="nav-icon"><span class="material-symbols-outlined">wb_sunny</span></span><span>בוקר טוב</span></div>
     <div class="nav-item" id="nav-projects" onclick="openProjectsDefault(this)"><span class="nav-icon"><span class="material-symbols-outlined">camera_alt</span></span><span>פרויקטים</span></div>
     <div class="nav-item" id="nav-report" onclick="showPage('report',this)"><span class="nav-icon"><span class="material-symbols-outlined">bar_chart</span></span><span>לוח עבודה</span></div>
-    <div class="nav-item" id="nav-billing" onclick="showPage('billing',this)"><span class="nav-icon"><span class="material-symbols-outlined">payments</span></span><span>הכנסות</span></div>
-    <div class="nav-item" id="nav-scheduler" onclick="showPage('scheduler',this)"><span class="nav-icon"><span class="material-symbols-outlined">event</span></span><span>תאריכים</span></div>
-    <div style="margin-top:auto;padding:16px 24px;border-top:1px solid var(--border)">
+    <div class="nav-item" id="nav-billing" onclick="showPage('billing',this)"><span class="nav-icon"><span class="material-symbols-outlined">payments</span></span><span>כספים</span></div>
+    <a class="nav-item" id="nav-scheduler" href="https://photo-scheduler-wine.vercel.app" target="_blank" rel="noopener" style="text-decoration:none"><span class="nav-icon"><span class="material-symbols-outlined">open_in_new</span></span><span>מתזמן צילומים</span></a>
+    <div class="nav-item" id="nav-settings" onclick="showPage('settings',this)" style="margin-top:auto"><span class="nav-icon"><span class="material-symbols-outlined">settings</span></span><span>הגדרות</span></div>
+    <div style="padding:16px 24px;border-top:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">סנכרון ענן</div>
       <div id="sync-status" style="font-size:12px;color:var(--text3);margin-bottom:10px">מתחבר...</div>
-      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-07-17 · 12:52</div>
+      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-01 · שלב 1</div>
       <div id="other-session-warning" class="hidden" style="font-size:11px;color:#fff;background:var(--urgent);border-radius:6px;padding:6px 8px;margin-bottom:10px;line-height:1.4;">⚠ האפליקציה פתוחה כרגע גם במקום/דפדפן אחר — שינויים עלולים להתנגש. מומלץ לסגור שם.</div>
-      <button onclick="exportBackup()" style="width:100%;padding:7px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text2);cursor:pointer;margin-bottom:6px;">💾 ייצוא גיבוי</button>
-      <label style="width:100%;display:block;padding:7px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text2);cursor:pointer;text-align:center;margin-bottom:6px;">
-        📂 ייבוא גיבוי
-        <input type="file" accept=".json" onchange="importBackup(event)" style="display:none" />
-      </label>
-      <button onclick="showRestoreMenu()" style="width:100%;padding:7px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text2);cursor:pointer;margin-bottom:6px;">🔄 שחזר גיבוי אוטומטי</button>
-      <div id="auto-backup-list" class="hidden" style="margin-bottom:6px;"></div>
-      <button onclick="changePin()" style="width:100%;padding:7px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text3);cursor:pointer;margin-bottom:6px;">🔒 שנה קוד גישה</button>
-      <button onclick="resetAll()" style="width:100%;padding:7px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text3);cursor:pointer;">🗑 מחק הכל</button>
     </div>
   </aside>
 
@@ -626,8 +622,6 @@
         </div>
       </div>
       <div id="dash-customize-bar" class="dash-customize-bar hidden">
-        <span class="dash-label">צבע נושא:</span>
-        <div class="theme-swatches" id="theme-swatches"></div>
         <span class="dash-label" style="margin-right:16px">גרור פאנלים לסידור רצוי ↕</span>
       </div>
       <div class="morning-metrics">
@@ -746,6 +740,26 @@
         <div class="card-title">📸 ימי צילום השנה</div>
         <div id="shoot-year-summary" style="font-size:13px;color:var(--text2);"></div>
       </div>
+      <div id="report-bottom"></div>
+    </div>
+
+    <!-- EXPENSES -->
+    <!-- SCHEDULER -->
+    <div id="page-scheduler" class="page">
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:calc(100vh - 64px);gap:16px;">
+        <div style="font-size:48px;">📸</div>
+        <div style="font-size:20px;font-weight:600;color:var(--text);">מתזמן תאריכי צילום</div>
+        <div style="font-size:14px;color:var(--text3);text-align:center;max-width:300px;">האפליקציה נפתחת בטאב חדש כדי לאפשר התחברות עם Google</div>
+        <a href="https://photo-scheduler-wine.vercel.app" target="_blank"
+           style="padding:12px 28px;background:var(--accent);color:white;border-radius:12px;text-decoration:none;font-weight:500;font-size:15px;">
+          פתחי את מתזמן הצילומים
+        </a>
+      </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="page-settings" class="page">
+      <div class="page-header"><div><div class="page-title">הגדרות</div></div></div>
       <div class="card" style="margin-bottom:16px;">
         <div class="card-title">⚙ הגדרות עריכה</div>
         <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;">
@@ -777,27 +791,38 @@
           </div>
         </div>
       </div>
-      <div id="report-bottom"></div>
-    </div>
-
-    <!-- EXPENSES -->
-    <!-- SCHEDULER -->
-    <div id="page-scheduler" class="page">
-      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:calc(100vh - 64px);gap:16px;">
-        <div style="font-size:48px;">📸</div>
-        <div style="font-size:20px;font-weight:600;color:var(--text);">מתזמן תאריכי צילום</div>
-        <div style="font-size:14px;color:var(--text3);text-align:center;max-width:300px;">האפליקציה נפתחת בטאב חדש כדי לאפשר התחברות עם Google</div>
-        <a href="https://photo-scheduler-wine.vercel.app" target="_blank"
-           style="padding:12px 28px;background:var(--accent);color:white;border-radius:12px;text-decoration:none;font-weight:500;font-size:15px;">
-          פתחי את מתזמן הצילומים
-        </a>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">🎨 מראה</div>
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+          <span style="font-size:13px;color:var(--text2);">צבע נושא:</span>
+          <div class="theme-swatches" id="theme-swatches"></div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">💾 גיבוי ושחזור</div>
+        <div style="max-width:320px;">
+          <button onclick="exportBackup()" style="width:100%;padding:7px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text2);cursor:pointer;margin-bottom:6px;">💾 ייצוא גיבוי</button>
+          <label style="width:100%;display:block;padding:7px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text2);cursor:pointer;text-align:center;margin-bottom:6px;">
+          📂 ייבוא גיבוי
+          <input type="file" accept=".json" onchange="importBackup(event)" style="display:none" />
+          </label>
+          <button onclick="showRestoreMenu()" style="width:100%;padding:7px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text2);cursor:pointer;margin-bottom:6px;">🔄 שחזר גיבוי אוטומטי</button>
+          <div id="auto-backup-list" class="hidden" style="margin-bottom:6px;"></div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">🔒 אבטחה</div>
+        <div style="max-width:320px;">
+          <button onclick="changePin()" style="width:100%;padding:7px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text3);cursor:pointer;margin-bottom:6px;">🔒 שנה קוד גישה</button>
+          <button onclick="resetAll()" style="width:100%;padding:7px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text3);cursor:pointer;">🗑 מחק הכל</button>
+        </div>
       </div>
     </div>
 
     <!-- BILLING -->
     <div id="page-billing" class="page">
       <div class="page-header">
-        <div><div class="page-title">הכנסות</div></div>
+        <div><div class="page-title">כספים</div></div>
         <div style="display:flex;gap:8px;">
           <label style="padding:8px 16px;font-size:13px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">
             📥 ייבוא CSV
@@ -823,12 +848,18 @@
       </div>
       <div id="billing-main-content">
       <div class="billing-year-tabs" id="billing-year-tabs"></div>
-      <div class="billing-summary" id="billing-summary"></div>
-      <div class="card" style="margin-bottom:18px;">
+      <div class="billing-tabs" id="billing-tabs">
+        <button class="billing-tab active" data-tab="overview" onclick="setBillingTab('overview')">סקירה</button>
+        <button class="billing-tab" data-tab="records" onclick="setBillingTab('records')">רשומות</button>
+        <button class="billing-tab" data-tab="clients" onclick="setBillingTab('clients')">לקוחות</button>
+        <button class="billing-tab" data-tab="credits" onclick="setBillingTab('credits')">זיכויים</button>
+      </div>
+      <div class="billing-summary" id="billing-summary" data-btab="overview"></div>
+      <div class="card" data-btab="overview" style="margin-bottom:18px;">
         <div class="card-title">🏆 טופ 10 לקוחות (כל הזמנים)</div>
         <div id="billing-top10"></div>
       </div>
-      <div class="card" style="margin-bottom:18px;border-color:#c4b5fd;">
+      <div class="card" data-btab="credits" style="margin-bottom:18px;border-color:#c4b5fd;">
         <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
           <span>💜 זיכויים ללקוחות</span>
         </div>
@@ -840,19 +871,19 @@
         </div>
         <div id="credits-list"></div>
       </div>
-      <div class="card" style="margin-bottom:18px;">
+      <div class="card" data-btab="overview" style="margin-bottom:18px;">
         <div class="card-title">לפי חודש</div>
         <div class="billing-chart" id="billing-chart"></div>
         <div id="billing-month-detail"></div>
       </div>
-      <div class="card" style="margin-bottom:18px;">
+      <div class="card" data-btab="clients" style="margin-bottom:18px;">
         <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
           <span>👤 כרטיסי לקוחות</span>
           <span id="client-cards-count" style="font-size:12px;font-weight:400;color:var(--text3);"></span>
         </div>
         <div id="client-cards-list"></div>
       </div>
-      <div class="card">
+      <div class="card" data-btab="records">
         <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
           <span>רשומות</span>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
@@ -906,8 +937,9 @@
   <button class="mobile-nav-item active" id="mnav-morning" onclick="showPageMobile('morning',this)"><span class="mobile-nav-icon">☀</span>בוקר טוב</button>
   <button class="mobile-nav-item" id="mnav-projects" onclick="openProjectsDefaultMobile(this)"><span class="mobile-nav-icon">📁</span>פרויקטים</button>
   <button class="mobile-nav-item" id="mnav-report" onclick="showPageMobile('report',this)"><span class="mobile-nav-icon">📊</span>תכנון</button>
-  <button class="mobile-nav-item" id="mnav-billing" onclick="showPageMobile('billing',this)"><span class="mobile-nav-icon">💰</span>הכנסות</button>
-  <button class="mobile-nav-item" id="mnav-scheduler" onclick="showPageMobile('scheduler',this)"><span class="mobile-nav-icon">📸</span>תאריכים</button>
+  <button class="mobile-nav-item" id="mnav-billing" onclick="showPageMobile('billing',this)"><span class="mobile-nav-icon">💰</span>כספים</button>
+  <button class="mobile-nav-item" id="mnav-scheduler" onclick="window.open('https://photo-scheduler-wine.vercel.app','_blank')"><span class="mobile-nav-icon">📸</span>מתזמן</button>
+  <button class="mobile-nav-item" id="mnav-settings" onclick="showPageMobile('settings',this)"><span class="mobile-nav-icon">⚙</span>הגדרות</button>
 </nav>
 
 <div class="modal-bg" id="edit-modal">
@@ -2427,7 +2459,14 @@ function deleteBillingRecordById(id) {
   state.projects.forEach(p => (p.payers||[]).forEach(pay => { if (pay.billingRecordId === id) delete pay.billingRecordId; }));
   save(); renderBillingPage();
 }
+var billingTab = 'overview';
+function setBillingTab(t) { billingTab = t; applyBillingTab(); }
+function applyBillingTab() {
+  document.querySelectorAll('[data-btab]').forEach(e => e.classList.toggle('btab-off', e.dataset.btab !== billingTab));
+  document.querySelectorAll('.billing-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === billingTab));
+}
 function renderBillingPage() {
+  applyBillingTab();
   if (!document.getElementById('page-billing')) return;
   renderCreditsSection();
   renderClientCards();
@@ -2841,6 +2880,7 @@ function toggleBillingClientView() {
 
 function setClientFilter(clientName) {
   billingClientView = false;
+  billingTab = 'records';
   const el = document.getElementById('billing-filter-client');
   if (el) { el.value = clientName; renderBillingPage(); }
 }
