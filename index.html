@@ -611,6 +611,8 @@
   .customize-btn { border-radius:8px; }
   .proj-card { border-radius:12px; }
   @media (max-width: 768px) { .page { padding:16px; } .page-title { font-size:22px; } }
+  .dup-hidden-box { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:12px 18px; margin-bottom:18px; font-size:13px; }
+  .dup-hidden-row { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:6px 0; border-top:1px solid var(--border); font-size:12px; color:var(--text2); }
   .dup-banner { display:flex; justify-content:space-between; align-items:center; gap:14px; background:var(--high-light); border:1px solid #f0c9a8; border-radius:12px; padding:14px 18px; margin-bottom:18px; }
   .pp-head { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 18px; }
   .pp-client { font-size:13px; color:var(--text2); }
@@ -681,7 +683,7 @@
     <div style="padding:16px 24px;border-top:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">סנכרון ענן</div>
       <div id="sync-status" style="font-size:12px;color:var(--text3);margin-bottom:10px">מתחבר...</div>
-      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-01 · תיקון הכנסות</div>
+      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-01 · סימון כפולות</div>
       <div id="other-session-warning" class="hidden" style="font-size:11px;color:#fff;background:var(--urgent);border-radius:6px;padding:6px 8px;margin-bottom:10px;line-height:1.4;">⚠ האפליקציה פתוחה כרגע גם במקום/דפדפן אחר — שינויים עלולים להתנגש. מומלץ לסגור שם.</div>
     </div>
   </aside>
@@ -1865,7 +1867,7 @@ function renderShootYearSummary() {
 
   const projects = (state.projects || []).filter(p => p.date && p.date.startsWith(year+'-') && p.date <= todayStr3);
   // נתוני שנה שעברה — מעמוד ההכנסות (billing records)
-  const prevProjects = (state.billing || []).filter(r => r.date && r.date.startsWith(prevYear+'-') && r.date <= samedayPrevYear);
+  const prevProjects = getBillingRecords().filter(r => r.date && r.date.startsWith(prevYear+'-') && r.date <= samedayPrevYear);
 
   const byMonth = {};
   projects.forEach(p => { const m = parseInt(p.date.slice(5,7))-1; byMonth[m] = (byMonth[m]||0)+1; });
@@ -1912,7 +1914,13 @@ function dedup(arr) {
 function mergeBilling(local, cloud, deleted) {
   const del = new Set((deleted || []).map(String));
   const map = {};
-  [...local, ...cloud].forEach(r => { if (r.id) map[r.id] = r; });
+  [...local, ...cloud].forEach(r => {
+    if (!r.id) return;
+    const prev = map[r.id];
+    // the copy whose duplicate-flag was changed most recently wins (so a hide/unhide isn't undone by a stale snapshot)
+    if (prev && (prev.dupHiddenAt || 0) > (r.dupHiddenAt || 0)) return;
+    map[r.id] = r;
+  });
   return Object.values(map).filter(r => !del.has(String(r.id)));
 }
 function unionIds(a, b) { return [...new Set([...(a || []), ...(b || [])].map(String))]; }
@@ -2419,7 +2427,9 @@ let billingMonthFilter = null;
 
 function fmtMoney(n) { return Math.round(n).toLocaleString('he-IL') + ' ₪'; }
 
-function getBillingRecords() { return state.billing || []; }
+// Records marked as duplicates (dupHidden) stay in state.billing but are left out of every total and list.
+function getBillingRecords() { return (state.billing || []).filter(r => !r.dupHidden); }
+function getHiddenDupRecords() { return (state.billing || []).filter(r => r.dupHidden); }
 
 function billingYears() {
   const years = new Set(getBillingRecords().map(r => r.date?.slice(0,4)).filter(Boolean));
@@ -2453,7 +2463,7 @@ function renderBillingSearch() {
   const sections = [];
 
   // 1. Billing records matching query
-  const matchingRecs = (state.billing||[]).filter(r =>
+  const matchingRecs = getBillingRecords().filter(r =>
     (r.client||'').toLowerCase().includes(q) ||
     (r.project||'').toLowerCase().includes(q)
   ).sort((a,b) => (b.date||'').localeCompare(a.date||''));
@@ -2547,7 +2557,7 @@ function renderDuplicateCheck() {
   const el = document.getElementById('duplicate-check-results');
   const countEl = document.getElementById('duplicate-check-count');
   if (!card || !el) return;
-  const recs = state.billing || [];
+  const recs = getBillingRecords();
   const groups = new Map();
   recs.forEach(r => {
     if (!r.client || !r.project || !(r.total > 0)) return;
@@ -2593,7 +2603,7 @@ function findDuplicateAutoRecords() {
   const refs = new Set();
   state.projects.forEach(p => (p.payers||[]).forEach(pay => { if (pay.billingRecordId) refs.add(String(pay.billingRecordId)); }));
   const groups = {};
-  (state.billing||[]).forEach(r => {
+  getBillingRecords().forEach(r => {
     if (!r.projectId || !r.total) return;
     const sup = (r.suppliers||[]).map(x => (x.name||'').trim()).sort().join('|');
     const k = r.projectId + '#' + r.total + '#' + sup;
@@ -2611,22 +2621,33 @@ function findDuplicateAutoRecords() {
 function renderDuplicateCleanupBanner() {
   const el = document.getElementById('dup-cleanup-banner'); if (!el) return;
   const d = findDuplicateAutoRecords();
-  if (!d.length) { el.innerHTML = ''; el.style.display = 'none'; return; }
-  const sum = d.reduce((s, r) => s + (r.total||0), 0);
+  const h = getHiddenDupRecords();
+  if (!d.length && !h.length) { el.innerHTML = ''; el.style.display = 'none'; return; }
+  const sumD = d.reduce((s, r) => s + (r.total||0), 0);
+  const sumH = h.reduce((s, r) => s + (r.total||0), 0);
+  const recLine = r => `${r.date || ''} · ${fmtMoney(r.total)} · ${r.client||''}${r.project ? ' · ' + r.project : ''}${(r.suppliers||[]).length ? ' · ' + r.suppliers.map(x => x.name).join(', ') : ''}`;
   el.style.display = '';
-  el.innerHTML = `<div class="dup-banner"><div><b>נמצאו ${d.length} רשומות הכנסה כפולות (${fmtMoney(sum)})</b><div style="font-size:12px;color:var(--text2);margin-top:2px;">העתקים זהים של תשלומים שכבר רשומים — הן מנפחות את סכום ההכנסות</div></div><button class="btn-save" onclick="cleanupDuplicateAutoRecords()">הצג ונקה</button></div>`;
+  el.innerHTML = (d.length ? `<div class="dup-banner"><div><b>נמצאו ${d.length} רשומות הכנסה כפולות (${fmtMoney(sumD)})</b><div style="font-size:12px;color:var(--text2);margin-top:2px;">העתקים זהים של תשלומים שכבר רשומים. סימון ככפולות לא מוחק אותן — רק מוציא אותן מהסכומים, ואפשר לבטל בכל רגע.</div></div><button class="btn-save" onclick="hideDuplicateAutoRecords()">סמני ככפולות</button></div>` : '')
+    + (h.length ? `<div class="dup-hidden-box"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span><b>${h.length} רשומות מסומנות ככפולות</b> · ${fmtMoney(sumH)} · לא נספרות בהכנסות</span>
+        <span style="display:flex;gap:8px;"><button class="panel-link-btn" onclick="toggleEl('dup-hidden-list')">הצג</button><button class="panel-link-btn" onclick="unhideDuplicateRecords()">ביטול סימון לכולן</button></span>
+      </div>
+      <div id="dup-hidden-list" class="hidden" style="margin-top:10px;">${h.slice().sort((x, y) => (x.client||'').localeCompare(y.client||'', 'he') || (x.date||'').localeCompare(y.date||'')).map(r => `<div class="dup-hidden-row"><span>${recLine(r)}</span><button class="panel-link-btn" onclick="unhideDuplicateRecords(['${r.id}'])">החזר</button></div>`).join('')}</div>
+    </div>` : '');
 }
-function cleanupDuplicateAutoRecords() {
+function hideDuplicateAutoRecords() {
   const d = findDuplicateAutoRecords(); if (!d.length) return;
   const sum = d.reduce((s, r) => s + (r.total||0), 0);
-  const lines = d.slice().sort((a, b) => (a.client||'').localeCompare(b.client||'', 'he') || (a.date||'').localeCompare(b.date||''))
-    .map(r => `${r.date}  ${fmtMoney(r.total)}  ${r.client||''} · ${r.project||''}${(r.suppliers||[]).length ? ' · ' + r.suppliers.map(x => x.name).join(', ') : ''}`);
-  if (!confirm(`למחוק ${d.length} רשומות כפולות (סה"כ ${fmtMoney(sum)})?\n\n${lines.join('\n')}\n\nהעותק המקושר לפרויקט נשאר בכל מקרה. מומלץ לייצא גיבוי לפני.`)) return;
-  const ids = new Set(d.map(r => String(r.id)));
-  state.billing = (state.billing||[]).filter(r => !ids.has(String(r.id)));
-  markDeleted('billing', [...ids]);
+  if (!confirm(`לסמן ${d.length} רשומות ככפולות (${fmtMoney(sum)})?\n\nשום דבר לא נמחק — הן פשוט לא ייספרו בסכום ההכנסות.\nאפשר לראות אותן ולבטל את הסימון בכל רגע, מהפס שיופיע במסך הכספים.`)) return;
+  const now = Date.now();
+  d.forEach(r => { r.dupHidden = true; r.dupHiddenAt = now; });
   save(); renderBillingPage(); renderBillingSummaryMorning();
-  alert(`נמחקו ${d.length} רשומות כפולות.`);
+}
+function unhideDuplicateRecords(ids) {
+  const set = ids ? new Set(ids.map(String)) : null;
+  const now = Date.now();
+  (state.billing||[]).forEach(r => { if (r.dupHidden && (!set || set.has(String(r.id)))) { r.dupHidden = false; r.dupHiddenAt = now; } });
+  save(); renderBillingPage(); renderBillingSummaryMorning();
 }
 function deleteBillingRecordById(id) {
   if (!confirm('למחוק את רשומת ההכנסה הזו? הפעולה לא הפיכה.')) return;
@@ -2907,7 +2928,7 @@ function renderClientCards() {
 
   // Collect all unique client names from billing records + projects
   const clientSet = new Set();
-  (state.billing||[]).forEach(r => { if (r.client && r.client.trim()) clientSet.add(r.client.trim()); });
+  getBillingRecords().forEach(r => { if (r.client && r.client.trim()) clientSet.add(r.client.trim()); });
   state.projects.forEach(p => { if (p.client && p.client.trim()) clientSet.add(p.client.trim()); });
   const clients = [...clientSet].sort((a,b) => a.localeCompare(b, 'he'));
 
@@ -2919,7 +2940,7 @@ function renderClientCards() {
 
   el.innerHTML = clients.map((name, idx) => {
     const notes = (state.clients?.[name]?.notes) || '';
-    const clientBilling = (state.billing||[]).filter(r => r.client === name)
+    const clientBilling = getBillingRecords().filter(r => r.client === name)
       .sort((a,b) => (b.date||'').localeCompare(a.date||''));
     const revenue = clientBilling.reduce((s, r) => s + (r.total||0), 0);
     const safeId = 'cc-' + idx;
@@ -3075,7 +3096,7 @@ function clearMonthFilter() { billingMonthFilter = null; renderBillingPage(); }
 function openBillingModal(id) {
   editingBillingId = id || null;
   const modal = document.getElementById('billing-modal');
-  const rec = id ? getBillingRecords().find(r=>r.id===id) : null;
+  const rec = id ? (state.billing||[]).find(r=>r.id===id) : null;
   document.getElementById('bm-title').textContent = id ? 'עריכת הכנסה' : 'הכנסה חדשה';
   document.getElementById('bm-date').value = rec?.date || todayStr().replace(/(\d+)-(\d+)-(\d+)/, (_,y,m,d)=>y+'-'+m.padStart(2,'0')+'-'+d.padStart(2,'0'));
   document.getElementById('bm-client').value = rec?.client || '';
