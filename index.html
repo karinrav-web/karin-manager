@@ -635,6 +635,15 @@
   .pp-stat-v { font-size:22px; font-weight:600; line-height:1.3; }
   .pp-stat-v small { font-size:13px; font-weight:400; color:var(--text2); }
   .pp-stat .prog-bar { margin-top:8px; }
+  .cl-controls { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:12px; }
+  .cl-controls input { flex:1; min-width:200px; box-sizing:border-box; padding:9px 12px; font-size:14px; font-family:'Rubik',sans-serif; border:1px solid var(--border2); border-radius:8px; background:var(--surface); color:var(--text); }
+  .cl-ctl { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text2); }
+  .cl-ctl select, .cl-mini-select { padding:8px 10px; font-size:13px; font-family:'Rubik',sans-serif; border:1px solid var(--border2); border-radius:8px; background:var(--surface); color:var(--text); }
+  .cl-mini-select { padding:5px 8px; font-size:12px; font-weight:400; }
+  .cl-top-row { display:flex; align-items:center; gap:10px; padding:7px 0; border-bottom:1px solid var(--border); cursor:pointer; }
+  .cl-top-row:hover { background:var(--surface2); }
+  .cl-top-rank { width:24px; text-align:center; color:var(--text3); font-weight:600; flex-shrink:0; }
+  .cl-open { font-size:11px; color:var(--urgent); background:var(--urgent-light); padding:2px 8px; border-radius:10px; white-space:nowrap; }
   .cp-row { display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--border); font-size:13px; flex-wrap:wrap; }
   .cp-row:last-child { border-bottom:none; }
   .cp-date { font-size:11px; color:var(--text3); white-space:nowrap; }
@@ -694,7 +703,7 @@
     <div style="padding:16px 24px;border-top:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">סנכרון ענן</div>
       <div id="sync-status" style="font-size:12px;color:var(--text3);margin-bottom:10px">מתחבר...</div>
-      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-01 · עמוד לקוחות</div>
+      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-01 · מיון לקוחות</div>
       <div id="other-session-warning" class="hidden" style="font-size:11px;color:#fff;background:var(--urgent);border-radius:6px;padding:6px 8px;margin-bottom:10px;line-height:1.4;">⚠ האפליקציה פתוחה כרגע גם במקום/דפדפן אחר — שינויים עלולים להתנגש. מומלץ לסגור שם.</div>
     </div>
   </aside>
@@ -858,11 +867,40 @@
     <div id="page-clients" class="page">
       <div class="page-header"><div><div class="page-title">לקוחות</div></div></div>
       <div class="card" style="margin-bottom:18px;">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span>לקוחות מובילים</span>
+          <select id="client-top-range" onchange="renderClientCards()" class="cl-mini-select">
+            <option value="all">כל הזמנים</option>
+            <option value="year">השנה</option>
+          </select>
+        </div>
+        <div id="clients-top10"></div>
+      </div>
+      <div class="card" style="margin-bottom:18px;">
         <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
           <span>כל הלקוחות</span>
           <span id="client-cards-count" style="font-size:12px;font-weight:400;color:var(--text3);"></span>
         </div>
-        <input id="client-search" type="text" placeholder="🔍 חיפוש לקוח או פרויקט..." oninput="renderClientCards()" style="width:100%;box-sizing:border-box;padding:9px 12px;margin-bottom:12px;font-size:14px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:8px;background:var(--surface);color:var(--text);" />
+        <div class="cl-controls">
+          <input id="client-search" type="text" placeholder="🔍 חיפוש לקוח או פרויקט..." oninput="renderClientCards()" />
+          <label class="cl-ctl">מיון
+            <select id="client-sort" onchange="renderClientCards()">
+              <option value="revenue">לפי הכנסות</option>
+              <option value="projects">לפי כמות פרויקטים</option>
+              <option value="recent">לפי עבודה אחרונה</option>
+              <option value="name">א–ת</option>
+            </select>
+          </label>
+          <label class="cl-ctl">הצג
+            <select id="client-filter" onchange="renderClientCards()">
+              <option value="all">כל הלקוחות</option>
+              <option value="year">עבדו השנה</option>
+              <option value="open">עם גבייה פתוחה</option>
+              <option value="repeat">לקוחות חוזרים (2+ פרויקטים)</option>
+              <option value="dormant">לא עבדו יותר משנה</option>
+            </select>
+          </label>
+        </div>
         <div id="client-cards-list"></div>
       </div>
     </div>
@@ -969,10 +1007,6 @@
         <button class="billing-tab" data-tab="credits" onclick="setBillingTab('credits')">זיכויים</button>
       </div>
       <div class="billing-summary" id="billing-summary" data-btab="overview"></div>
-      <div class="card" data-btab="overview" style="margin-bottom:18px;">
-        <div class="card-title">לקוחות מובילים (כל הזמנים)</div>
-        <div id="billing-top10"></div>
-      </div>
       <div class="card" data-btab="credits" style="margin-bottom:18px;border-color:#c4b5fd;">
         <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
           <span>💜 זיכויים ללקוחות</span>
@@ -2958,6 +2992,57 @@ function renderBillingPage() {
   }
 }
 
+// One stats row per client (spelling variants merged). Project count = app projects + imported
+// income records not tied to one of them (grouped by project name + date), same rule as the client panel.
+function computeClientStats() {
+  const byKey = new Map();
+  const get = n => { const k = clientKey(n); if (!byKey.has(k)) byKey.set(k, { key: k, names: new Map(), projs: [], recs: [] }); const o = byKey.get(k); o.names.set(n.trim(), (o.names.get(n.trim()) || 0) + 1); return o; };
+  state.projects.forEach(p => { if (p.client && p.client.trim()) get(p.client).projs.push(p); });
+  getBillingRecords().forEach(r => { if (r.client && r.client.trim() && (r.total || 0) !== 0) get(r.client).recs.push(r); });
+  const thisYear = String(new Date().getFullYear());
+  const yearAgo = new Date(); yearAgo.setFullYear(yearAgo.getFullYear() - 1);
+  const yearAgoStr = yearAgo.toISOString().slice(0, 10);
+  return [...byKey.values()].map(o => {
+    const name = [...o.names.entries()].sort((a, b) => b[1] - a[1])[0][0];
+    const ids = new Set(o.projs.map(p => String(p.id)));
+    const hist = new Set(o.recs.filter(r => !(r.projectId && ids.has(String(r.projectId)))).map(r => clientKey(r.project || r.location || '') + '|' + (r.date || '')));
+    const dates = [...o.projs.map(p => (p.date || '').slice(0, 10)), ...o.recs.map(r => r.date || '')].filter(Boolean).sort();
+    let open = 0;
+    o.projs.forEach(p => (p.payers || []).forEach(x => {
+      if (x.paid || !(Number(x.amount) > 0) || !['client', 'vendor', 'photo'].includes(x.type)) return;
+      open += x.type === 'photo' ? (Number(x.qty) || 1) * Number(x.amount) : Math.round(Number(x.amount) * 1.18);
+    }));
+    return {
+      name, key: o.key,
+      projects: o.projs.length + hist.size,
+      revenue: o.recs.reduce((s, r) => s + (r.total || 0), 0),
+      yearRevenue: o.recs.filter(r => (r.date || '').startsWith(thisYear)).reduce((s, r) => s + (r.total || 0), 0),
+      first: dates[0] || '', last: dates[dates.length - 1] || '',
+      activeThisYear: dates.some(d => d.startsWith(thisYear)),
+      dormant: !!dates.length && dates[dates.length - 1] < yearAgoStr,
+      open
+    };
+  });
+}
+function renderClientsTop10(stats) {
+  const el = document.getElementById('clients-top10'); if (!el) return;
+  const byYear = document.getElementById('client-top-range')?.value === 'year';
+  const val = s => byYear ? s.yearRevenue : s.revenue;
+  const top = stats.filter(s => val(s) > 0).sort((a, b) => val(b) - val(a)).slice(0, 10);
+  const max = top.length ? val(top[0]) : 1;
+  const medals = ['🥇', '🥈', '🥉'];
+  el.innerHTML = top.map((s, i) => `<div class="cl-top-row" onclick="openClientPanel('${jsq(s.name)}')">
+      <div class="cl-top-rank" style="font-size:${i < 3 ? '16' : '13'}px;">${medals[i] || i + 1}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;gap:8px;">
+          <span style="font-size:13px;font-weight:500;">${s.name}</span>
+          <span style="font-size:12px;color:var(--text3);">${s.projects} פרויקטים</span>
+        </div>
+        <div style="height:5px;background:var(--border);border-radius:3px;overflow:hidden;"><div style="height:100%;width:${Math.round(val(s) / max * 100)}%;background:var(--accent);border-radius:3px;"></div></div>
+      </div>
+      <div style="font-size:14px;font-weight:600;color:var(--accent);white-space:nowrap;">${fmtMoney(val(s))}</div>
+    </div>`).join('') || '<div style="color:var(--text3);font-size:13px;padding:8px 0;">אין נתונים</div>';
+}
 function renderClientCards() {
   const el = document.getElementById('client-cards-list');
   const cntEl = document.getElementById('client-cards-count');
@@ -2970,12 +3055,23 @@ function renderClientCards() {
   getBillingRecords().forEach(r => addName(r.client));
   state.projects.forEach(p => addName(p.client));
   const q = clientKey(document.getElementById('client-search')?.value || '');
-  let clients = [...byKey.values()].map(m => [...m.entries()].sort((a, b) => b[1] - a[1])[0][0]).sort((a,b) => a.localeCompare(b, 'he'));
-  if (q) clients = clients.filter(n => clientKey(n).includes(q) || state.projects.some(p => clientKey(p.client) === clientKey(n) && clientKey(p.title).includes(q)));
+  const _stats = computeClientStats();
+  renderClientsTop10(_stats);
+  const statByKey = new Map(_stats.map(s => [s.key, s]));
+  const _filter = document.getElementById('client-filter')?.value || 'all';
+  const _sort = document.getElementById('client-sort')?.value || 'revenue';
+  let list = _stats;
+  if (q) list = list.filter(s => s.key.includes(q) || state.projects.some(p => clientKey(p.client) === s.key && clientKey(p.title).includes(q)) || getBillingRecords().some(r => clientKey(r.client) === s.key && (clientKey(r.project).includes(q) || clientKey(r.location).includes(q))));
+  if (_filter === 'year') list = list.filter(s => s.activeThisYear);
+  if (_filter === 'open') list = list.filter(s => s.open > 0);
+  if (_filter === 'repeat') list = list.filter(s => s.projects >= 2);
+  if (_filter === 'dormant') list = list.filter(s => s.dormant);
+  const cmp = { revenue: (a, b) => b.revenue - a.revenue, projects: (a, b) => b.projects - a.projects || b.revenue - a.revenue, recent: (a, b) => (b.last || '').localeCompare(a.last || ''), name: (a, b) => a.name.localeCompare(b.name, 'he') }[_sort];
+  let clients = list.sort(cmp).map(s => s.name);
 
-  if (cntEl) cntEl.textContent = clients.length ? clients.length + ' לקוחות' : '';
+  if (cntEl) cntEl.textContent = clients.length ? clients.length + (clients.length !== _stats.length ? ` מתוך ${_stats.length}` : '') + ' לקוחות' : '';
   if (!clients.length) {
-    el.innerHTML = `<div style="color:var(--text3);font-size:13px;padding:8px 0;">${q ? 'לא נמצא לקוח' : 'אין לקוחות עדיין'}</div>`;
+    el.innerHTML = `<div style="color:var(--text3);font-size:13px;padding:8px 0;">${(q || _filter !== 'all') ? 'לא נמצאו לקוחות' : 'אין לקוחות עדיין'}</div>`;
     return;
   }
 
@@ -3080,8 +3176,8 @@ function renderClientCards() {
           ${projNamesList?`<div style="font-size:11px;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${projNamesList}</div>`:''}
         </div>
         <div style="display:flex;gap:14px;align-items:center;flex-shrink:0;">
-          ${revenue>0?`<span style="font-size:13px;color:var(--accent);font-weight:600;">${fmtMoney(revenue)}</span>`:''}
-          ${(() => { const ids = new Set(activeProjects.map(p => String(p.id))); const n = activeProjects.length + billingByProj.filter(g => !clientBilling.some(r => g.recordIds.includes(r.id) && r.projectId && ids.has(String(r.projectId)))).length; return n > 0 ? `<span style="font-size:11px;color:var(--text3);">${n} פרויקטים</span>` : ''; })()}
+          ${(() => { const st = statByKey.get(clientKey(name)); return st ? `${st.open > 0 ? `<span class="cl-open">פתוח ${fmtMoney(st.open)}</span>` : ''}${st.last ? `<span style="font-size:11px;color:var(--text3);">אחרון ${st.last.slice(5,7)}/${st.last.slice(0,4)}</span>` : ''}${st.revenue > 0 ? `<span style="font-size:13px;color:var(--accent);font-weight:600;">${fmtMoney(st.revenue)}</span>` : ''}` : ''; })()}
+          ${(() => { const st = statByKey.get(clientKey(name)); return st && st.projects ? `<span style="font-size:11px;color:var(--text3);">${st.projects} פרויקטים</span>` : ''; })()}
           <span style="font-size:12px;color:var(--text3);padding:4px 6px;" id="${safeId}-arrow" onclick="event.stopPropagation();toggleClientCard('${jsq(name)}')" title="פתיחה כאן">${isOpen?'▲':'▼'}</span>
         </div>
       </div>
