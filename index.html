@@ -611,6 +611,7 @@
   .customize-btn { border-radius:8px; }
   .proj-card { border-radius:12px; }
   @media (max-width: 768px) { .page { padding:16px; } .page-title { font-size:22px; } }
+  .dup-banner { display:flex; justify-content:space-between; align-items:center; gap:14px; background:var(--high-light); border:1px solid #f0c9a8; border-radius:12px; padding:14px 18px; margin-bottom:18px; }
   .pp-head { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 18px; }
   .pp-client { font-size:13px; color:var(--text2); }
   .pp-title-row { display:flex; justify-content:space-between; align-items:center; gap:10px; margin:2px 0 6px; }
@@ -680,7 +681,7 @@
     <div style="padding:16px 24px;border-top:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">סנכרון ענן</div>
       <div id="sync-status" style="font-size:12px;color:var(--text3);margin-bottom:10px">מתחבר...</div>
-      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-01 · שלב 5.1</div>
+      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-01 · תיקון הכנסות</div>
       <div id="other-session-warning" class="hidden" style="font-size:11px;color:#fff;background:var(--urgent);border-radius:6px;padding:6px 8px;margin-bottom:10px;line-height:1.4;">⚠ האפליקציה פתוחה כרגע גם במקום/דפדפן אחר — שינויים עלולים להתנגש. מומלץ לסגור שם.</div>
     </div>
   </aside>
@@ -919,6 +920,7 @@
         <button id="billing-search-clear" onclick="clearBillingSearch()" style="display:none;position:absolute;left:10px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:16px;color:var(--text3);cursor:pointer;">✕</button>
       </div>
       <div id="billing-search-results" style="display:none;margin-bottom:18px;"></div>
+      <div id="dup-cleanup-banner" style="display:none;"></div>
       <div class="card" id="duplicate-check-card" style="margin-bottom:18px;border-color:var(--urgent);display:none;">
         <div class="card-title" style="color:var(--urgent);cursor:pointer;display:flex;justify-content:space-between;align-items:center;" onclick="toggleDuplicateCheck()">
           <span>⚠️ כפילויות אפשריות בהכנסות <span id="duplicate-check-count" style="font-weight:400;"></span></span>
@@ -1371,7 +1373,7 @@ function restoreAutoBackup(dateStr) {
     const p = JSON.parse(data);
     if (!p.projects) { alert('גיבוי לא תקין'); return; }
     if (!confirm(`לשחזר גיבוי מ-${dateStr}?\n${p.projects.length} פרויקטים, ${(p.tasks||[]).length} משימות.\n\nהנתונים הנוכחיים יוחלפו.`)) return;
-    state = {projects:p.projects||[],tasks:p.tasks||[],settings:p.settings||state.settings,editDays:p.editDays||{},lastReset:p.lastReset||'',billing:p.billing||[],credits:p.credits||[],clients:p.clients||{}};
+    state = {projects:p.projects||[],tasks:p.tasks||[],settings:p.settings||state.settings,editDays:p.editDays||{},lastReset:p.lastReset||'',billing:p.billing||[],credits:p.credits||[],clients:p.clients||{},deletedIds:p.deletedIds||{billing:[],credits:[]}};
     blockCloudLoad = true;
     setTimeout(()=>{ blockCloudLoad=false; },30000);
     save(); render();
@@ -1903,10 +1905,21 @@ function dedup(arr) {
   const seen = new Set();
   return arr.filter(x => { if (seen.has(x.id)) return false; seen.add(x.id); return true; });
 }
-function mergeBilling(local, cloud) {
+// Union of local + cloud records by id, minus anything either side deleted.
+// Without the deleted-ids list, a record removed on one device (or one tab) was
+// resurrected by the next cloud merge — the root cause of the duplicate income
+// records found 2026-10-01.
+function mergeBilling(local, cloud, deleted) {
+  const del = new Set((deleted || []).map(String));
   const map = {};
   [...local, ...cloud].forEach(r => { if (r.id) map[r.id] = r; });
-  return Object.values(map);
+  return Object.values(map).filter(r => !del.has(String(r.id)));
+}
+function unionIds(a, b) { return [...new Set([...(a || []), ...(b || [])].map(String))]; }
+function markDeleted(kind, ids) {
+  if (!state.deletedIds) state.deletedIds = { billing: [], credits: [] };
+  if (!state.deletedIds[kind]) state.deletedIds[kind] = [];
+  state.deletedIds[kind] = unionIds(state.deletedIds[kind], ids);
 }
 
 async function changePin() {
@@ -1988,6 +2001,8 @@ function mergeCloudState(d) {
     };
   });
   const mergedSettings = {...(local.settings||{}), ...(p.settings||{})};
+  const _delB = unionIds((local.deletedIds||{}).billing, (p.deletedIds||{}).billing);
+  const _delC = unionIds((local.deletedIds||{}).credits, (p.deletedIds||{}).credits);
   // union both editDays maps so calendar marks from any device are kept
   const mergedEditDays = {...(p.editDays||{}), ...(local.editDays||{})};
   state = applyDayReset({
@@ -1996,9 +2011,10 @@ function mergeCloudState(d) {
     lastReset: mergedLastReset,
     settings: mergedSettings,
     editDays: mergedEditDays,
-    billing: mergeBilling(local.billing||[], p.billing||[]),
-    credits: mergeBilling(local.credits||[], p.credits||[]),
-    clients: {...(local.clients||{}), ...(p.clients||{})}
+    billing: mergeBilling(local.billing||[], p.billing||[], _delB),
+    credits: mergeBilling(local.credits||[], p.credits||[], _delC),
+    clients: {...(local.clients||{}), ...(p.clients||{})},
+    deletedIds: { billing: _delB, credits: _delC }
   });
   lastCloudBillingCount = Math.max(lastCloudBillingCount, (state.billing||[]).length);
   try{localStorage.setItem('karin_pm',JSON.stringify(state));}catch(e){}
@@ -2038,7 +2054,7 @@ function load() {
       if (p.projects) p.projects = dedup(p.projects.map(normalizeProject)).filter(p=>p.client&&p.client.trim());
       if (p.tasks) p.tasks = dedup(p.tasks.map(x=>({...x,done:Number(x.done)||0}))).filter(t=>t.text&&t.text.trim()&&!t.auto&&!t.projId);
       const hadStaleReset = (p.lastReset||'') !== todayStr();
-      state = applyDayReset({projects:p.projects||[],tasks:p.tasks||[],settings:p.settings||{hoursPerDay:6,photosPerDay:20,workDays:[0,1,2,3,4]},editDays:p.editDays||{},billing:p.billing||[],credits:p.credits||[],clients:p.clients||{},lastReset:p.lastReset||''});
+      state = applyDayReset({projects:p.projects||[],tasks:p.tasks||[],settings:p.settings||{hoursPerDay:6,photosPerDay:20,workDays:[0,1,2,3,4]},editDays:p.editDays||{},billing:p.billing||[],credits:p.credits||[],clients:p.clients||{},deletedIds:p.deletedIds||{billing:[],credits:[]},lastReset:p.lastReset||''});
       // applyDayReset() only updated the in-memory state — persist the reset
       // immediately, or mergeCloudState()'s next localStorage read (moments
       // away, once the Firebase listener fires) sees yesterday's un-reset
@@ -2570,9 +2586,52 @@ function renderDuplicateCheck() {
     </div>`;
   }).join('');
 }
+// Duplicate auto-generated income records: same project + same total + same supplier names.
+// Keeps the copy a project payer points to (or the oldest if none does); only removes
+// copies nothing references. Manual/CSV records (no projectId) are never touched.
+function findDuplicateAutoRecords() {
+  const refs = new Set();
+  state.projects.forEach(p => (p.payers||[]).forEach(pay => { if (pay.billingRecordId) refs.add(String(pay.billingRecordId)); }));
+  const groups = {};
+  (state.billing||[]).forEach(r => {
+    if (!r.projectId || !r.total) return;
+    const sup = (r.suppliers||[]).map(x => (x.name||'').trim()).sort().join('|');
+    const k = r.projectId + '#' + r.total + '#' + sup;
+    (groups[k] = groups[k] || []).push(r);
+  });
+  const out = [];
+  Object.values(groups).forEach(v => {
+    if (v.length < 2) return;
+    const linked = v.filter(r => refs.has(String(r.id)));
+    const keep = linked.length ? linked : [v.reduce((a, b) => (a.id < b.id ? a : b))];
+    v.forEach(r => { if (!keep.includes(r) && !refs.has(String(r.id))) out.push(r); });
+  });
+  return out;
+}
+function renderDuplicateCleanupBanner() {
+  const el = document.getElementById('dup-cleanup-banner'); if (!el) return;
+  const d = findDuplicateAutoRecords();
+  if (!d.length) { el.innerHTML = ''; el.style.display = 'none'; return; }
+  const sum = d.reduce((s, r) => s + (r.total||0), 0);
+  el.style.display = '';
+  el.innerHTML = `<div class="dup-banner"><div><b>נמצאו ${d.length} רשומות הכנסה כפולות (${fmtMoney(sum)})</b><div style="font-size:12px;color:var(--text2);margin-top:2px;">העתקים זהים של תשלומים שכבר רשומים — הן מנפחות את סכום ההכנסות</div></div><button class="btn-save" onclick="cleanupDuplicateAutoRecords()">הצג ונקה</button></div>`;
+}
+function cleanupDuplicateAutoRecords() {
+  const d = findDuplicateAutoRecords(); if (!d.length) return;
+  const sum = d.reduce((s, r) => s + (r.total||0), 0);
+  const lines = d.slice().sort((a, b) => (a.client||'').localeCompare(b.client||'', 'he') || (a.date||'').localeCompare(b.date||''))
+    .map(r => `${r.date}  ${fmtMoney(r.total)}  ${r.client||''} · ${r.project||''}${(r.suppliers||[]).length ? ' · ' + r.suppliers.map(x => x.name).join(', ') : ''}`);
+  if (!confirm(`למחוק ${d.length} רשומות כפולות (סה"כ ${fmtMoney(sum)})?\n\n${lines.join('\n')}\n\nהעותק המקושר לפרויקט נשאר בכל מקרה. מומלץ לייצא גיבוי לפני.`)) return;
+  const ids = new Set(d.map(r => String(r.id)));
+  state.billing = (state.billing||[]).filter(r => !ids.has(String(r.id)));
+  markDeleted('billing', [...ids]);
+  save(); renderBillingPage(); renderBillingSummaryMorning();
+  alert(`נמחקו ${d.length} רשומות כפולות.`);
+}
 function deleteBillingRecordById(id) {
   if (!confirm('למחוק את רשומת ההכנסה הזו? הפעולה לא הפיכה.')) return;
   state.billing = (state.billing||[]).filter(r => r.id !== id);
+  markDeleted('billing', [id]);
   state.projects.forEach(p => (p.payers||[]).forEach(pay => { if (pay.billingRecordId === id) delete pay.billingRecordId; }));
   save(); renderBillingPage();
 }
@@ -2584,6 +2643,7 @@ function applyBillingTab() {
 }
 function renderBillingPage() {
   applyBillingTab();
+  renderDuplicateCleanupBanner();
   if (!document.getElementById('page-billing')) return;
   renderCreditsSection();
   renderClientCards();
@@ -3145,6 +3205,7 @@ function deleteBillingRecord() {
   if (!editingBillingId) return;
   if (!confirm('למחוק רשומה זו?')) return;
   state.billing = (state.billing||[]).filter(r=>r.id!==editingBillingId);
+  markDeleted('billing', [editingBillingId]);
   save(); closeBillingModal(); renderBillingPage();
 }
 
@@ -4100,7 +4161,7 @@ function importBackup(e){
       const p=JSON.parse(ev.target.result);
       if(!p.projects){alert('קובץ לא תקין');return;}
       if(!confirm('לייבא גיבוי? הנתונים הנוכחיים יוחלפו.'))return;
-      state={projects:p.projects||[],tasks:p.tasks||[],settings:p.settings||state.settings,editDays:p.editDays||{},lastReset:p.lastReset||'',billing:p.billing||[],clients:p.clients||{}};
+      state={projects:p.projects||[],tasks:p.tasks||[],settings:p.settings||state.settings,editDays:p.editDays||{},lastReset:p.lastReset||'',billing:p.billing||[],credits:p.credits||[],clients:p.clients||{},deletedIds:p.deletedIds||{billing:[],credits:[]}};
       blockCloudLoad = true;
       setTimeout(()=>{ blockCloudLoad = false; }, 30000);
       save();render();
@@ -4770,6 +4831,7 @@ function togglePaid(projId, idx) {
     // מחק רשומת הכנסה אם קיימת
     if (pay.billingRecordId) {
       state.billing = state.billing.filter(r => r.id !== pay.billingRecordId);
+      markDeleted('billing', [pay.billingRecordId]);
       delete pay.billingRecordId;
     }
   }
@@ -5001,6 +5063,7 @@ function addGlobalCredit() {
 function deleteCredit(id) {
   if (!confirm('למחוק זיכוי זה?')) return;
   state.credits = (state.credits || []).filter(c => c.id !== id);
+  markDeleted('credits', [id]);
   save(); renderCreditsSection();
 }
 
