@@ -710,7 +710,7 @@
     <div style="padding:16px 24px;border-top:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">סנכרון ענן</div>
       <div id="sync-status" style="font-size:12px;color:var(--text3);margin-bottom:10px">מתחבר...</div>
-      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-01 · מכירה ישירה</div>
+      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-01 · מכירה ישירה בסיכום</div>
       <div id="other-session-warning" class="hidden" style="font-size:11px;color:#fff;background:var(--urgent);border-radius:6px;padding:6px 8px;margin-bottom:10px;line-height:1.4;">⚠ האפליקציה פתוחה כרגע גם במקום/דפדפן אחר — שינויים עלולים להתנגש. מומלץ לסגור שם.</div>
     </div>
   </aside>
@@ -4464,7 +4464,8 @@ document.getElementById('edit-modal').addEventListener('click',function(e){if(e.
 
 // ===== גביה =====
 function billingBadgeHtml(p) {
-  const payers = (p.payers || []).filter(x => x.type !== 'credit'); // זיכוי אינו משלם
+  // זיכוי אינו משלם; ספק עם 0 שילם דרך המעצבת — אין ממנו גבייה
+  const payers = (p.payers || []).filter(x => x.type !== 'credit' && !(x.type === 'vendor' && !(Number(x.amount) > 0)));
   if (!payers.length) return '';
   const paid = payers.filter(x => x.paid).length;
   const total = payers.length;
@@ -4633,6 +4634,13 @@ function renderBillingSection(p) {
     payers.filter(x => x.paid && x.type === 'client').reduce((s,x) => s + Math.round(Math.max(0, Number(x.amount)||0) * VAT_RATE), 0);
   const totalWithVat = Math.round((totalBeforeVat - creditTotal) * VAT_RATE);
   const remainAmount = totalWithVat - paidAmount;
+  // מכירה ישירה: לא משנה את חלק הלקוח, אבל כן נספרת בסיכום הפרויקט (הכנסה מהפרויקט)
+  const _direct = payers.filter(x => x.type === 'direct');
+  const directTotal = _direct.reduce((s, x) => s + Math.round((Number(x.amount) || 0) * VAT_RATE), 0);
+  const directPaidAmt = _direct.filter(x => x.paid).reduce((s, x) => s + Math.round((Number(x.amount) || 0) * VAT_RATE), 0);
+  const projTotal = totalWithVat + directTotal;
+  const projPaid = paidAmount + directPaidAmt;
+  const projRemain = remainAmount + (directTotal - directPaidAmt);
 
   const baseButtons = [2700, 3700, 5000].map(v =>
     `<button onclick="updateBillingBase(${p.id},${v})" style="padding:4px 10px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid ${base===v?'var(--accent)':'var(--border2)'};border-radius:20px;background:${base===v?'var(--accent-light)':'var(--surface2)'};color:${base===v?'var(--accent)':'var(--text2)'};cursor:pointer;font-weight:${base===v?600:400};">₪${v.toLocaleString()}</button>`
@@ -4708,7 +4716,7 @@ function renderBillingSection(p) {
       <button class="billing-paid-btn ${pay.paid ? 'paid' : ''}" onclick="togglePaid(${p.id},${realIdx})">${pay.paid ? '✓' : ''}</button>
       <button class="billing-delete-btn" onclick="deletePayer(${p.id},${realIdx})">✕</button>
     </div>`;
-  }).join('') + (directSales.length ? `<div style="font-size:11px;color:#0e7490;margin:2px 4px 6px;">מכירה ישירה לא נכללת בחשבון של הלקוח — כל הסכום שלך</div>` : '');
+  }).join('') + (directSales.length ? `<div style="font-size:11px;color:#0e7490;margin:2px 4px 6px;">מכירה ישירה נספרת בסיכום הפרויקט, אבל לא משנה את חלק הלקוח (בלי +500, לא מתחלקים) — כל הסכום שלך</div>` : '');
 
   const paymentRows = directPayments.map((pay) => {
     const realIdx = payers.indexOf(pay);
@@ -4818,11 +4826,11 @@ function renderBillingSection(p) {
         ${!client ? `<button class="edit-btn" onclick="addClient(${p.id})">+ הוסף לקוח</button>` : ''}
       </div>
 
-      ${payers.length && (totalBeforeVat || paidAmount) ? `
+      ${payers.length && (totalBeforeVat || projPaid || directTotal) ? `
       <div class="billing-summary" style="margin-top:10px;">
-        ${client ? `<div class="billing-summary-item"><div>סה״כ כולל מעמ</div><strong>${fmtILS(totalWithVat)}</strong></div>` : ''}
-        <div class="billing-summary-item green"><div>${client ? 'התקבל' : 'הכנסה מספקים'}</div><strong>${fmtILS(paidAmount)}</strong></div>
-        ${client ? `<div class="billing-summary-item ${remainAmount>0?'red':'green'}"><div>${remainAmount<0?'זיכוי ללקוח':'נשאר'}</div><strong>${fmtILS(Math.abs(remainAmount))}</strong></div>` : ''}
+        ${client || directTotal ? `<div class="billing-summary-item"><div>סה״כ פרויקט כולל מעמ</div><strong>${fmtILS(projTotal)}</strong>${directTotal ? `<div style="font-size:11px;color:#0e7490;margin-top:2px;">לקוח ${fmtILS(totalWithVat)} + מכירה ישירה ${fmtILS(directTotal)}</div>` : ''}</div>` : ''}
+        <div class="billing-summary-item green"><div>${client || directTotal ? 'התקבל' : 'הכנסה מספקים'}</div><strong>${fmtILS(projPaid)}</strong></div>
+        ${client || directTotal ? `<div class="billing-summary-item ${projRemain>0?'red':'green'}"><div>${remainAmount<0?'זיכוי ללקוח':'נשאר'}</div><strong>${fmtILS(remainAmount<0 ? Math.abs(remainAmount) : projRemain)}</strong></div>` : ''}
       </div>
       ${client ? `<div style="display:flex;gap:8px;margin-top:10px;">
         <button onclick="exportPaymentPDF(${p.id})" style="flex:1;padding:7px 12px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">📄 שמור PDF</button>
