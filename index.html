@@ -631,6 +631,12 @@
   .pp-stat-v { font-size:22px; font-weight:600; line-height:1.3; }
   .pp-stat-v small { font-size:13px; font-weight:400; color:var(--text2); }
   .pp-stat .prog-bar { margin-top:8px; }
+  .cp-row { display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--border); font-size:13px; flex-wrap:wrap; }
+  .cp-row:last-child { border-bottom:none; }
+  .cp-date { font-size:11px; color:var(--text3); white-space:nowrap; }
+  .cp-sub { font-size:11px; color:var(--text3); }
+  .cp-empty { font-size:13px; color:var(--text3); padding:6px 0; }
+  .cp-notes { width:100%; min-height:70px; box-sizing:border-box; padding:8px 10px; font-size:13px; font-family:'Rubik',sans-serif; border:1px solid var(--border2); border-radius:8px; background:var(--surface); color:var(--text); resize:vertical; }
   .pp-hint { font-size:11px; color:var(--text3); }
   .pp-edited-input { width:2.3em; font:inherit; font-size:22px; font-weight:600; color:var(--text); background:transparent; border:1px solid transparent; border-radius:6px; padding:0 4px; text-align:center; -moz-appearance:textfield; }
   .pp-edited-input:hover { border-color:var(--border2); background:var(--surface); }
@@ -683,7 +689,7 @@
     <div style="padding:16px 24px;border-top:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">סנכרון ענן</div>
       <div id="sync-status" style="font-size:12px;color:var(--text3);margin-bottom:10px">מתחבר...</div>
-      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-01 · סימון ידני</div>
+      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-01 · כרטיס לקוח</div>
       <div id="other-session-warning" class="hidden" style="font-size:11px;color:#fff;background:var(--urgent);border-radius:6px;padding:6px 8px;margin-bottom:10px;line-height:1.4;">⚠ האפליקציה פתוחה כרגע גם במקום/דפדפן אחר — שינויים עלולים להתנגש. מומלץ לסגור שם.</div>
     </div>
   </aside>
@@ -968,6 +974,7 @@
           <span>👤 כרטיסי לקוחות</span>
           <span id="client-cards-count" style="font-size:12px;font-weight:400;color:var(--text3);"></span>
         </div>
+        <input id="client-search" type="text" placeholder="🔍 חיפוש לקוח או פרויקט..." oninput="renderClientCards()" style="width:100%;box-sizing:border-box;padding:9px 12px;margin-bottom:12px;font-size:14px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:8px;background:var(--surface);color:var(--text);" />
         <div id="client-cards-list"></div>
       </div>
       <div class="card" data-btab="records">
@@ -2477,7 +2484,7 @@ function renderBillingSearch() {
       return `<div class="billing-record">
         <div class="billing-record-date">${dateStr}</div>
         <div style="flex:1;min-width:0;">
-          <div class="billing-record-client">${r.client||'—'} ${recProjHtml(r)}</div>
+          <div class="billing-record-client"><span class="proj-link" onclick="event.stopPropagation();openClientPanel('${jsq(r.client)}')">${r.client||'—'}</span> ${recProjHtml(r)}</div>
           ${r.designerFee>0||supplierStr?`<div class="billing-record-sub">${r.designerFee>0?'מעצבת '+fmtMoney(r.designerFee):''}${r.designerFee>0&&supplierStr?' · ':''}${supplierStr}</div>`:''}
         </div>
         <div class="billing-record-amount">${fmtMoney(r.total)}</div>
@@ -2865,7 +2872,7 @@ function renderBillingPage() {
             return `<div class="billing-record">
               <div class="billing-record-date">${dateStr}</div>
               <div style="flex:1;min-width:0;">
-                <div class="billing-record-client">${r.client||'—'} ${recProjHtml(r)}</div>
+                <div class="billing-record-client"><span class="proj-link" onclick="event.stopPropagation();openClientPanel('${jsq(r.client)}')">${r.client||'—'}</span> ${recProjHtml(r)}</div>
               </div>
               <div class="billing-record-amount">${fmtMoney(r.total)}</div>
               <button class="billing-record-edit" onclick="openBillingModal(${r.id})">✏️</button>
@@ -2921,7 +2928,7 @@ function renderBillingPage() {
       return `<div class="billing-record">
         <div class="billing-record-date">${dateStr}</div>
         <div style="flex:1;min-width:0;">
-          <div class="billing-record-client">${r.client||'—'} ${recProjHtml(r)}</div>
+          <div class="billing-record-client"><span class="proj-link" onclick="event.stopPropagation();openClientPanel('${jsq(r.client)}')">${r.client||'—'}</span> ${recProjHtml(r)}</div>
           ${r.designerFee>0||supplierStr?`<div class="billing-record-sub">${r.designerFee>0?'מעצבת '+fmtMoney(r.designerFee):''}${r.designerFee>0&&supplierStr?' · ':''}${supplierStr}</div>`:''}
         </div>
         <div class="billing-record-amount">${fmtMoney(r.total)}</div>
@@ -2937,27 +2944,32 @@ function renderClientCards() {
   if (!el) return;
 
   // Collect all unique client names from billing records + projects
-  const clientSet = new Set();
-  getBillingRecords().forEach(r => { if (r.client && r.client.trim()) clientSet.add(r.client.trim()); });
-  state.projects.forEach(p => { if (p.client && p.client.trim()) clientSet.add(p.client.trim()); });
-  const clients = [...clientSet].sort((a,b) => a.localeCompare(b, 'he'));
+  // group spelling variants ("רייצל"/"רייצ׳ל", "הום דיזיין"/"הוםדיזיין") under one card
+  const byKey = new Map();
+  const addName = n => { n = (n || '').trim(); if (!n) return; const k = clientKey(n); if (!byKey.has(k)) byKey.set(k, new Map()); const m = byKey.get(k); m.set(n, (m.get(n) || 0) + 1); };
+  getBillingRecords().forEach(r => addName(r.client));
+  state.projects.forEach(p => addName(p.client));
+  const q = clientKey(document.getElementById('client-search')?.value || '');
+  let clients = [...byKey.values()].map(m => [...m.entries()].sort((a, b) => b[1] - a[1])[0][0]).sort((a,b) => a.localeCompare(b, 'he'));
+  if (q) clients = clients.filter(n => clientKey(n).includes(q) || state.projects.some(p => clientKey(p.client) === clientKey(n) && clientKey(p.title).includes(q)));
 
   if (cntEl) cntEl.textContent = clients.length ? clients.length + ' לקוחות' : '';
   if (!clients.length) {
-    el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:8px 0;">אין לקוחות עדיין</div>';
+    el.innerHTML = `<div style="color:var(--text3);font-size:13px;padding:8px 0;">${q ? 'לא נמצא לקוח' : 'אין לקוחות עדיין'}</div>`;
     return;
   }
 
   el.innerHTML = clients.map((name, idx) => {
-    const notes = (state.clients?.[name]?.notes) || '';
-    const clientBilling = getBillingRecords().filter(r => r.client === name)
+    const _nk = Object.keys(state.clients || {}).find(n => clientKey(n) === clientKey(name));
+    const notes = _nk ? (state.clients[_nk].notes || '') : '';
+    const clientBilling = getBillingRecords().filter(r => clientKey(r.client) === clientKey(name))
       .sort((a,b) => (b.date||'').localeCompare(a.date||''));
     const revenue = clientBilling.reduce((s, r) => s + (r.total||0), 0);
     const safeId = 'cc-' + idx;
     const isOpen = clientCardOpen.has(name);
 
     // Active projects from state.projects
-    const activeProjects = state.projects.filter(p => p.client === name);
+    const activeProjects = state.projects.filter(p => clientKey(p.client) === clientKey(name));
 
     // Unique project count across both sources
     const uniqueProjectNames = new Set([
@@ -3042,7 +3054,7 @@ function renderClientCards() {
 
     const projNamesList = [...uniqueProjectNames].filter(n=>n&&n!=='—').join(' · ');
     return `<div style="border:1px solid var(--border2);border-radius:var(--radius);margin-bottom:10px;overflow:hidden;">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;background:var(--surface2);" onclick="toggleClientCard('${name.replace(/'/g,"\\'")}')">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;background:var(--surface2);" onclick="openClientPanel('${jsq(name)}')" title="פתיחת כרטיס לקוח">
         <div style="min-width:0;">
           <div style="font-size:15px;font-weight:600;">${name}</div>
           ${projNamesList?`<div style="font-size:11px;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${projNamesList}</div>`:''}
@@ -3050,7 +3062,7 @@ function renderClientCards() {
         <div style="display:flex;gap:14px;align-items:center;flex-shrink:0;">
           ${revenue>0?`<span style="font-size:13px;color:var(--accent);font-weight:600;">${fmtMoney(revenue)}</span>`:''}
           ${(billingByProj.length+activeProjects.length)>0?`<span style="font-size:11px;color:var(--text3);">${billingByProj.length+activeProjects.length} פרויקטים</span>`:''}
-          <span style="font-size:12px;color:var(--text3);" id="${safeId}-arrow">${isOpen?'▲':'▼'}</span>
+          <span style="font-size:12px;color:var(--text3);padding:4px 6px;" id="${safeId}-arrow" onclick="event.stopPropagation();toggleClientCard('${jsq(name)}')" title="פתיחה כאן">${isOpen?'▲':'▼'}</span>
         </div>
       </div>
       <div id="${safeId}-body" style="display:${isOpen?'block':'none'};padding:12px 14px;">
@@ -3914,7 +3926,8 @@ function projectCardHtml(p, _allFinish, inPanel) {
       const _hid = k => _tab===k ? '' : 'hidden';
       return `<div class="pp">
       <div class="pp-head">
-        <div class="pp-client">${p.client || ''}</div>
+        ${panelBackClient ? `<button class="panel-link-btn" style="padding:0;margin-bottom:6px;" onclick="openClientPanel('${jsq(panelBackClient)}')">→ חזרה לכרטיס ${panelBackClient}</button>` : ''}
+        <div class="pp-client"><span class="proj-link" onclick="openClientPanel('${jsq(p.client)}')" title="כרטיס לקוח">${p.client || ''}</span></div>
         <div class="pp-title-row"><h2 class="pp-title">${p.title || ''}</h2><button class="edit-btn" onclick="openEdit(${p.id})" title="עריכת פרטי פרויקט">✏</button></div>
         <div class="pp-meta">${p.deadline ? `<span>דדליין ${new Date(p.deadline).toLocaleDateString('he-IL')}</span>` : ''}${_estHtml}${billingBadgeHtml(p)}</div>
         ${_ppStages}
@@ -3980,9 +3993,24 @@ function setPanelTab(t) {
   document.querySelectorAll('#proj-panel .pp-tab').forEach(b => b.classList.toggle('active', b.dataset.ptab === t));
 }
 function isPanelProject(id) { return panelProjectId !== null && String(panelProjectId) === String(id); }
+var panelClient = null;      // client name when the panel shows a client card
+var panelBackClient = null;  // client to go back to after opening one of its projects
+function clientKey(n) { return String(n || '').replace(/[\s'"׳״`\-–]/g, '').toLowerCase(); }
+function jsq(s) { return String(s || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;'); }
+function openClientPanel(name) {
+  if (!name) return;
+  panelClient = name; panelProjectId = null; panelBackClient = null;
+  document.getElementById('proj-panel').classList.remove('hidden');
+  document.getElementById('proj-panel-bg').classList.remove('hidden');
+  document.body.classList.add('panel-open');
+  renderProjects();
+  document.getElementById('proj-panel').scrollTop = 0;
+}
 function openProjectPanel(id) {
   const p = state.projects.find(x => String(x.id) === String(id)); if (!p) return;
   if (String(panelProjectId) !== String(p.id)) panelTab = 'edit';
+  panelBackClient = panelClient || null;
+  panelClient = null;
   panelProjectId = p.id;
   document.getElementById('proj-panel').classList.remove('hidden');
   document.getElementById('proj-panel-bg').classList.remove('hidden');
@@ -3991,8 +4019,8 @@ function openProjectPanel(id) {
   document.getElementById('proj-panel').scrollTop = 0;
 }
 function closeProjectPanel() {
-  if (panelProjectId === null) return;
-  panelProjectId = null;
+  if (panelProjectId === null && panelClient === null) return;
+  panelProjectId = null; panelClient = null; panelBackClient = null;
   document.getElementById('proj-panel').classList.add('hidden');
   document.getElementById('proj-panel-bg').classList.add('hidden');
   document.body.classList.remove('panel-open');
@@ -4000,14 +4028,15 @@ function closeProjectPanel() {
 }
 function renderProjectPanel() {
   const body = document.getElementById('proj-panel-body'); if (!body) return;
+  if (panelClient !== null) { const sc = document.getElementById('proj-panel').scrollTop; body.innerHTML = clientPanelHtml(panelClient); document.getElementById('proj-panel').scrollTop = sc; return; }
   if (panelProjectId === null) { body.innerHTML = ''; return; }
   const p = state.projects.find(x => String(x.id) === String(panelProjectId));
   if (!p) { closeProjectPanel(); return; }
-  const others = state.projects.filter(x => x.client === p.client && x.id !== p.id);
+  const others = state.projects.filter(x => clientKey(x.client) === clientKey(p.client) && x.id !== p.id);
   const clientHtml = `<div>
       <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
         <span>👤 ${p.client || 'לקוח'}</span>
-        <button class="panel-link-btn" onclick="openClientRecords('${String(p.client||'').replace(/'/g,"\\'")}')">רשומות בכספים ←</button>
+        <button class="panel-link-btn" onclick="openClientPanel('${jsq(p.client)}')">כרטיס לקוח מלא</button> <button class="panel-link-btn" onclick="openClientRecords('${String(p.client||'').replace(/'/g,"\\'")}')">רשומות בכספים ←</button>
       </div>
       ${others.length ? others.map(o => `<div class="panel-other-row">
           <span class="proj-link" onclick="openProjectPanel('${o.id}')">${o.title || '—'}</span>
@@ -4017,6 +4046,54 @@ function renderProjectPanel() {
   const scroll = document.getElementById('proj-panel').scrollTop;
   body.innerHTML = projectCardHtml(p, computeAllFinishDates(), true).replace('<!--pp-client-->', clientHtml);
   document.getElementById('proj-panel').scrollTop = scroll;
+}
+function clientPanelHtml(name) {
+  const k = clientKey(name);
+  const projs = state.projects.filter(p => clientKey(p.client) === k).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const recs = getBillingRecords().filter(r => clientKey(r.client) === k && (r.total || 0) !== 0).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const total = recs.reduce((s, r) => s + (r.total || 0), 0);
+  const thisYear = String(new Date().getFullYear());
+  const yearTotal = recs.filter(r => (r.date || '').startsWith(thisYear)).reduce((s, r) => s + (r.total || 0), 0);
+  let open = 0;
+  projs.forEach(p => (p.payers || []).forEach(x => {
+    if (x.paid || !(Number(x.amount) > 0) || !['client', 'vendor', 'photo'].includes(x.type)) return;
+    open += x.type === 'photo' ? (Number(x.qty) || 1) * Number(x.amount) : Math.round(Number(x.amount) * 1.18);
+  }));
+  const credit = (typeof getClientCredit === 'function') ? getClientCredit(name) : 0;
+  const noteKey = Object.keys(state.clients || {}).find(n => clientKey(n) === k);
+  const notes = noteKey ? (state.clients[noteKey].notes || '') : '';
+  const fmtD = d => d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : '';
+  const projRows = projs.map(p => `<div class="cp-row">
+      <span class="proj-link" style="flex:1;font-weight:500;" onclick="openProjectPanel('${p.id}')">${p.title || '—'}</span>
+      ${billingBadgeHtml(p)}
+      <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:var(--s-${p.stage}-b,var(--border));color:#fff;white-space:nowrap;">${STAGES[p.stage] || p.stage}</span>
+      <span class="cp-date">${fmtD(p.date)}</span>
+    </div>`).join('') || '<div class="cp-empty">אין פרויקטים פתוחים באפליקציה</div>';
+  const recRows = recs.map(r => `<div class="cp-row">
+      <span style="flex:1;">${r.project || '—'}${(r.suppliers || []).length ? `<span class="cp-sub"> · ${r.suppliers.map(x => x.name).filter(Boolean).join(', ')}</span>` : ''}</span>
+      <span style="font-weight:600;color:var(--accent);white-space:nowrap;">${fmtMoney(r.total || 0)}</span>
+      <span class="cp-date">${fmtD(r.date)}</span>
+      <button class="panel-link-btn" onclick="openBillingModal(${r.id})" aria-label="עריכה">✏️</button>
+    </div>`).join('') || '<div class="cp-empty">אין תשלומים רשומים</div>';
+  return `<div class="pp">
+    <div class="pp-head">
+      <div class="pp-client">כרטיס לקוח</div>
+      <div class="pp-title-row"><h2 class="pp-title">${name}</h2></div>
+      <div class="pp-stats" style="margin:8px 0 0;grid-template-columns:repeat(4,minmax(0,1fr));">
+        <div class="pp-stat"><div class="pp-stat-l">פרויקטים</div><div class="pp-stat-v">${projs.length}</div></div>
+        <div class="pp-stat"><div class="pp-stat-l">הכנסות ${thisYear}</div><div class="pp-stat-v" style="font-size:18px;">${fmtMoney(yearTotal)}</div></div>
+        <div class="pp-stat"><div class="pp-stat-l">סה״כ מאז ומעולם</div><div class="pp-stat-v" style="font-size:18px;">${fmtMoney(total)}</div></div>
+        <div class="pp-stat"><div class="pp-stat-l">פתוח לגבייה</div><div class="pp-stat-v" style="font-size:18px;color:${open ? 'var(--urgent)' : 'inherit'};">${fmtMoney(open)}</div></div>
+      </div>
+      ${credit > 0 ? `<div style="font-size:13px;color:#7c3aed;margin-top:10px;">זיכוי פתוח: ${fmtMoney(credit)}</div>` : ''}
+    </div>
+    <div class="pp-pane" style="margin-top:14px;">
+      <div class="pp-label">הערות על הלקוח</div>
+      <textarea class="cp-notes" placeholder="תיאור / הערות על הלקוח..." onchange="saveClientNote('${jsq(noteKey || name)}', this.value)">${notes}</textarea>
+    </div>
+    <div class="pp-pane" style="margin-top:14px;"><div class="pp-label">פרויקטים (${projs.length})</div>${projRows}</div>
+    <div class="pp-pane" style="margin-top:14px;"><div class="pp-label">תשלומים (${recs.length})</div>${recRows}</div>
+  </div>`;
 }
 function openClientRecords(client) {
   closeProjectPanel();
@@ -4028,7 +4105,7 @@ function recProjHtml(r) {
   const p = r.projectId != null ? state.projects.find(x => String(x.id) === String(r.projectId)) : null;
   return p ? `· <span class="proj-link" onclick="event.stopPropagation();openProjectPanel('${p.id}')">${r.project}</span>` : '· ' + r.project;
 }
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && panelProjectId !== null && !document.querySelector('.modal-bg.open, .modal-bg[style*="flex"]')) closeProjectPanel(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && (panelProjectId !== null || panelClient !== null) && !document.querySelector('.modal-bg.open, .modal-bg[style*="flex"]')) closeProjectPanel(); });
 
 function setStageBtn(btn){const id=Number(btn.dataset.pid);const s=btn.dataset.stage;setStage(id,s);}
 function setStage(id,s){
