@@ -662,6 +662,13 @@
   .morning-panel { position:relative; }
   .morning-panel .panel-handle { position:absolute; top:4px; left:0; right:0; margin:0; padding:0; border:none; line-height:1; }
   @media (min-width: 769px) { #page-morning.active { height:100vh; } }
+.cp-split{margin-top:12px;}
+.cp-split-bar{height:8px;border-radius:4px;background:#c9a27a;overflow:hidden;}
+.cp-split-bar span{display:block;height:100%;background:var(--accent);}
+.cp-split-legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:6px;font-size:12px;color:var(--text2);}
+.cp-split-legend b{color:var(--text);font-weight:600;}
+.cp-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-left:5px;vertical-align:middle;}
+.cp-dot-c{background:var(--accent);} .cp-dot-v{background:#c9a27a;}
 </style>
 </head>
 <body>
@@ -703,7 +710,7 @@
     <div style="padding:16px 24px;border-top:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">סנכרון ענן</div>
       <div id="sync-status" style="font-size:12px;color:var(--text3);margin-bottom:10px">מתחבר...</div>
-      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-01 · זיכוי נחשב כשולם</div>
+      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-01 · לקוח מול ספקים</div>
       <div id="other-session-warning" class="hidden" style="font-size:11px;color:#fff;background:var(--urgent);border-radius:6px;padding:6px 8px;margin-bottom:10px;line-height:1.4;">⚠ האפליקציה פתוחה כרגע גם במקום/דפדפן אחר — שינויים עלולים להתנגש. מומלץ לסגור שם.</div>
     </div>
   </aside>
@@ -887,6 +894,7 @@
             <select id="client-sort" onchange="renderClientCards()">
               <option value="revenue">לפי הכנסות</option>
               <option value="projects">לפי כמות פרויקטים</option>
+              <option value="avg">לפי הכנסה ממוצעת לפרויקט</option>
               <option value="recent">לפי עבודה אחרונה</option>
               <option value="name">א–ת</option>
             </select>
@@ -2994,6 +3002,19 @@ function renderBillingPage() {
 
 // One stats row per client (spelling variants merged). Project count = app projects + imported
 // income records not tied to one of them (grouped by project name + date), same rule as the client panel.
+// פיצול רשומת הכנסה: כמה שולם ע"י הלקוח עצמו וכמה ע"י ספקים.
+// designerFee = הלקוח; השאר (total - designerFee) = ספקים. רשומה שנוצרה מ"קבלת תשלום"
+// לספק נשמרה בעבר עם designerFee — מזהים אותה לפי המשלם המקושר בפרויקט.
+function recSplit(r) {
+  const t = Number(r.total) || 0;
+  if (r.projectId != null) {
+    const p = state.projects.find(x => String(x.id) === String(r.projectId));
+    const pay = p && (p.payers || []).find(x => x.billingRecordId === r.id);
+    if (pay) return pay.type === 'client' ? { client: t, vendors: 0 } : { client: 0, vendors: t };
+  }
+  const c = Math.min(t, Number(r.designerFee) || 0);
+  return { client: c, vendors: t - c };
+}
 function computeClientStats() {
   const byKey = new Map();
   const get = n => { const k = clientKey(n); if (!byKey.has(k)) byKey.set(k, { key: k, names: new Map(), projs: [], recs: [] }); const o = byKey.get(k); o.names.set(n.trim(), (o.names.get(n.trim()) || 0) + 1); return o; };
@@ -3020,7 +3041,10 @@ function computeClientStats() {
       first: dates[0] || '', last: dates[dates.length - 1] || '',
       activeThisYear: dates.some(d => d.startsWith(thisYear)),
       dormant: !!dates.length && dates[dates.length - 1] < yearAgoStr,
-      open
+      open,
+      fromClient: o.recs.reduce((s, r) => s + recSplit(r).client, 0),
+      fromVendors: o.recs.reduce((s, r) => s + recSplit(r).vendors, 0),
+      avg: (o.projs.length + hist.size) ? o.recs.reduce((s, r) => s + (r.total || 0), 0) / (o.projs.length + hist.size) : 0
     };
   });
 }
@@ -3066,7 +3090,7 @@ function renderClientCards() {
   if (_filter === 'open') list = list.filter(s => s.open > 0);
   if (_filter === 'repeat') list = list.filter(s => s.projects >= 2);
   if (_filter === 'dormant') list = list.filter(s => s.dormant);
-  const cmp = { revenue: (a, b) => b.revenue - a.revenue, projects: (a, b) => b.projects - a.projects || b.revenue - a.revenue, recent: (a, b) => (b.last || '').localeCompare(a.last || ''), name: (a, b) => a.name.localeCompare(b.name, 'he') }[_sort];
+  const cmp = { revenue: (a, b) => b.revenue - a.revenue, projects: (a, b) => b.projects - a.projects || b.revenue - a.revenue, avg: (a, b) => b.avg - a.avg || b.revenue - a.revenue, recent: (a, b) => (b.last || '').localeCompare(a.last || ''), name: (a, b) => a.name.localeCompare(b.name, 'he') }[_sort];
   let clients = list.sort(cmp).map(s => s.name);
 
   if (cntEl) cntEl.textContent = clients.length ? clients.length + (clients.length !== _stats.length ? ` מתוך ${_stats.length}` : '') + ' לקוחות' : '';
@@ -3177,7 +3201,7 @@ function renderClientCards() {
         </div>
         <div style="display:flex;gap:14px;align-items:center;flex-shrink:0;">
           ${(() => { const st = statByKey.get(clientKey(name)); return st ? `${st.open > 0 ? `<span class="cl-open">פתוח ${fmtMoney(st.open)}</span>` : ''}${st.last ? `<span style="font-size:11px;color:var(--text3);">אחרון ${st.last.slice(5,7)}/${st.last.slice(0,4)}</span>` : ''}${st.revenue > 0 ? `<span style="font-size:13px;color:var(--accent);font-weight:600;">${fmtMoney(st.revenue)}</span>` : ''}` : ''; })()}
-          ${(() => { const st = statByKey.get(clientKey(name)); return st && st.projects ? `<span style="font-size:11px;color:var(--text3);">${st.projects} פרויקטים</span>` : ''; })()}
+          ${(() => { const st = statByKey.get(clientKey(name)); return st && st.projects ? `<span style="font-size:11px;color:var(--text3);">${st.projects} פרויקטים${_sort === 'avg' && st.avg > 0 ? ` · ממוצע ${fmtMoney(Math.round(st.avg))}` : ''}</span>` : ''; })()}
           <span style="font-size:12px;color:var(--text3);padding:4px 6px;" id="${safeId}-arrow" onclick="event.stopPropagation();toggleClientCard('${jsq(name)}')" title="פתיחה כאן">${isOpen?'▲':'▼'}</span>
         </div>
       </div>
@@ -4168,6 +4192,8 @@ function clientPanelHtml(name) {
   const projs = state.projects.filter(p => clientKey(p.client) === k).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   const recs = getBillingRecords().filter(r => clientKey(r.client) === k && (r.total || 0) !== 0).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   const total = recs.reduce((s, r) => s + (r.total || 0), 0);
+  const fromClient = recs.reduce((s, r) => s + recSplit(r).client, 0);
+  const fromVendors = recs.reduce((s, r) => s + recSplit(r).vendors, 0);
   const thisYear = String(new Date().getFullYear());
   const yearTotal = recs.filter(r => (r.date || '').startsWith(thisYear)).reduce((s, r) => s + (r.total || 0), 0);
   let open = 0;
@@ -4231,6 +4257,14 @@ function clientPanelHtml(name) {
         <div class="pp-stat"><div class="pp-stat-l">סה״כ מאז ומעולם</div><div class="pp-stat-v" style="font-size:18px;">${fmtMoney(total)}</div></div>
         <div class="pp-stat"><div class="pp-stat-l">פתוח לגבייה</div><div class="pp-stat-v" style="font-size:18px;color:${open ? 'var(--urgent)' : 'inherit'};">${fmtMoney(open)}</div></div>
       </div>
+      ${total ? `<div class="cp-split">
+        <div class="cp-split-bar"><span style="width:${Math.round(fromClient / total * 100)}%"></span></div>
+        <div class="cp-split-legend">
+          <span><i class="cp-dot cp-dot-c"></i>מהלקוח עצמו <b>${fmtMoney(fromClient)}</b> (${Math.round(fromClient / total * 100)}%)</span>
+          <span><i class="cp-dot cp-dot-v"></i>מספקים <b>${fmtMoney(fromVendors)}</b> (${Math.round(fromVendors / total * 100)}%)</span>
+          ${projCount ? `<span>ממוצע לפרויקט <b>${fmtMoney(Math.round(total / projCount))}</b></span>` : ''}
+        </div>
+      </div>` : ''}
       ${credit > 0 ? `<div style="font-size:13px;color:#7c3aed;margin-top:10px;">זיכוי פתוח: ${fmtMoney(credit)}</div>` : ''}
     </div>
     <div class="pp-pane" style="margin-top:14px;">
@@ -5144,7 +5178,7 @@ function confirmReceivePayment() {
   const diff = noVat - (Number(payer.amount) || 0);
   payer.paid = true;
   if (!state.billing) state.billing = [];
-  const rec = { id: Date.now(), date: new Date().toISOString().slice(0,10), client: p.client||'', project: p.title||'', designerFee: withVat, suppliers: [], total: withVat, projectId: p.id };
+  const rec = { id: Date.now(), date: new Date().toISOString().slice(0,10), client: p.client||'', project: p.title||'', designerFee: payer.type === 'vendor' ? 0 : withVat, suppliers: payer.type === 'vendor' ? [{name: payer.name, amount: withVat}] : [], total: withVat, projectId: p.id };
   payer.billingRecordId = rec.id;
   state.billing.push(rec);
   if (diff > 0 && confirm(`יש יתרה של ₪${diff.toLocaleString()} (לפני מעמ). להוסיף כזיכוי ללקוח?`)) {
