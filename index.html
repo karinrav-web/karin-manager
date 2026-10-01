@@ -577,6 +577,43 @@
   .bm-remove { background:none; border:none; cursor:pointer; color:var(--text3); font-size:16px; padding:0 4px; }
   .bm-remove:hover { color:var(--urgent); }
   @media(max-width:900px){ .billing-summary { grid-template-columns:repeat(2,1fr); } }
+
+  /* ===== Design refresh (2026-10-01, phase 4) — overrides only, appended last so it wins ===== */
+  :root { --accent:#b0532f; --text3:#8c7a72; --radius:12px; }
+  .sidebar { width:232px; min-width:232px; padding:22px 12px 16px; box-shadow:none; }
+  .main { margin-right:232px; min-width:0; }
+  #wp-table-wrap { overflow-x:auto; max-width:100%; }
+  .logo { display:grid; grid-template-columns:40px 1fr; column-gap:10px; align-items:center; padding:0 10px 18px; margin-bottom:12px; }
+  .logo-avatar { width:40px; height:40px; font-size:13px; margin-bottom:0; border:none; grid-row:span 2; }
+  .logo-name { font-size:14px; }
+  .logo-sub { font-size:11px; color:var(--text2); margin-top:0; }
+  .nav-item { border-radius:8px; padding:10px 12px; margin:1px 0; }
+  .nav-item.active { border-radius:8px; margin-left:0; padding-right:12px; }
+  .app-topbar > div:last-child { display:none; }
+  @media (min-width: 769px) { .app-topbar { display:none; } }
+  .page { padding:28px 32px; }
+  .page-header { margin-bottom:20px; align-items:flex-end; }
+  .page-title { font-size:28px; font-weight:600; letter-spacing:-0.01em; }
+  .page-date { color:var(--text2); }
+  .card, .urgency-card { border-radius:12px; box-shadow:none; border:1px solid var(--border); }
+  .card-title { font-size:16px; font-weight:600; color:var(--text); text-transform:none; letter-spacing:0; margin-bottom:12px; }
+  .metric-card { box-shadow:none; border-radius:12px; }
+  .metric-icon-circle { display:none !important; }
+  .metric-card-icon { display:block; padding:16px 18px; }
+  .metric-card-icon > div:last-child { display:flex; flex-direction:column-reverse; }
+  .metric-val { font-size:26px; font-weight:600; }
+  .metric-label { font-size:12px; color:var(--text2); margin:0 0 4px; }
+  .morning-panel .panel-handle, .morning-panel .panel-resize-handle { opacity:0; transition:opacity 0.15s; }
+  .morning-panel:hover .panel-handle, .morning-panel:hover .panel-resize-handle, .morning-panel.resizing .panel-resize-handle { opacity:1; }
+  .btn-save { border-radius:8px; padding:9px 18px; }
+  .btn-save:hover { filter:brightness(0.92); background:var(--accent); }
+  .add-btn { border-radius:8px; }
+  .customize-btn { border-radius:8px; }
+  .proj-card { border-radius:12px; }
+  @media (max-width: 768px) { .page { padding:16px; } .page-title { font-size:22px; } }
+  .morning-panel { position:relative; }
+  .morning-panel .panel-handle { position:absolute; top:4px; left:0; right:0; margin:0; padding:0; border:none; line-height:1; }
+  @media (min-width: 769px) { #page-morning.active { height:100vh; } }
 </style>
 </head>
 <body>
@@ -617,7 +654,7 @@
     <div style="padding:16px 24px;border-top:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">סנכרון ענן</div>
       <div id="sync-status" style="font-size:12px;color:var(--text3);margin-bottom:10px">מתחבר...</div>
-      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-01 · שלב 3</div>
+      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-01 · שלב 4</div>
       <div id="other-session-warning" class="hidden" style="font-size:11px;color:#fff;background:var(--urgent);border-radius:6px;padding:6px 8px;margin-bottom:10px;line-height:1.4;">⚠ האפליקציה פתוחה כרגע גם במקום/דפדפן אחר — שינויים עלולים להתנגש. מומלץ לסגור שם.</div>
     </div>
   </aside>
@@ -691,21 +728,21 @@
           <div class="urgency-card morning-panel" id="panel-urgency" draggable="true"
                ondragstart="panelDragStart(event,this)" ondragend="panelDragEnd()" style="min-height:80px">
             <div class="panel-handle">⠿⠿⠿</div>
-            <div class="card-title">📅 תעדוף לפי דדליין</div>
+            <div class="card-title">תעדוף לפי דדליין</div>
             <div id="urgency-list"><p style="font-size:13px;color:var(--text3)">אין פרויקטים עם דדליין</p></div>
             <div class="panel-resize-handle" onmousedown="startPanelResize(event,this)">— — —</div>
           </div>
           <div class="urgency-card morning-panel" id="panel-billing" draggable="true"
                ondragstart="panelDragStart(event,this)" ondragend="panelDragEnd()" style="min-height:80px">
             <div class="panel-handle">⠿⠿⠿</div>
-            <div class="card-title">💰 גביה פתוחה</div>
+            <div class="card-title">גביה פתוחה</div>
             <div id="billing-summary-morning"><p style="font-size:13px;color:var(--text3)">אין חובות פתוחים</p></div>
             <div class="panel-resize-handle" onmousedown="startPanelResize(event,this)">— — —</div>
           </div>
           <div class="urgency-card morning-panel" id="panel-shoot-stats" draggable="true"
                ondragstart="panelDragStart(event,this)" ondragend="panelDragEnd()" style="min-height:80px">
             <div class="panel-handle">⠿⠿⠿</div>
-            <div class="card-title">📸 ימי צילום השנה</div>
+            <div class="card-title">ימי צילום השנה</div>
             <div id="shoot-year-morning"></div>
             <div class="panel-resize-handle" onmousedown="startPanelResize(event,this)">— — —</div>
           </div>
@@ -723,7 +760,7 @@
       </div>
       <div id="report-top"></div>
       <div class="card" style="margin-bottom:16px;">
-        <div class="card-title">לוח עבודה חודשי — כמה תמונות מתכננת לערוך בכל פרויקט, בכל יום עבודה</div>
+        <div class="card-title">תכנון חודשי — כמה תמונות לערוך בכל פרויקט, בכל יום עבודה</div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
           <button onclick="wpPrevMonth()" style="padding:4px 12px;font-size:13px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:6px;background:var(--surface2);cursor:pointer;">→</button>
           <div id="wp-title" style="font-size:15px;font-weight:600;"></div>
@@ -757,7 +794,7 @@
         <div id="cal-summary" style="margin-top:12px;font-size:13px;color:var(--text2);"></div>
       </div>
       <div class="card" style="margin-bottom:16px;">
-        <div class="card-title">📸 ימי צילום השנה</div>
+        <div class="card-title">ימי צילום השנה</div>
         <div id="shoot-year-summary" style="font-size:13px;color:var(--text2);"></div>
       </div>
       <div id="report-bottom"></div>
@@ -781,7 +818,7 @@
     <div id="page-settings" class="page">
       <div class="page-header"><div><div class="page-title">הגדרות</div></div></div>
       <div class="card" style="margin-bottom:16px;">
-        <div class="card-title">⚙ הגדרות עריכה</div>
+        <div class="card-title">עבודה ועריכה</div>
         <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;">
           <div style="display:flex;flex-direction:column;gap:8px;">
             <div style="display:flex;gap:8px;align-items:center;">
@@ -812,14 +849,14 @@
         </div>
       </div>
       <div class="card" style="margin-bottom:16px;">
-        <div class="card-title">🎨 מראה</div>
+        <div class="card-title">מראה</div>
         <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
           <span style="font-size:13px;color:var(--text2);">צבע נושא:</span>
           <div class="theme-swatches" id="theme-swatches"></div>
         </div>
       </div>
       <div class="card" style="margin-bottom:16px;">
-        <div class="card-title">💾 גיבוי ושחזור</div>
+        <div class="card-title">גיבוי ושחזור</div>
         <div style="max-width:320px;">
           <button onclick="exportBackup()" style="width:100%;padding:7px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text2);cursor:pointer;margin-bottom:6px;">💾 ייצוא גיבוי</button>
           <label style="width:100%;display:block;padding:7px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text2);cursor:pointer;text-align:center;margin-bottom:6px;">
@@ -831,7 +868,7 @@
         </div>
       </div>
       <div class="card" style="margin-bottom:16px;">
-        <div class="card-title">🔒 אבטחה</div>
+        <div class="card-title">אבטחה</div>
         <div style="max-width:320px;">
           <button onclick="changePin()" style="width:100%;padding:7px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text3);cursor:pointer;margin-bottom:6px;">🔒 שנה קוד גישה</button>
           <button onclick="resetAll()" style="width:100%;padding:7px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border);border-radius:6px;background:transparent;color:var(--text3);cursor:pointer;">🗑 מחק הכל</button>
@@ -876,7 +913,7 @@
       </div>
       <div class="billing-summary" id="billing-summary" data-btab="overview"></div>
       <div class="card" data-btab="overview" style="margin-bottom:18px;">
-        <div class="card-title">🏆 טופ 10 לקוחות (כל הזמנים)</div>
+        <div class="card-title">לקוחות מובילים (כל הזמנים)</div>
         <div id="billing-top10"></div>
       </div>
       <div class="card" data-btab="credits" style="margin-bottom:18px;border-color:#c4b5fd;">
