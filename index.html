@@ -158,6 +158,16 @@
   }
   .btn-save:hover { background:#a34d32; }
   .hidden { display:none !important; }
+  .df-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:7px 0; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+  .df-name { font-size:13px; font-weight:500; min-width:0; }
+  .df-actions { display:flex; align-items:center; gap:6px; flex-shrink:0; }
+  .df-goal { font-size:14px; font-weight:700; color:var(--text2); min-width:44px; text-align:center; }
+  .df-goal.done { color:#2D6A4F; }
+  .df-set-goal { font-family:'Rubik',sans-serif; font-size:12px; padding:5px 9px; border-radius:14px; border:1px dashed var(--accent); background:transparent; color:var(--accent); cursor:pointer; }
+  .df-btn { direction:ltr; font-family:'Rubik',sans-serif; min-width:34px; height:32px; padding:0 8px; border-radius:8px; border:1px solid var(--border2); background:var(--surface); color:var(--text); font-size:13px; cursor:pointer; }
+  .df-btn.plus { background:var(--accent-light); border-color:transparent; color:var(--accent); font-weight:600; }
+  .df-timer { font-family:'Rubik',sans-serif; height:32px; padding:0 10px; border-radius:16px; border:1px solid var(--border2); background:var(--surface); color:var(--text2); font-size:12px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; }
+  .df-timer.running { background:var(--accent); color:#fff; border-color:var(--accent); }
   .proj-panel-bg { position:fixed; inset:0; background:rgba(26,18,16,0.38); z-index:89; }
   .proj-panel { position:fixed; top:0; left:0; bottom:0; width:min(640px,100vw); background:var(--bg); z-index:90; overflow-y:auto; box-shadow:0 0 40px rgba(26,18,16,0.25); padding:14px 18px 90px; box-sizing:border-box; }
   .proj-panel-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
@@ -607,7 +617,7 @@
     <div style="padding:16px 24px;border-top:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">סנכרון ענן</div>
       <div id="sync-status" style="font-size:12px;color:var(--text3);margin-bottom:10px">מתחבר...</div>
-      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-01 · שלב 2</div>
+      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-01 · שלב 3</div>
       <div id="other-session-warning" class="hidden" style="font-size:11px;color:#fff;background:var(--urgent);border-radius:6px;padding:6px 8px;margin-bottom:10px;line-height:1.4;">⚠ האפליקציה פתוחה כרגע גם במקום/דפדפן אחר — שינויים עלולים להתנגש. מומלץ לסגור שם.</div>
     </div>
   </aside>
@@ -1479,6 +1489,14 @@ function renderDailyFocus() {
     explanation = `פזרי את ${dailyCap} התמונות היומיות בין ${active.length} הפרויקטים`;
   }
 
+  // Projects already worked on today (or with a running timer) stay on the list even if the allocation skipped them
+  const tdy = todayStr();
+  projs.forEach(p => {
+    if (alloc.find(a => a.p.id === p.id)) return;
+    const doneToday = p.editedTodayDate === tdy ? (p.editedToday||0) : 0;
+    if (doneToday > 0 || activeTimer.projId === p.id) alloc.push({p, photos: 0, tag: 'extra'});
+  });
+
   const rows = alloc.map(({p, photos, tag}) => {
     const icon = tag==='critical' ? '🔥' : tag==='quick' ? '✨' : '·';
     const color = tag==='critical' ? '#dc2626' : tag==='quick' ? '#0891b2' : 'var(--text)';
@@ -1487,9 +1505,24 @@ function renderDailyFocus() {
       : tag==='quick'
       ? `<span style="font-size:11px;color:#0891b2;"> (נשארו ${p.rem} — אפשר לסיים!)</span>`
       : '';
-    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);">
-      <span class="proj-link" onclick="openProjectPanel('${p.id}')" style="font-size:13px;color:${color};font-weight:500;">${icon} ${p.client}${p.title?' — '+p.title:''}${note}</span>
-      <span style="font-size:15px;font-weight:700;color:${color};white-space:nowrap;">${photos} תמ׳</span>
+    const doneToday = p.editedTodayDate === tdy ? (p.editedToday||0) : 0;
+    const goal = p.goalDaily || 0;
+    const running = activeTimer.projId === p.id;
+    const runSecs = running ? Math.floor((Date.now() - activeTimer.startTs) / 1000) : 0;
+    const goalHtml = goal
+      ? `<span class="df-goal ${doneToday >= goal ? 'done' : ''}">${doneToday}/${goal}${doneToday >= goal ? ' ✓' : ''}</span>`
+      : (photos > 0
+          ? `${doneToday ? `<span class="df-goal">${doneToday}</span>` : ''}<button class="df-set-goal" onclick="updateGoalTarget(${p.id},${photos});renderDailyFocus();" title="קבעי את ההמלצה כיעד היום">יעד ${photos}?</button>`
+          : `<span class="df-goal">${doneToday}</span>`);
+    return `<div class="df-row">
+      <span class="proj-link df-name" onclick="openProjectPanel('${p.id}')" style="color:${color};">${icon} ${p.client}${p.title?' — '+p.title:''}${note}</span>
+      <div class="df-actions">
+        ${goalHtml}
+        <button class="df-btn" onclick="bumpEdited(${p.id},-1)" aria-label="הפחת תמונה">−</button>
+        <button class="df-btn plus" onclick="bumpEdited(${p.id},1)" aria-label="הוסף תמונה">+1</button>
+        <button class="df-btn plus" onclick="bumpEdited(${p.id},5)" aria-label="הוסף 5 תמונות">+5</button>
+        <button class="df-timer ${running ? 'running' : ''}" onclick="toggleTimer(${p.id})" title="${running ? 'עצירת טיימר' : 'הפעלת טיימר'}">${running ? '⏹' : '▶'} <span data-timer="${p.id}">${running ? fmtTime(runSecs) : ''}</span></button>
+      </div>
     </div>`;
   }).join('');
 
@@ -2073,6 +2106,7 @@ function restoreTimer() {
     activeTimer.iv = setInterval(()=>{
       const el = document.getElementById('ptv-'+projId);
       if (el) el.textContent = fmtTime(Math.floor((Date.now()-activeTimer.startTs)/1000));
+      document.querySelectorAll('[data-timer="'+projId+'"]').forEach(x => x.textContent = fmtTime(Math.floor((Date.now()-activeTimer.startTs)/1000)));
       if (document.getElementById('page-report')?.classList.contains('active')) renderReport();
     }, 1000);
     const btn = document.getElementById('ptb-'+projId);
@@ -3420,12 +3454,14 @@ function toggleTimer(id) {
     const p = state.projects.find(p=>p.id===id); if (!p) { clearInterval(activeTimer.iv); return; }
     const el = document.getElementById('ptv-'+id);
     if (el) el.textContent = fmtTime(Math.floor((Date.now()-activeTimer.startTs)/1000));
+    document.querySelectorAll('[data-timer="'+id+'"]').forEach(x => x.textContent = fmtTime(Math.floor((Date.now()-activeTimer.startTs)/1000)));
     // עדכן דוח יומי בזמן אמת אם הדף פתוח
     if (document.getElementById('page-report')?.classList.contains('active')) renderReport();
   },1000);
   const btn=document.getElementById('ptb-'+id); const val=document.getElementById('ptv-'+id);
   if(btn){btn.textContent='⏹ עצור';btn.classList.add('running');}
   if(val) val.classList.add('running');
+  renderDailyFocus();
 }
 function stopTimer() {
   if(!activeTimer.projId) return;
@@ -3550,6 +3586,7 @@ function renderDeadlineAlerts() {
 function renderProjects(searchVal) {
   const el = document.getElementById('projects-list'); if (!el) return;
   renderProjectPanel();
+  renderDailyFocus();
   renderDeadlineAlerts();
   const searchQ = (searchVal !== undefined ? searchVal : (document.getElementById('proj-search')?.value || '')).trim().toLowerCase();
   const list = [...state.projects]
