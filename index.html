@@ -158,6 +158,16 @@
   }
   .btn-save:hover { background:#a34d32; }
   .hidden { display:none !important; }
+  .proj-panel-bg { position:fixed; inset:0; background:rgba(26,18,16,0.38); z-index:89; }
+  .proj-panel { position:fixed; top:0; left:0; bottom:0; width:min(640px,100vw); background:var(--bg); z-index:90; overflow-y:auto; box-shadow:0 0 40px rgba(26,18,16,0.25); padding:14px 18px 90px; box-sizing:border-box; }
+  .proj-panel-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+  .proj-panel-close { width:36px; height:36px; border-radius:8px; border:1px solid var(--border2); background:var(--surface); font-size:15px; cursor:pointer; color:var(--text); }
+  .proj-panel .proj-card { margin-bottom:0; }
+  body.panel-open { overflow:hidden; }
+  .proj-link { cursor:pointer; }
+  .proj-link:hover { text-decoration:underline; color:var(--accent); }
+  .panel-link-btn { background:none; border:none; color:var(--accent); font-family:'Rubik',sans-serif; font-size:13px; cursor:pointer; }
+  .panel-other-row { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid var(--border); font-size:13px; }
 
   .prog-bar { height:6px; background:var(--surface2); border-radius:3px; overflow:hidden; margin-top:6px; }
   .prog-fill { height:100%; border-radius:3px; background:var(--urgent); transition:width 0.3s; }
@@ -597,7 +607,7 @@
     <div style="padding:16px 24px;border-top:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">סנכרון ענן</div>
       <div id="sync-status" style="font-size:12px;color:var(--text3);margin-bottom:10px">מתחבר...</div>
-      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-01 · שלב 1</div>
+      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-01 · שלב 2</div>
       <div id="other-session-warning" class="hidden" style="font-size:11px;color:#fff;background:var(--urgent);border-radius:6px;padding:6px 8px;margin-bottom:10px;line-height:1.4;">⚠ האפליקציה פתוחה כרגע גם במקום/דפדפן אחר — שינויים עלולים להתנגש. מומלץ לסגור שם.</div>
     </div>
   </aside>
@@ -932,6 +942,15 @@
     </div>
   </main>
 </div>
+
+<div id="proj-panel-bg" class="proj-panel-bg hidden" onclick="closeProjectPanel()"></div>
+<aside id="proj-panel" class="proj-panel hidden" aria-label="כרטיס פרויקט">
+  <div class="proj-panel-head">
+    <span style="font-size:12px;color:var(--text3);">כרטיס פרויקט</span>
+    <button class="proj-panel-close" onclick="closeProjectPanel()" aria-label="סגור">✕</button>
+  </div>
+  <div id="proj-panel-body"></div>
+</aside>
 
 <nav class="mobile-nav">
   <button class="mobile-nav-item active" id="mnav-morning" onclick="showPageMobile('morning',this)"><span class="mobile-nav-icon">☀</span>בוקר טוב</button>
@@ -1469,7 +1488,7 @@ function renderDailyFocus() {
       ? `<span style="font-size:11px;color:#0891b2;"> (נשארו ${p.rem} — אפשר לסיים!)</span>`
       : '';
     return `<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);">
-      <span style="font-size:13px;color:${color};font-weight:500;">${icon} ${p.client}${p.title?' — '+p.title:''}${note}</span>
+      <span class="proj-link" onclick="openProjectPanel('${p.id}')" style="font-size:13px;color:${color};font-weight:500;">${icon} ${p.client}${p.title?' — '+p.title:''}${note}</span>
       <span style="font-size:15px;font-weight:700;color:${color};white-space:nowrap;">${photos} תמ׳</span>
     </div>`;
   }).join('');
@@ -1707,7 +1726,7 @@ function renderWorkPlan() {
     const left = monthlyGoalLeft(p, monthKey);
     const unplanned = unplannedRemaining(p);
     html += `<tr><td class="wp-proj-cell">
-      <div class="wp-proj-name">${p.client||'ללא שם'}${p.title?' — '+p.title:''}</div>
+      <div class="wp-proj-name proj-link" onclick="openProjectPanel('${p.id}')">${p.client||'ללא שם'}${p.title?' — '+p.title:''}</div>
       <div class="wp-proj-meta">נשאר ${rem}${p.deadline?` · דדליין ${new Date(p.deadline).toLocaleDateString('he-IL')}`:''}</div>
       <div class="${unplanned>0?'wp-unplanned-left':(unplanned<0?'wp-unplanned-over':'wp-unplanned-done')}">${unplanned>0?'עוד '+unplanned+' לחלק בין הימים':(unplanned<0?'מתוכנן '+(-unplanned)+' יותר מהנדרש':'✓ הכל מחולק לימים')}</div>
       <div class="wp-goal-row">
@@ -1987,6 +2006,7 @@ function openProjectsDefaultMobile(el) { stageFilter = 'edit'; showPageMobile('p
 function toggleEl(id) { document.getElementById(id).classList.toggle('hidden'); }
 
 function openProjectFromUrgency(projId) {
+  openProjectPanel(projId); return;
   showPage('projects', document.getElementById('nav-projects'));
   setTimeout(() => {
     const card = document.querySelector(`.proj-card[data-id="${projId}"]`);
@@ -2165,7 +2185,7 @@ function renderReport() {
     return `<div class="report-proj-row goal-row" ${dragAttrs} style="align-items:center;justify-content:space-between;gap:10px;">
       ${draggable ? `<div class="drag-handle" title="גרור לסידור עדיפויות">⠿</div>` : ''}
       <div style="min-width:0;flex:1;">
-        <div class="report-proj-name">${p.client||'ללא שם'}${p.title?' — '+p.title:''}</div>
+        <div class="report-proj-name proj-link" onclick="openProjectPanel('${p.id}')">${p.client||'ללא שם'}${p.title?' — '+p.title:''}</div>
         <div style="font-size:11px;color:var(--text3);margin-top:2px;">
           נשארו ${rem} בסה״כ${p.deadline?` · דדליין ${new Date(p.deadline).toLocaleDateString('he-IL')}`:''}
         </div>
@@ -2200,7 +2220,7 @@ function renderReport() {
   const projRows = workedOn.length > 0
     ? workedOn.sort((a,b)=>b.secsToday-a.secsToday).map(({p,secsToday,photosToday})=>`
       <div class="report-proj-row">
-        <div class="report-proj-name">${p.client||'ללא שם'}</div>
+        <div class="report-proj-name proj-link" onclick="openProjectPanel('${p.id}')">${p.client||'ללא שם'}</div>
         <div class="report-proj-meta">
           ${secsToday>0?`<span>⏱ ${fmtDuration(secsToday)}</span>`:''}
           ${photosToday>0?`<span>📷 ${photosToday} תמונות</span>`:''}
@@ -2332,7 +2352,7 @@ function renderBillingSearch() {
       return `<div class="billing-record">
         <div class="billing-record-date">${dateStr}</div>
         <div style="flex:1;min-width:0;">
-          <div class="billing-record-client">${r.client||'—'} ${r.project?'· '+r.project:''}</div>
+          <div class="billing-record-client">${r.client||'—'} ${recProjHtml(r)}</div>
           ${r.designerFee>0||supplierStr?`<div class="billing-record-sub">${r.designerFee>0?'מעצבת '+fmtMoney(r.designerFee):''}${r.designerFee>0&&supplierStr?' · ':''}${supplierStr}</div>`:''}
         </div>
         <div class="billing-record-amount">${fmtMoney(r.total)}</div>
@@ -2369,7 +2389,7 @@ function renderBillingSearch() {
       return `<div style="display:flex;align-items:center;gap:10px;padding:8px 4px;border-bottom:1px solid var(--border);flex-wrap:wrap;">
         <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:${typeBg};color:#fff;flex-shrink:0;">${typeLabel}</span>
         <span style="font-weight:500;font-size:13px;flex-shrink:0;">${pay.name||'—'}</span>
-        <span style="font-size:12px;color:var(--text3);flex:1;">${p.client}${p.title?' · '+p.title:''}</span>
+        <span class="proj-link" onclick="openProjectPanel('${p.id}')" style="font-size:12px;color:var(--text3);flex:1;">${p.client}${p.title?' · '+p.title:''}</span>
         <span style="font-size:11px;color:var(--text3);">${stageLabel}</span>
         <span style="font-size:13px;font-weight:600;color:${pay.paid?'var(--accent)':'var(--urgent)'};">${fmtMoney(amt)} <span style="font-size:10px;font-weight:400;">(${fmtMoney(amtVat)} מעמ)</span></span>
         <span style="font-size:18px;">${pay.paid ? '✅' : '⏳'}</span>
@@ -2657,7 +2677,7 @@ function renderBillingPage() {
             return `<div class="billing-record">
               <div class="billing-record-date">${dateStr}</div>
               <div style="flex:1;min-width:0;">
-                <div class="billing-record-client">${r.client||'—'} ${r.project?'· '+r.project:''}</div>
+                <div class="billing-record-client">${r.client||'—'} ${recProjHtml(r)}</div>
               </div>
               <div class="billing-record-amount">${fmtMoney(r.total)}</div>
               <button class="billing-record-edit" onclick="openBillingModal(${r.id})">✏️</button>
@@ -2713,7 +2733,7 @@ function renderBillingPage() {
       return `<div class="billing-record">
         <div class="billing-record-date">${dateStr}</div>
         <div style="flex:1;min-width:0;">
-          <div class="billing-record-client">${r.client||'—'} ${r.project?'· '+r.project:''}</div>
+          <div class="billing-record-client">${r.client||'—'} ${recProjHtml(r)}</div>
           ${r.designerFee>0||supplierStr?`<div class="billing-record-sub">${r.designerFee>0?'מעצבת '+fmtMoney(r.designerFee):''}${r.designerFee>0&&supplierStr?' · ':''}${supplierStr}</div>`:''}
         </div>
         <div class="billing-record-amount">${fmtMoney(r.total)}</div>
@@ -2771,7 +2791,7 @@ function renderClientCards() {
       }).join('')}</div>` : '';
       return `<div style="padding:5px 2px;border-bottom:1px solid var(--border);">
         <div style="display:flex;align-items:center;gap:8px;">
-          <span style="flex:1;font-size:13px;font-weight:500;">${p.title||'—'}</span>
+          <span class="proj-link" onclick="event.stopPropagation();openProjectPanel('${p.id}')" style="flex:1;font-size:13px;font-weight:500;">${p.title||'—'}</span>
           <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:var(--s-${p.stage}-b,var(--border));color:#fff;white-space:nowrap;">${STAGES[p.stage]||p.stage}</span>
           ${dateStr?`<span style="font-size:11px;color:var(--text3);white-space:nowrap;">${dateStr}</span>`:''}
         </div>
@@ -3476,6 +3496,7 @@ function toggleExpand(id) {
 }
 
 function goToProject(projId) {
+  openProjectPanel(projId); return;
   showPage('projects', document.getElementById('nav-projects'));
   expandedProjects.add(projId);
   renderProjects();
@@ -3528,6 +3549,7 @@ function renderDeadlineAlerts() {
 
 function renderProjects(searchVal) {
   const el = document.getElementById('projects-list'); if (!el) return;
+  renderProjectPanel();
   renderDeadlineAlerts();
   const searchQ = (searchVal !== undefined ? searchVal : (document.getElementById('proj-search')?.value || '')).trim().toLowerCase();
   const list = [...state.projects]
@@ -3581,7 +3603,12 @@ function renderProjects(searchVal) {
   }
   if (!list.length) { el.innerHTML = `<p style="font-size:13px;color:var(--text3);padding:16px 0">${stageFilter ? 'אין פרויקטים בשלב זה' : 'עוד אין פרויקטים — הוסיפי את הראשון למטה'}</p>`; return; }
   const _allFinish = computeAllFinishDates();
-  el.innerHTML = list.map(p => {
+  el.innerHTML = list.map(p => projectCardHtml(p, _allFinish, false)).join('');
+}
+
+// Builds one project card. inPanel=true renders it fully expanded for the side panel;
+// the list then renders that same project collapsed so element ids (ptv-, editedtoday-, …) stay unique.
+function projectCardHtml(p, _allFinish, inPanel) {
     const pct = p.total ? Math.min(100, Math.round(p.edited / p.total * 100)) : 0;
     const fillCls = pct >= 80 ? 'green' : pct >= 50 ? 'yellow' : pct >= 25 ? 'amber' : '';
     const gt = p.goalDaily || 0;
@@ -3591,7 +3618,7 @@ function renderProjects(searchVal) {
     const isRunning = activeTimer.projId === p.id;
     const secs = (p.seconds || 0) + (isRunning ? Math.floor((Date.now() - activeTimer.startTs) / 1000) : 0);
     const stages = Object.keys(STAGES).map(s => `<button class="stage-btn ${p.stage === s ? 'active s-' + s : ''}" data-pid="${p.id}" data-stage="${s}" onclick="setStageBtn(this)">${STAGES[s]}</button>`).join('');
-    const isExpanded = expandedProjects.has(p.id);
+    const isExpanded = inPanel || (expandedProjects.has(p.id) && !isPanelProject(p.id));
     const _finishDate = _allFinish[p.id] || null;
     const _estHtml = _finishDate ? (() => {
       const dateStr = _finishDate.toLocaleDateString('he-IL',{day:'numeric',month:'numeric'});
@@ -3608,11 +3635,11 @@ function renderProjects(searchVal) {
       }
       return `<span style="color:${color};font-size:12px;font-weight:600;">📅 ~${label}${deadlineNote}</span>`;
     })() : '';
-    return `<div class="proj-card s-${p.stage || 'send'}" draggable="true" data-id="${p.id}"
-        ondragstart="dragStart(event,${p.id})" ondragend="dragEnd(event)" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event,${p.id})">
+    return `<div class="proj-card s-${p.stage || 'send'}" ${inPanel ? 'data-panel="1"' : `draggable="true" data-id="${p.id}"
+        ondragstart="dragStart(event,${p.id})" ondragend="dragEnd(event)" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event,${p.id})"`}>
       <div class="proj-compact" style="display:flex;align-items:center;gap:10px;">
-        <div class="drag-handle" title="גרור לסידור" onclick="event.stopPropagation()">⠿</div>
-        <div style="flex:1;min-width:0;cursor:pointer;" onclick="toggleExpand(${p.id})">
+        ${inPanel ? '' : `<div class="drag-handle" title="גרור לסידור" onclick="event.stopPropagation()">⠿</div>`}
+        <div style="flex:1;min-width:0;cursor:pointer;" onclick="${inPanel ? '' : `openProjectPanel('${p.id}')`}">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
             <span class="proj-name" style="font-size:14px;">${p.client} — ${p.title}</span>
             ${urgCnt ? `<span class="badge b-urgent">${urgCnt} דחוף</span>` : ''}
@@ -3633,7 +3660,7 @@ function renderProjects(searchVal) {
         </div>
         <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
           <button class="edit-btn" onclick="openEdit(${p.id})">✏</button>
-          <span style="font-size:11px;color:var(--text3);padding:4px 8px;cursor:pointer;" onclick="toggleExpand(${p.id})">${isExpanded ? '▲' : '▼'}</span>
+          ${inPanel ? '' : `<span style="font-size:11px;color:var(--text3);padding:4px 8px;cursor:pointer;" onclick="toggleExpand(${p.id})" title="פתח כאן ברשימה">${isExpanded ? '▲' : '▼'}</span>`}
         </div>
       </div>
       <div class="prog-bar" style="margin-top:6px;"><div class="prog-fill ${fillCls}" style="width:${pct}%"></div></div>
@@ -3720,8 +3747,59 @@ function renderProjects(searchVal) {
       ${renderBillingSection(p)}
       ` : ''}
     </div>`;
-  }).join('');
 }
+
+// ===== Project side panel =====
+var panelProjectId = null;
+function isPanelProject(id) { return panelProjectId !== null && String(panelProjectId) === String(id); }
+function openProjectPanel(id) {
+  const p = state.projects.find(x => String(x.id) === String(id)); if (!p) return;
+  panelProjectId = p.id;
+  document.getElementById('proj-panel').classList.remove('hidden');
+  document.getElementById('proj-panel-bg').classList.remove('hidden');
+  document.body.classList.add('panel-open');
+  renderProjects();
+  document.getElementById('proj-panel').scrollTop = 0;
+}
+function closeProjectPanel() {
+  if (panelProjectId === null) return;
+  panelProjectId = null;
+  document.getElementById('proj-panel').classList.add('hidden');
+  document.getElementById('proj-panel-bg').classList.add('hidden');
+  document.body.classList.remove('panel-open');
+  renderProjects();
+}
+function renderProjectPanel() {
+  const body = document.getElementById('proj-panel-body'); if (!body) return;
+  if (panelProjectId === null) { body.innerHTML = ''; return; }
+  const p = state.projects.find(x => String(x.id) === String(panelProjectId));
+  if (!p) { closeProjectPanel(); return; }
+  const others = state.projects.filter(x => x.client === p.client && x.id !== p.id);
+  const clientHtml = `<div class="card" style="margin-top:14px;">
+      <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+        <span>👤 ${p.client || 'לקוח'}</span>
+        <button class="panel-link-btn" onclick="openClientRecords('${String(p.client||'').replace(/'/g,"\\'")}')">רשומות בכספים ←</button>
+      </div>
+      ${others.length ? others.map(o => `<div class="panel-other-row">
+          <span class="proj-link" onclick="openProjectPanel('${o.id}')">${o.title || '—'}</span>
+          <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:var(--s-${o.stage}-b,var(--border));color:#fff;white-space:nowrap;">${STAGES[o.stage]||o.stage}</span>
+        </div>`).join('') : '<div style="font-size:13px;color:var(--text3);">אין פרויקטים נוספים ללקוח</div>'}
+    </div>`;
+  const scroll = document.getElementById('proj-panel').scrollTop;
+  body.innerHTML = projectCardHtml(p, computeAllFinishDates(), true) + clientHtml;
+  document.getElementById('proj-panel').scrollTop = scroll;
+}
+function openClientRecords(client) {
+  closeProjectPanel();
+  showPage('billing', document.getElementById('nav-billing'));
+  setClientFilter(client);
+}
+function recProjHtml(r) {
+  if (!r.project) return '';
+  const p = r.projectId != null ? state.projects.find(x => String(x.id) === String(r.projectId)) : null;
+  return p ? `· <span class="proj-link" onclick="event.stopPropagation();openProjectPanel('${p.id}')">${r.project}</span>` : '· ' + r.project;
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && panelProjectId !== null && !document.querySelector('.modal-bg.open, .modal-bg[style*="flex"]')) closeProjectPanel(); });
 
 function setStageBtn(btn){const id=Number(btn.dataset.pid);const s=btn.dataset.stage;setStage(id,s);}
 function setStage(id,s){
