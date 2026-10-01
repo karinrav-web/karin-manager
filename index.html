@@ -580,8 +580,11 @@
 
   /* ===== Design refresh (2026-10-01, phase 4) — overrides only, appended last so it wins ===== */
   :root { --accent:#b0532f; --text3:#8c7a72; --radius:12px; }
-  .sidebar { width:232px; min-width:232px; padding:22px 12px 16px; box-shadow:none; }
-  .main { margin-right:232px; min-width:0; }
+  @media (min-width: 769px) {
+    .sidebar { width:232px; min-width:232px; padding:22px 12px 16px; box-shadow:none; }
+    .main { margin-right:232px; }
+  }
+  .main { min-width:0; }
   #wp-table-wrap { overflow-x:auto; max-width:100%; }
   .logo { display:grid; grid-template-columns:40px 1fr; column-gap:10px; align-items:center; padding:0 10px 18px; margin-bottom:12px; }
   .logo-avatar { width:40px; height:40px; font-size:13px; margin-bottom:0; border:none; grid-row:span 2; }
@@ -590,6 +593,7 @@
   .nav-item { border-radius:8px; padding:10px 12px; margin:1px 0; }
   .nav-item.active { border-radius:8px; margin-left:0; padding-right:12px; }
   .app-topbar > div:last-child { display:none; }
+  .app-topbar span.material-symbols-outlined { display:none; }
   @media (min-width: 769px) { .app-topbar { display:none; } }
   .page { padding:28px 32px; }
   .page-header { margin-bottom:20px; align-items:flex-end; }
@@ -682,6 +686,7 @@
     </div>
     <div class="nav-item active" id="nav-morning" onclick="showPage('morning',this)"><span class="nav-icon"><span class="material-symbols-outlined">wb_sunny</span></span><span>בוקר טוב</span></div>
     <div class="nav-item" id="nav-projects" onclick="openProjectsDefault(this)"><span class="nav-icon"><span class="material-symbols-outlined">camera_alt</span></span><span>פרויקטים</span></div>
+    <div class="nav-item" id="nav-clients" onclick="showPage('clients',this)"><span class="nav-icon"><span class="material-symbols-outlined">group</span></span><span>לקוחות</span></div>
     <div class="nav-item" id="nav-report" onclick="showPage('report',this)"><span class="nav-icon"><span class="material-symbols-outlined">bar_chart</span></span><span>לוח עבודה</span></div>
     <div class="nav-item" id="nav-billing" onclick="showPage('billing',this)"><span class="nav-icon"><span class="material-symbols-outlined">payments</span></span><span>כספים</span></div>
     <a class="nav-item" id="nav-scheduler" href="https://photo-scheduler-wine.vercel.app" target="_blank" rel="noopener" style="text-decoration:none"><span class="nav-icon"><span class="material-symbols-outlined">open_in_new</span></span><span>מתזמן צילומים</span></a>
@@ -689,7 +694,7 @@
     <div style="padding:16px 24px;border-top:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">סנכרון ענן</div>
       <div id="sync-status" style="font-size:12px;color:var(--text3);margin-bottom:10px">מתחבר...</div>
-      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-01 · כרטיס לקוח</div>
+      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-01 · עמוד לקוחות</div>
       <div id="other-session-warning" class="hidden" style="font-size:11px;color:#fff;background:var(--urgent);border-radius:6px;padding:6px 8px;margin-bottom:10px;line-height:1.4;">⚠ האפליקציה פתוחה כרגע גם במקום/דפדפן אחר — שינויים עלולים להתנגש. מומלץ לסגור שם.</div>
     </div>
   </aside>
@@ -849,6 +854,19 @@
       </div>
     </div>
 
+    <!-- CLIENTS -->
+    <div id="page-clients" class="page">
+      <div class="page-header"><div><div class="page-title">לקוחות</div></div></div>
+      <div class="card" style="margin-bottom:18px;">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+          <span>כל הלקוחות</span>
+          <span id="client-cards-count" style="font-size:12px;font-weight:400;color:var(--text3);"></span>
+        </div>
+        <input id="client-search" type="text" placeholder="🔍 חיפוש לקוח או פרויקט..." oninput="renderClientCards()" style="width:100%;box-sizing:border-box;padding:9px 12px;margin-bottom:12px;font-size:14px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:8px;background:var(--surface);color:var(--text);" />
+        <div id="client-cards-list"></div>
+      </div>
+    </div>
+
     <!-- SETTINGS -->
     <div id="page-settings" class="page">
       <div class="page-header"><div><div class="page-title">הגדרות</div></div></div>
@@ -882,6 +900,10 @@
             </div>
           </div>
         </div>
+      </div>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">מתזמן צילומים</div>
+        <a href="https://photo-scheduler-wine.vercel.app" target="_blank" rel="noopener" style="color:var(--accent);font-size:14px;">פתיחת מתזמן הצילומים בטאב חדש ↗</a>
       </div>
       <div class="card" style="margin-bottom:16px;">
         <div class="card-title">מראה</div>
@@ -944,7 +966,6 @@
       <div class="billing-tabs" id="billing-tabs">
         <button class="billing-tab active" data-tab="overview" onclick="setBillingTab('overview')">סקירה</button>
         <button class="billing-tab" data-tab="records" onclick="setBillingTab('records')">רשומות</button>
-        <button class="billing-tab" data-tab="clients" onclick="setBillingTab('clients')">לקוחות</button>
         <button class="billing-tab" data-tab="credits" onclick="setBillingTab('credits')">זיכויים</button>
       </div>
       <div class="billing-summary" id="billing-summary" data-btab="overview"></div>
@@ -968,14 +989,6 @@
         <div class="card-title">לפי חודש</div>
         <div class="billing-chart" id="billing-chart"></div>
         <div id="billing-month-detail"></div>
-      </div>
-      <div class="card" data-btab="clients" style="margin-bottom:18px;">
-        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-          <span>👤 כרטיסי לקוחות</span>
-          <span id="client-cards-count" style="font-size:12px;font-weight:400;color:var(--text3);"></span>
-        </div>
-        <input id="client-search" type="text" placeholder="🔍 חיפוש לקוח או פרויקט..." oninput="renderClientCards()" style="width:100%;box-sizing:border-box;padding:9px 12px;margin-bottom:12px;font-size:14px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:8px;background:var(--surface);color:var(--text);" />
-        <div id="client-cards-list"></div>
       </div>
       <div class="card" data-btab="records">
         <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
@@ -1041,7 +1054,7 @@
   <button class="mobile-nav-item" id="mnav-projects" onclick="openProjectsDefaultMobile(this)"><span class="mobile-nav-icon">📁</span>פרויקטים</button>
   <button class="mobile-nav-item" id="mnav-report" onclick="showPageMobile('report',this)"><span class="mobile-nav-icon">📊</span>תכנון</button>
   <button class="mobile-nav-item" id="mnav-billing" onclick="showPageMobile('billing',this)"><span class="mobile-nav-icon">💰</span>כספים</button>
-  <button class="mobile-nav-item" id="mnav-scheduler" onclick="window.open('https://photo-scheduler-wine.vercel.app','_blank')"><span class="mobile-nav-icon">📸</span>מתזמן</button>
+  <button class="mobile-nav-item" id="mnav-clients" onclick="showPageMobile('clients',this)"><span class="mobile-nav-icon">👥</span>לקוחות</button>
   <button class="mobile-nav-item" id="mnav-settings" onclick="showPageMobile('settings',this)"><span class="mobile-nav-icon">⚙</span>הגדרות</button>
 </nav>
 
@@ -2112,6 +2125,7 @@ function showPage(p, el) {
   if (p==='report') { renderReport(); renderWorkPlan(); renderCalendar(); }
   if (p==='billing') renderBillingPage();
   if (p==='projects') renderProjects();
+  if (p==='clients') renderClientCards();
 }
 function showPageMobile(p, el) {
   document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));
@@ -2124,6 +2138,7 @@ function showPageMobile(p, el) {
   if (p==='report') { renderReport(); renderWorkPlan(); renderCalendar(); }
   if (p==='billing') renderBillingPage();
   if (p==='projects') renderProjects();
+  if (p==='clients') renderClientCards();
 }
 function filterStage(stage) {
   stageFilter = stage;
