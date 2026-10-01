@@ -611,6 +611,28 @@
   .customize-btn { border-radius:8px; }
   .proj-card { border-radius:12px; }
   @media (max-width: 768px) { .page { padding:16px; } .page-title { font-size:22px; } }
+  .pp-head { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 18px; }
+  .pp-client { font-size:13px; color:var(--text2); }
+  .pp-title-row { display:flex; justify-content:space-between; align-items:center; gap:10px; margin:2px 0 6px; }
+  .pp-title { font-size:22px; font-weight:600; margin:0; }
+  .pp-meta { display:flex; gap:12px; flex-wrap:wrap; align-items:center; font-size:13px; color:var(--text2); margin-bottom:12px; }
+  .pp-head .stage-row { margin-top:0 !important; }
+  .pp-tabs { display:flex; gap:4px; border-bottom:1px solid var(--border); margin:14px 0 14px; }
+  .pp-tab { background:none; border:none; border-bottom:2px solid transparent; padding:10px 14px; font-family:'Rubik',sans-serif; font-size:14px; color:var(--text2); cursor:pointer; }
+  .pp-tab.active { color:var(--accent); border-bottom-color:var(--accent); font-weight:600; }
+  .pp-pane { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 18px; }
+  .pp-pane[hidden] { display:none; }
+  .pp-stats { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-bottom:16px; }
+  .pp-stat { background:var(--bg); border-radius:10px; padding:12px 14px; }
+  .pp-stat-l { font-size:12px; color:var(--text2); }
+  .pp-stat-v { font-size:22px; font-weight:600; line-height:1.3; }
+  .pp-stat-v small { font-size:13px; font-weight:400; color:var(--text2); }
+  .pp-stat .prog-bar { margin-top:8px; }
+  .pp-label { font-size:12px; color:var(--text2); margin:4px 0 6px; }
+  .pp .quick-btns { margin:0 0 14px; }
+  .pp .qbtn { direction:ltr; }
+  .pp-pane .notes-area { margin-top:0 !important; }
+  .pp-pane .notes-area textarea { min-height:220px; }
   .morning-panel { position:relative; }
   .morning-panel .panel-handle { position:absolute; top:4px; left:0; right:0; margin:0; padding:0; border:none; line-height:1; }
   @media (min-width: 769px) { #page-morning.active { height:100vh; } }
@@ -654,7 +676,7 @@
     <div style="padding:16px 24px;border-top:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">סנכרון ענן</div>
       <div id="sync-status" style="font-size:12px;color:var(--text3);margin-bottom:10px">מתחבר...</div>
-      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-01 · שלב 4</div>
+      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-01 · שלב 5</div>
       <div id="other-session-warning" class="hidden" style="font-size:11px;color:#fff;background:var(--urgent);border-radius:6px;padding:6px 8px;margin-bottom:10px;line-height:1.4;">⚠ האפליקציה פתוחה כרגע גם במקום/דפדפן אחר — שינויים עלולים להתנגש. מומלץ לסגור שם.</div>
     </div>
   </aside>
@@ -993,7 +1015,7 @@
 <div id="proj-panel-bg" class="proj-panel-bg hidden" onclick="closeProjectPanel()"></div>
 <aside id="proj-panel" class="proj-panel hidden" aria-label="כרטיס פרויקט">
   <div class="proj-panel-head">
-    <span style="font-size:12px;color:var(--text3);">כרטיס פרויקט</span>
+    <span></span>
     <button class="proj-panel-close" onclick="closeProjectPanel()" aria-label="סגור">✕</button>
   </div>
   <div id="proj-panel-body"></div>
@@ -3709,38 +3731,8 @@ function projectCardHtml(p, _allFinish, inPanel) {
       }
       return `<span style="color:${color};font-size:12px;font-weight:600;">📅 ~${label}${deadlineNote}</span>`;
     })() : '';
-    return `<div class="proj-card s-${p.stage || 'send'}" ${inPanel ? 'data-panel="1"' : `draggable="true" data-id="${p.id}"
-        ondragstart="dragStart(event,${p.id})" ondragend="dragEnd(event)" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event,${p.id})"`}>
-      <div class="proj-compact" style="display:flex;align-items:center;gap:10px;">
-        ${inPanel ? '' : `<div class="drag-handle" title="גרור לסידור" onclick="event.stopPropagation()">⠿</div>`}
-        <div style="flex:1;min-width:0;cursor:pointer;" onclick="${inPanel ? '' : `openProjectPanel('${p.id}')`}">
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
-            <span class="proj-name" style="font-size:14px;">${p.client} — ${p.title}</span>
-            ${urgCnt ? `<span class="badge b-urgent">${urgCnt} דחוף</span>` : ''}
-            ${billingBadgeHtml(p)}
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-            ${remBadgeHtml(rem)}
-            <div style="display:flex;gap:10px;font-size:12px;color:var(--text3);align-items:center;flex-wrap:wrap;">
-              <span style="background:var(--s-${p.stage}-b,var(--border));color:#fff;padding:1px 8px;border-radius:20px;font-size:11px;">${STAGES[p.stage] || p.stage}</span>
-              <span>נערכו ${p.edited}/${p.total}</span>
-              <span style="color:var(--accent)">היום: ${et}</span>
-              ${gt ? `<span style="color:${et >= gt ? 'var(--accent)' : 'var(--text3)'}">יעד: ${et}/${gt}</span>` : ''}
-              <span>${pct}%</span>
-              ${p.deadline ? `<span style="color:var(--urgent);font-weight:500;">⏰ ${new Date(p.deadline).toLocaleDateString('he-IL')}</span>` : ''}
-              ${_estHtml}
-            </div>
-          </div>
-        </div>
-        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
-          <button class="edit-btn" onclick="openEdit(${p.id})">✏</button>
-          ${inPanel ? '' : `<span style="font-size:11px;color:var(--text3);padding:4px 8px;cursor:pointer;" onclick="toggleExpand(${p.id})" title="פתח כאן ברשימה">${isExpanded ? '▲' : '▼'}</span>`}
-        </div>
-      </div>
-      <div class="prog-bar" style="margin-top:6px;"><div class="prog-fill ${fillCls}" style="width:${pct}%"></div></div>
-      ${isExpanded ? `
-      <div class="stage-row" style="margin-top:10px;">${stages}</div>
-      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:10px;padding:7px 10px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);">
+    const _ppStages = `      <div class="stage-row" style="margin-top:10px;">${stages}</div>`;
+    const _ppCtrl = `      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:10px;padding:7px 10px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);">
         <div style="display:flex;align-items:center;gap:4px;">
           <span style="font-size:12px;color:var(--text3);">✏️</span>
           <input type="number" value="${et}" min="0" id="editedtoday-${p.id}" onchange="updateEditedToday(${p.id},this.value)"
@@ -3779,16 +3771,16 @@ function projectCardHtml(p, _allFinish, inPanel) {
           const rate = Math.round(income / totalHours);
           return `<span style="margin-right:auto;font-size:12px;font-weight:700;color:var(--accent);">₪${rate.toLocaleString()}/שע׳</span>`;
         })()}
-      </div>
-      <div id="timer-edit-${p.id}" class="hidden" style="margin-top:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+      </div>`;
+    const _ppTimerEdit = `      <div id="timer-edit-${p.id}" class="hidden" style="margin-top:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
         <input type="number" id="timer-edit-h-${p.id}" min="0" max="23" placeholder="0" style="width:52px;padding:4px 8px;font-size:13px;border:1px solid var(--border2);border-radius:4px;font-family:'Rubik',sans-serif;text-align:center;" />
         <span style="font-size:12px;color:var(--text3);">שע׳</span>
         <input type="number" id="timer-edit-m-${p.id}" min="0" max="59" placeholder="0" style="width:52px;padding:4px 8px;font-size:13px;border:1px solid var(--border2);border-radius:4px;font-family:'Rubik',sans-serif;text-align:center;" />
         <span style="font-size:12px;color:var(--text3);">דק׳</span>
         <button onclick="saveTimerEdit(${p.id})" style="padding:4px 10px;font-size:12px;font-family:'Rubik',sans-serif;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;">שמור</button>
         <button onclick="toggleTimerEdit(${p.id})" style="padding:4px 8px;font-size:12px;font-family:'Rubik',sans-serif;background:transparent;border:1px solid var(--border2);border-radius:4px;cursor:pointer;color:var(--text3);">ביטול</button>
-      </div>
-      ${(p.timeLogs||[]).length>0?`<div class="session-log">${(p.timeLogs||[]).map(l=>{
+      </div>`;
+    const _ppSessions = `      ${(p.timeLogs||[]).length>0?`<div class="session-log">${(p.timeLogs||[]).map(l=>{
         const dstr=l.migrated?'(ישן)':l.date?(()=>{const dparts=l.date.split('-');return dparts[2]+'.'+dparts[1]+'.'+String(dparts[0]).slice(2);})():'';
         return `<div class="session-row">
           <span class="session-date">${dstr}${l.manual?'&nbsp;✍️':''}</span>
@@ -3802,32 +3794,97 @@ function projectCardHtml(p, _allFinish, inPanel) {
           <input id="sedit-val-${l.id}" type="text" placeholder="שע:דק" style="width:80px;padding:3px 7px;font-size:12px;border:1px solid var(--border2);border-radius:4px;font-family:'Rubik',sans-serif;" />
           <button onclick="saveTimerSession(${p.id},${l.id})" style="padding:3px 8px;font-size:11px;font-family:'Rubik',sans-serif;background:var(--accent);color:#fff;border:none;border-radius:4px;cursor:pointer;">שמור</button>
         </div>`;
-      }).join('')}</div>`:''}
-      <div class="quick-btns">
+      }).join('')}</div>`:''}`;
+    const _ppQuick = `      <div class="quick-btns">
         <button class="qbtn minus" onclick="bumpEdited(${p.id},-1)">−1</button>
         <button class="qbtn minus" onclick="bumpEdited(${p.id},-5)">−5</button>
         <button class="qbtn" onclick="bumpEdited(${p.id},1)">+1</button>
         <button class="qbtn" onclick="bumpEdited(${p.id},5)">+5</button>
         <button class="qbtn" onclick="bumpEdited(${p.id},10)">+10</button>
-      </div>
-      ${gt ? `<div class="prog-bar" style="margin-top:6px;"><div class="prog-fill" style="width:${Math.min(100,Math.round(et/gt*100))}%"></div></div>` : ''}
-      <div style="display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap;font-size:12px;color:var(--text3);">
+      </div>`;
+    const _ppGoalBar = `      ${gt ? `<div class="prog-bar" style="margin-top:6px;"><div class="prog-fill" style="width:${Math.min(100,Math.round(et/gt*100))}%"></div></div>` : ''}`;
+    const _ppSummary = `      <div style="display:flex;align-items:center;gap:8px;margin-top:5px;flex-wrap:wrap;font-size:12px;color:var(--text3);">
         <span>${p.edited}/${p.total} · ${pct}%${gt ? ` · יעד ${et}/${gt}${et>=gt?' ✓':''}` : ''}</span>
         ${_estHtml}
-      </div>
-      <div class="notes-area" style="border-top:none;padding-top:0;margin-top:8px;">
+      </div>`;
+    const _ppNotes = `      <div class="notes-area" style="border-top:none;padding-top:0;margin-top:8px;">
         <textarea placeholder="הערות..." onchange="updateNotes(${p.id},this.value)">${p.notes || ''}</textarea>
+      </div>`;
+    if (inPanel) {
+      const _tab = panelTab;
+      const _tb = (k, l) => `<button class="pp-tab ${_tab===k?'active':''}" data-ptab="${k}" onclick="setPanelTab('${k}')">${l}</button>`;
+      const _hid = k => _tab===k ? '' : 'hidden';
+      return `<div class="pp">
+      <div class="pp-head">
+        <div class="pp-client">${p.client || ''}</div>
+        <div class="pp-title-row"><h2 class="pp-title">${p.title || ''}</h2><button class="edit-btn" onclick="openEdit(${p.id})" title="עריכת פרטי פרויקט">✏</button></div>
+        <div class="pp-meta">${p.deadline ? `<span>דדליין ${new Date(p.deadline).toLocaleDateString('he-IL')}</span>` : ''}${_estHtml}${billingBadgeHtml(p)}</div>
+        ${_ppStages}
       </div>
-      ${renderBillingSection(p)}
-      ` : ''}
+      <div class="pp-tabs">${_tb('edit','עריכה')}${_tb('money','כסף')}${_tb('notes','הערות')}${_tb('client','לקוח')}</div>
+      <div class="pp-pane" data-ppane="edit" ${_hid('edit')}>
+        <div class="pp-stats">
+          <div class="pp-stat"><div class="pp-stat-l">נערכו</div><div class="pp-stat-v">${p.edited||0}<small> / ${p.total||0}</small></div><div class="prog-bar"><div class="prog-fill ${fillCls}" style="width:${pct}%"></div></div></div>
+          <div class="pp-stat"><div class="pp-stat-l">היום</div><div class="pp-stat-v">${et}${gt ? `<small> / יעד ${gt}</small>` : ''}</div>${gt ? `<div class="prog-bar"><div class="prog-fill" style="width:${Math.min(100,Math.round(et/gt*100))}%"></div></div>` : ''}</div>
+          <div class="pp-stat"><div class="pp-stat-l">נשארו</div><div class="pp-stat-v">${rem}</div></div>
+        </div>
+        <div class="pp-label">עדכון תמונות שנערכו</div>
+        ${_ppQuick}
+        <div class="pp-label">היום, יעד וטיימר</div>
+        ${_ppCtrl}
+        ${_ppTimerEdit}
+        ${_ppSessions}
+      </div>
+      <div class="pp-pane" data-ppane="money" ${_hid('money')}>${renderBillingSection(p)}</div>
+      <div class="pp-pane" data-ppane="notes" ${_hid('notes')}>${_ppNotes}</div>
+      <div class="pp-pane" data-ppane="client" ${_hid('client')}><!--pp-client--></div>
+    </div>`;
+    }
+    return `<div class="proj-card s-${p.stage || 'send'}" ${inPanel ? 'data-panel="1"' : `draggable="true" data-id="${p.id}"
+        ondragstart="dragStart(event,${p.id})" ondragend="dragEnd(event)" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event,${p.id})"`}>
+      <div class="proj-compact" style="display:flex;align-items:center;gap:10px;">
+        ${inPanel ? '' : `<div class="drag-handle" title="גרור לסידור" onclick="event.stopPropagation()">⠿</div>`}
+        <div style="flex:1;min-width:0;cursor:pointer;" onclick="${inPanel ? '' : `openProjectPanel('${p.id}')`}">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+            <span class="proj-name" style="font-size:14px;">${p.client} — ${p.title}</span>
+            ${urgCnt ? `<span class="badge b-urgent">${urgCnt} דחוף</span>` : ''}
+            ${billingBadgeHtml(p)}
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            ${remBadgeHtml(rem)}
+            <div style="display:flex;gap:10px;font-size:12px;color:var(--text3);align-items:center;flex-wrap:wrap;">
+              <span style="background:var(--s-${p.stage}-b,var(--border));color:#fff;padding:1px 8px;border-radius:20px;font-size:11px;">${STAGES[p.stage] || p.stage}</span>
+              <span>נערכו ${p.edited}/${p.total}</span>
+              <span style="color:var(--accent)">היום: ${et}</span>
+              ${gt ? `<span style="color:${et >= gt ? 'var(--accent)' : 'var(--text3)'}">יעד: ${et}/${gt}</span>` : ''}
+              <span>${pct}%</span>
+              ${p.deadline ? `<span style="color:var(--urgent);font-weight:500;">⏰ ${new Date(p.deadline).toLocaleDateString('he-IL')}</span>` : ''}
+              ${_estHtml}
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+          <button class="edit-btn" onclick="openEdit(${p.id})">✏</button>
+          ${inPanel ? '' : `<span style="font-size:11px;color:var(--text3);padding:4px 8px;cursor:pointer;" onclick="toggleExpand(${p.id})" title="פתח כאן ברשימה">${isExpanded ? '▲' : '▼'}</span>`}
+        </div>
+      </div>
+      <div class="prog-bar" style="margin-top:6px;"><div class="prog-fill ${fillCls}" style="width:${pct}%"></div></div>
+      ${isExpanded ? _ppStages+_ppCtrl+_ppTimerEdit+_ppSessions+_ppQuick+_ppGoalBar+_ppSummary+_ppNotes+renderBillingSection(p) : ''}
     </div>`;
 }
 
 // ===== Project side panel =====
 var panelProjectId = null;
+var panelTab = 'edit';
+function setPanelTab(t) {
+  panelTab = t;
+  document.querySelectorAll('#proj-panel [data-ppane]').forEach(e => { e.hidden = e.dataset.ppane !== t; });
+  document.querySelectorAll('#proj-panel .pp-tab').forEach(b => b.classList.toggle('active', b.dataset.ptab === t));
+}
 function isPanelProject(id) { return panelProjectId !== null && String(panelProjectId) === String(id); }
 function openProjectPanel(id) {
   const p = state.projects.find(x => String(x.id) === String(id)); if (!p) return;
+  if (String(panelProjectId) !== String(p.id)) panelTab = 'edit';
   panelProjectId = p.id;
   document.getElementById('proj-panel').classList.remove('hidden');
   document.getElementById('proj-panel-bg').classList.remove('hidden');
@@ -3849,7 +3906,7 @@ function renderProjectPanel() {
   const p = state.projects.find(x => String(x.id) === String(panelProjectId));
   if (!p) { closeProjectPanel(); return; }
   const others = state.projects.filter(x => x.client === p.client && x.id !== p.id);
-  const clientHtml = `<div class="card" style="margin-top:14px;">
+  const clientHtml = `<div>
       <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
         <span>👤 ${p.client || 'לקוח'}</span>
         <button class="panel-link-btn" onclick="openClientRecords('${String(p.client||'').replace(/'/g,"\\'")}')">רשומות בכספים ←</button>
@@ -3860,7 +3917,7 @@ function renderProjectPanel() {
         </div>`).join('') : '<div style="font-size:13px;color:var(--text3);">אין פרויקטים נוספים ללקוח</div>'}
     </div>`;
   const scroll = document.getElementById('proj-panel').scrollTop;
-  body.innerHTML = projectCardHtml(p, computeAllFinishDates(), true) + clientHtml;
+  body.innerHTML = projectCardHtml(p, computeAllFinishDates(), true).replace('<!--pp-client-->', clientHtml);
   document.getElementById('proj-panel').scrollTop = scroll;
 }
 function openClientRecords(client) {
