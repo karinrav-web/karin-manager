@@ -3061,7 +3061,7 @@ function renderClientCards() {
         </div>
         <div style="display:flex;gap:14px;align-items:center;flex-shrink:0;">
           ${revenue>0?`<span style="font-size:13px;color:var(--accent);font-weight:600;">${fmtMoney(revenue)}</span>`:''}
-          ${(billingByProj.length+activeProjects.length)>0?`<span style="font-size:11px;color:var(--text3);">${billingByProj.length+activeProjects.length} פרויקטים</span>`:''}
+          ${(() => { const ids = new Set(activeProjects.map(p => String(p.id))); const n = activeProjects.length + billingByProj.filter(g => !clientBilling.some(r => g.recordIds.includes(r.id) && r.projectId && ids.has(String(r.projectId)))).length; return n > 0 ? `<span style="font-size:11px;color:var(--text3);">${n} פרויקטים</span>` : ''; })()}
           <span style="font-size:12px;color:var(--text3);padding:4px 6px;" id="${safeId}-arrow" onclick="event.stopPropagation();toggleClientCard('${jsq(name)}')" title="פתיחה כאן">${isOpen?'▲':'▼'}</span>
         </div>
       </div>
@@ -4063,13 +4063,42 @@ function clientPanelHtml(name) {
   const noteKey = Object.keys(state.clients || {}).find(n => clientKey(n) === k);
   const notes = noteKey ? (state.clients[noteKey].notes || '') : '';
   const fmtD = d => d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : '';
+  // Projects that exist only as income records (imported from Excel/CSV before the app was used):
+  // one per record that isn't tied to an app project, grouped by project name + date.
+  const projIds = new Set(projs.map(p => String(p.id)));
+  const histMap = new Map();
+  recs.forEach(r => {
+    if (r.projectId && projIds.has(String(r.projectId))) return;
+    const key = clientKey(r.project || r.location || '') + '|' + (r.date || '');
+    const g = histMap.get(key) || { name: r.project || r.location || '—', location: (r.location && r.location !== r.project) ? r.location : '', date: r.date || '', total: 0, ids: [] };
+    g.total += r.total || 0; g.ids.push(r.id); histMap.set(key, g);
+  });
+  const hist = [...histMap.values()];
+  const firstYear = [...projs.map(p => p.date || ''), ...recs.map(r => r.date || '')].filter(Boolean).sort()[0];
+  const allRows = [
+    ...projs.map(p => ({ d: (p.date || '').slice(0, 10), html: `<div class="cp-row">
+      <span class="proj-link" style="flex:1;font-weight:500;" onclick="openProjectPanel('${p.id}')">${p.title || '—'}</span>
+      ${billingBadgeHtml(p)}
+      <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:var(--s-${p.stage}-b,var(--border));color:#fff;white-space:nowrap;">${STAGES[p.stage] || p.stage}</span>
+      <span class="cp-date">${fmtD(p.date)}</span>
+    </div>` })),
+    ...hist.map(h => ({ d: h.date, html: `<div class="cp-row">
+      <span style="flex:1;font-weight:500;">${h.name}${h.location ? `<span class="cp-sub"> · ${h.location}</span>` : ''}</span>
+      <span style="font-size:13px;font-weight:600;color:var(--accent);white-space:nowrap;">${fmtMoney(h.total)}</span>
+      <span class="cp-date">${fmtD(h.date)}</span>
+      <button class="panel-link-btn" onclick="openBillingModal(${h.ids[0]})" aria-label="עריכה">✏️</button>
+    </div>` }))
+  ].sort((a, b) => (b.d || '').localeCompare(a.d || ''));
+  const projCount = projs.length + hist.length;
+  const projRowsAll = allRows.map(x => x.html).join('') || '<div class="cp-empty">אין פרויקטים</div>';
   const projRows = projs.map(p => `<div class="cp-row">
       <span class="proj-link" style="flex:1;font-weight:500;" onclick="openProjectPanel('${p.id}')">${p.title || '—'}</span>
       ${billingBadgeHtml(p)}
       <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:var(--s-${p.stage}-b,var(--border));color:#fff;white-space:nowrap;">${STAGES[p.stage] || p.stage}</span>
       <span class="cp-date">${fmtD(p.date)}</span>
     </div>`).join('') || '<div class="cp-empty">אין פרויקטים פתוחים באפליקציה</div>';
-  const recRows = recs.map(r => `<div class="cp-row">
+  const linkedRecs = recs.filter(r => r.projectId && projIds.has(String(r.projectId)));
+  const recRows = linkedRecs.map(r => `<div class="cp-row">
       <span style="flex:1;">${r.project || '—'}${(r.suppliers || []).length ? `<span class="cp-sub"> · ${r.suppliers.map(x => x.name).filter(Boolean).join(', ')}</span>` : ''}</span>
       <span style="font-weight:600;color:var(--accent);white-space:nowrap;">${fmtMoney(r.total || 0)}</span>
       <span class="cp-date">${fmtD(r.date)}</span>
@@ -4077,10 +4106,10 @@ function clientPanelHtml(name) {
     </div>`).join('') || '<div class="cp-empty">אין תשלומים רשומים</div>';
   return `<div class="pp">
     <div class="pp-head">
-      <div class="pp-client">כרטיס לקוח</div>
+      <div class="pp-client">כרטיס לקוח${firstYear ? ` · לקוח מאז ${firstYear.slice(0, 4)}` : ''}</div>
       <div class="pp-title-row"><h2 class="pp-title">${name}</h2></div>
       <div class="pp-stats" style="margin:8px 0 0;grid-template-columns:repeat(4,minmax(0,1fr));">
-        <div class="pp-stat"><div class="pp-stat-l">פרויקטים</div><div class="pp-stat-v">${projs.length}</div></div>
+        <div class="pp-stat"><div class="pp-stat-l">פרויקטים</div><div class="pp-stat-v">${projCount}</div></div>
         <div class="pp-stat"><div class="pp-stat-l">הכנסות ${thisYear}</div><div class="pp-stat-v" style="font-size:18px;">${fmtMoney(yearTotal)}</div></div>
         <div class="pp-stat"><div class="pp-stat-l">סה״כ מאז ומעולם</div><div class="pp-stat-v" style="font-size:18px;">${fmtMoney(total)}</div></div>
         <div class="pp-stat"><div class="pp-stat-l">פתוח לגבייה</div><div class="pp-stat-v" style="font-size:18px;color:${open ? 'var(--urgent)' : 'inherit'};">${fmtMoney(open)}</div></div>
@@ -4091,8 +4120,8 @@ function clientPanelHtml(name) {
       <div class="pp-label">הערות על הלקוח</div>
       <textarea class="cp-notes" placeholder="תיאור / הערות על הלקוח..." onchange="saveClientNote('${jsq(noteKey || name)}', this.value)">${notes}</textarea>
     </div>
-    <div class="pp-pane" style="margin-top:14px;"><div class="pp-label">פרויקטים (${projs.length})</div>${projRows}</div>
-    <div class="pp-pane" style="margin-top:14px;"><div class="pp-label">תשלומים (${recs.length})</div>${recRows}</div>
+    <div class="pp-pane" style="margin-top:14px;"><div class="pp-label">פרויקטים (${projCount})${hist.length ? ` · <span class="cp-sub">${projs.length} מהאפליקציה, ${hist.length} מהטבלאות הקודמות</span>` : ''}</div>${projRowsAll}</div>
+    ${linkedRecs.length ? `<div class="pp-pane" style="margin-top:14px;"><div class="pp-label">תשלומים על פרויקטים מהאפליקציה (${linkedRecs.length})</div>${recRows}</div>` : ''}
   </div>`;
 }
 function openClientRecords(client) {
