@@ -2585,11 +2585,16 @@ function renderDuplicateCheck() {
   const groups = new Map();
   recs.forEach(r => {
     if (!r.client || !r.project || !(r.total > 0)) return;
-    const key = r.client.trim() + '|' + r.project.trim() + '|' + r.total;
+    // supplier names are part of the key: two different vendors paying the same fee on one project are not duplicates
+    const sup = (r.suppliers||[]).map(x => (x.name||'').trim()).sort().join(',');
+    // imported records use generic project names ("דירה", "בית פרטי"), so the same client+amount months apart is a
+    // different job — for them only the same date counts as a duplicate
+    const key = clientKey(r.client) + '|' + clientKey(r.project) + '|' + r.total + '|' + sup + (r.projectId ? '' : '|' + (r.date||''));
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(r);
   });
-  const dupGroups = [...groups.values()].filter(g => g.length > 1);
+  // a group where every record is still linked to its own active payment isn't a duplicate
+  const dupGroups = [...groups.values()].filter(g => g.length > 1 && g.some(r => isOrphanedBillingRecord(r) || !r.projectId));
   if (!dupGroups.length) { card.style.display = 'none'; el.innerHTML = ''; return; }
   card.style.display = '';
   if (countEl) countEl.textContent = `(${dupGroups.length})`;
