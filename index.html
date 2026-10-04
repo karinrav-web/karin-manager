@@ -722,6 +722,8 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
 .df-ring { --p:0%; width:38px; height:38px; border-radius:50%; flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; background:conic-gradient(var(--accent) var(--p), var(--border2) 0); }
 .df-ring i { width:28px; height:28px; border-radius:50%; background:var(--surface); display:flex; align-items:center; justify-content:center; font-style:normal; font-size:9.5px; font-weight:700; color:var(--text); }
 .df-name-wrap { display:flex; align-items:center; gap:10px; min-width:0; }
+.icl-opt{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;margin-top:6px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-family:'Rubik',sans-serif;font-size:13px;cursor:pointer;text-align:right;}
+.icl-opt:hover{border-color:var(--accent);background:var(--accent-light);}
 </style>
 </head>
 <body>
@@ -763,7 +765,7 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
     <div style="padding:16px 24px;border-top:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">סנכרון ענן</div>
       <div id="sync-status" style="font-size:12px;color:var(--text3);margin-bottom:10px">מתחבר...</div>
-      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-04 · השוואה ל-iCount</div>
+      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-04 · שיוך קבלות</div>
       <div id="other-session-warning" class="hidden" style="font-size:11px;color:#fff;background:var(--urgent);border-radius:6px;padding:6px 8px;margin-bottom:10px;line-height:1.4;">⚠ האפליקציה פתוחה כרגע גם במקום/דפדפן אחר — שינויים עלולים להתנגש. מומלץ לסגור שם.</div>
     </div>
   </aside>
@@ -1278,6 +1280,17 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
       <button class="btn-cancel" onclick="closeICountModal()">סגירה</button>
     </div>
     <div id="ic-body"></div>
+  </div>
+</div>
+<div class="modal-bg" id="icl-modal" style="display:none;z-index:170" onclick="if(event.target===this)closeICLink()">
+  <div class="modal" style="width:min(560px,94vw);max-height:86vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+      <div class="modal-title" style="margin:0;">שיוך קבלה</div>
+      <button class="btn-cancel" onclick="closeICLink()">ביטול</button>
+    </div>
+    <div id="icl-head" style="font-size:13px;background:var(--bg);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:10px;"></div>
+    <input id="icl-q" type="text" placeholder="🔍 חיפוש לקוח, פרויקט או ספק..." oninput="renderICLink()" style="width:100%;box-sizing:border-box;padding:9px 12px;font-size:14px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:8px;background:var(--surface);color:var(--text);"/>
+    <div id="icl-body"></div>
   </div>
 </div>
 <div class="modal-bg" id="billing-modal" style="display:none;z-index:160">
@@ -3487,7 +3500,7 @@ function deleteBillingRecord() {
 /* ===== הכנסה כללית (לא קשורה לפרויקט) — למשל ספק שקונה תמונות מכמה פרויקטים ===== */
 // נשמרת כרשומת הכנסה עם general:true, client ריק (כדי שלא תיספר כלקוח/פרויקט),
 // והקונה ב-suppliers[0] עם direct:true.
-let _giEditId = null;
+let _giEditId = null, _giPrefillKey = null;
 function recClientHtml(r) {
   if (r.general) return `<span>${(r.suppliers && r.suppliers[0] && r.suppliers[0].name) || '—'}</span> <span style="font-size:10px;padding:1px 7px;border-radius:10px;background:var(--accent-light);color:var(--accent);font-weight:500;">הכנסה כללית</span>`;
   return `<span class="proj-link" onclick="event.stopPropagation();openClientPanel('${jsq(r.client)}')">${r.client||'—'}</span>`;
@@ -3496,6 +3509,7 @@ function openGeneralIncomeModal(id, prefill) {
   const rec = id ? (state.billing || []).find(r => r.id === id) : null;
   _giEditId = rec ? rec.id : null;
   const p = prefill || {};
+  _giPrefillKey = p.icKey || null;
   document.getElementById('gi-title').textContent = rec ? 'עריכת הכנסה כללית' : 'הכנסה כללית — לא קשורה לפרויקט';
   document.getElementById('gi-date').value = rec ? (rec.date || '') : (p.date || new Date().toISOString().slice(0, 10));
   document.getElementById('gi-name').value = rec ? ((rec.suppliers && rec.suppliers[0] && rec.suppliers[0].name) || '') : (p.name || '');
@@ -3523,11 +3537,12 @@ function saveGeneralIncome() {
   const total = _giTotal();
   if (!name || !total) { alert('צריך שם וסכום'); return; }
   if (!state.billing) state.billing = [];
+  const _k = _giPrefillKey; _giPrefillKey = null;
   const data = { date, client: '', project: desc, location: '', designerFee: 0, suppliers: [{ name, amount: total, direct: true }], total, general: true };
   if (_giEditId) {
     const i = state.billing.findIndex(r => r.id === _giEditId);
     if (i >= 0) state.billing[i] = { ...state.billing[i], ...data };
-  } else state.billing.push({ id: Date.now(), ...data });
+  } else state.billing.push({ id: Date.now(), ...data, ...(_k ? { icDocs: [_k] } : {}) });
   save(); closeGeneralIncomeModal(); renderBillingPage();
   icRefresh();
 }
@@ -3621,6 +3636,15 @@ function computeICountCompare(parsed) {
     });
     if (best) { best._m = d._m = true; (strict ? matched : weak).push({ doc: d, piece: best }); }
   });
+  // קישורים שנשמרו ידנית (icDocs על הרשומה) — קודמים לכל ניחוש
+  const allRecs = getBillingRecords();
+  sorted.forEach(d => {
+    const k = _icKey(d);
+    const rec = allRecs.find(r => (r.icDocs || []).includes(k)); if (!rec) return;
+    const free = pieces.filter(p => p.rec === rec && !p._m).sort((a, b) => Math.abs(a.amount - d.amount) - Math.abs(b.amount - d.amount))[0];
+    if (free) free._m = true;
+    d._m = true; matched.push({ doc: d, piece: free || { rec, name: rec.client, amount: rec.total }, linked: true });
+  });
   pass(true); pass(false);
   // סכום שמופיע פעם אחת בלבד בכל צד (מה שנשאר) — כנראה אותה עסקה גם אם השם והתאריך שונים
   const cnt = (arr, f) => arr.reduce((m, x) => { const k = Math.round(f(x)); m[k] = (m[k] || 0) + 1; return m; }, {});
@@ -3682,10 +3706,10 @@ function renderICountCompare() {
   const tile = (l, v, col) => `<div style="flex:1;min-width:130px;background:var(--bg);border-radius:var(--radius-sm);padding:10px 12px;"><div style="font-size:11px;color:var(--text2);">${l}</div><div style="font-size:18px;font-weight:600;${col ? 'color:' + col : ''}">${v}</div></div>`;
   const sec = (title, sub, body, open) => `<details ${open ? 'open' : ''} style="margin-top:14px;"><summary style="cursor:pointer;font-weight:600;font-size:14px;">${title}</summary><div style="font-size:12px;color:var(--text2);margin:4px 0 6px;">${sub}</div>${body || '<div class="cp-empty">אין</div>'}</details>`;
   const row = (inner) => `<div class="cp-row" style="flex-wrap:nowrap;">${inner}</div>`;
-  const missingHtml = c.missing.map((d, i) => row(`<span class="cp-date">${fd(d.date)}</span><span style="flex:1;min-width:0;">${d.name}<span class="cp-sub"> · ${d.kind} ${d.num}</span></span><b style="white-space:nowrap;">${fmtMoney(d.amount)}</b><button class="edit-btn" style="font-size:11px;white-space:nowrap;" onclick="icAddMissing(${i})">+ הוסיפי</button>`)).join('');
+  const missingHtml = c.missing.map((d, i) => row(`<span class="cp-date">${fd(d.date)}</span><span style="flex:1;min-width:0;">${d.name}<span class="cp-sub"> · ${d.kind} ${d.num}</span></span><b style="white-space:nowrap;">${fmtMoney(d.amount)}</b><button class="edit-btn" style="font-size:11px;white-space:nowrap;" onclick="icOpenLink(${i})">שיוך</button>`)).join('');
   const extraHtml = c.extra.map(p => row(`<span class="cp-date">${fd(p.rec.date)}</span><span style="flex:1;min-width:0;">${p.name || '—'}<span class="cp-sub"> · ${p.rec.general ? 'הכנסה כללית' : (p.rec.client || '')}${p.rec.project ? ' · ' + p.rec.project : ''}</span></span><b style="white-space:nowrap;">${fmtMoney(p.amount)}</b><button class="panel-link-btn" onclick="icEditRec(${p.rec.id})" aria-label="עריכה">✏️</button>`)).join('');
   const pairHtml = arr => arr.map(m => row(`<span class="cp-date">${fd(m.doc.date)}</span><span style="flex:1;min-width:0;">${m.doc.name}<span class="cp-sub"> ↔ ${m.piece.name || m.piece.rec.client || '—'}${m.piece.rec.project ? ' · ' + m.piece.rec.project : ''} (${fd(m.piece.rec.date)})</span></span><b style="white-space:nowrap;">${fmtMoney(m.doc.amount)}</b>`)).join('');
-  _icLast._missing = c.missing;
+  _icLast._missing = c.missing; _icLast._lastCompare = c;
   document.getElementById('ic-body').innerHTML = `
     <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">${c.range ? `תקופת הדוח: ${fd(c.range.from)}/${c.range.from.slice(0, 4)} – ${fd(c.range.to)}/${c.range.to.slice(0, 4)} · ` : ''}ההשוואה רק מציגה — שום דבר לא משתנה בלי שתלחצי.</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -3694,7 +3718,7 @@ function renderICountCompare() {
       ${tile('רשום באפליקציה', fmtMoney(Math.round(c.appTotal)))}
       ${tile(diff >= 0 ? 'חסר באפליקציה' : 'עודף באפליקציה', fmtMoney(Math.abs(diff)), diff ? 'var(--urgent)' : '')}
     </div>
-    ${sec(`ב-iCount ולא באפליקציה (${c.missing.length}) · ${fmtMoney(Math.round(c.missing.reduce((s, d) => s + d.amount, 0)))}`, 'קבלות שלא מצאתי להן רשומה תואמת. "הוסיפי" פותח הכנסה כללית מוכנה; אם זה שייך לפרויקט — עדיף לסמן שם את התשלום כשולם.', missingHtml, true)}
+    ${sec(`ב-iCount ולא באפליקציה (${c.missing.length}) · ${fmtMoney(Math.round(c.missing.reduce((s, d) => s + d.amount, 0)))}`, 'קבלות שלא מצאתי להן רשומה תואמת. "שיוך" מקשר את הקבלה לפרויקט, לרשומה קיימת, או רושם אותה כהכנסה כללית.', missingHtml, true)}
     ${sec(`באפליקציה ולא ב-iCount (${c.extra.length}) · ${fmtMoney(Math.round(c.extra.reduce((s, p) => s + p.amount, 0)))}`, 'רשומות בלי קבלה תואמת בדוח: אולי כפילות, סכום שונה, תשלום שעוד לא הופקה עליו קבלה, או קבלה מחוץ לתקופת הדוח.', extraHtml, true)}
     ${sec(`התאמה משוערת (${c.weak.length})`, 'הסכום זהה אבל השם שונה (למשל שם החברה בקבלה מול שם הספק באפליקציה), או תשלום שפוצל לשתי קבלות — כדאי להציץ.', pairHtml(c.weak), false)}
     ${c.prev.length ? sec(`קבלות על חשבוניות מתקופה קודמת (${c.prev.length}) · ${fmtMoney(Math.round(c.prevTotal))}`, 'כסף שנכנס בתקופת הדוח על חשבוניות שהופקו לפניה. באפליקציה ההכנסה הזו רשומה בדרך כלל בתקופה הקודמת, ולכן היא לא נחשבת חסרה.', c.prev.map(d => row(`<span class="cp-date">${fd(d.date)}</span><span style="flex:1;min-width:0;">${d.name}<span class="cp-sub"> · ${d.info}</span></span><b style="white-space:nowrap;">${fmtMoney(d.amount)}</b>`)).join(''), false) : ''}
@@ -3710,6 +3734,98 @@ function icEditRec(id) {
   if (r.general) openGeneralIncomeModal(id); else openBillingModal(id);
 }
 function icRefresh() { if (_icLast && document.getElementById('ic-modal').style.display === 'flex') renderICountCompare(); }
+
+/* ===== iCount: שיוך קבלה לפרויקט / לרשומה קיימת =====
+   הקישור נשמר על רשומת ההכנסה ב-icDocs (למשל "קבלה 1381"), כך שבהשוואה הבאה
+   הקבלה כבר מזוהה כתואמת גם אם השם או התאריך שונים. */
+let _iclDoc = null, _iclProj = null;
+function _icKey(d) { return d.kind + ' ' + d.num; }
+function _icTagRec(rec, d) { if (!rec) return; const k = _icKey(d); rec.icDocs = [...new Set([...(rec.icDocs || []), k])]; }
+function icOpenLink(i) {
+  _iclDoc = _icLast && _icLast._missing && _icLast._missing[i]; if (!_iclDoc) return;
+  _iclProj = null;
+  document.getElementById('icl-q').value = '';
+  renderICLink();
+  document.getElementById('icl-modal').style.display = 'flex';
+  setTimeout(() => document.getElementById('icl-q').focus(), 50);
+}
+function closeICLink() { document.getElementById('icl-modal').style.display = 'none'; _iclDoc = null; _iclProj = null; }
+function _iclDone() { save(); closeICLink(); renderProjects(); renderBillingPage(); renderBillingSummaryMorning(); icRefresh(); }
+function renderICLink() {
+  const d = _iclDoc; if (!d) return;
+  const fd = x => x ? x.slice(8, 10) + '/' + x.slice(5, 7) + '/' + x.slice(2, 4) : '';
+  const head = document.getElementById('icl-head'), body = document.getElementById('icl-body'), qEl = document.getElementById('icl-q');
+  head.innerHTML = `<b>${d.name}</b> · ${d.kind} ${d.num} · ${fd(d.date)} · <b>${fmtMoney(d.amount)}</b>`;
+  const btn = (label, sub, amt, on) => `<button class="icl-opt" onclick="${on}"><span style="flex:1;min-width:0;text-align:right;">${label}${sub ? `<span class="cp-sub"> · ${sub}</span>` : ''}</span>${amt !== '' ? `<b style="white-space:nowrap;">${amt}</b>` : ''}</button>`;
+  const title = t => `<div class="pp-label" style="margin-top:12px;">${t}</div>`;
+  if (_iclProj) {
+    const p = state.projects.find(x => String(x.id) === String(_iclProj));
+    qEl.style.display = 'none';
+    const recs = getBillingRecords().filter(r => String(r.projectId) === String(p.id));
+    const unpaid = (p.payers || []).map((x, idx) => ({ x, idx })).filter(o => !o.x.paid && ['client', 'vendor', 'photo', 'direct'].includes(o.x.type) && Number(o.x.amount) > 0);
+    const exp = x => x.type === 'photo' ? (Number(x.qty) || 1) * Number(x.amount) : Math.round(Number(x.amount) * 1.18);
+    const tl = { client: 'לקוח', vendor: 'ספק', photo: 'תמונה בודדת', direct: 'מכירה ישירה' };
+    body.innerHTML = `<button class="edit-btn" style="font-size:12px;" onclick="_iclProj=null;renderICLink()">→ חזרה לחיפוש</button>
+      <div style="font-weight:600;margin-top:10px;">${p.client}${p.title ? ' — ' + p.title : ''}</div>
+      ${unpaid.length ? title('תשלום שמחכה בפרויקט — לסמן כשולם') + unpaid.map(o => btn(`${tl[o.x.type]}: ${o.x.name || '—'}`, Math.abs(exp(o.x) - d.amount) <= 2 ? 'אותו סכום' : 'סכום שונה — יירשם לפי הקבלה', fmtMoney(exp(o.x)), `icLinkPayer(${o.idx})`)).join('') : ''}
+      ${recs.length ? title('הכנסה שכבר רשומה בפרויקט — זו אותה קבלה') + recs.map(r => btn((r.suppliers || []).map(s => s.name).filter(Boolean).join(', ') || r.client || '—', fd(r.date) + ((r.icDocs || []).length ? ' · כבר מקושרת ל' + r.icDocs.join(', ') : ''), fmtMoney(r.total), `icLinkRecord(${r.id})`)).join('') : ''}
+      ${title('או')}
+      ${btn('להוסיף כהכנסה חדשה בפרויקט', 'מכירה ישירה — לא משנה את החשבון של הלקוח', fmtMoney(d.amount), 'icLinkNewInProject()')}`;
+    return;
+  }
+  qEl.style.display = '';
+  const q = clientKey(qEl.value || '');
+  // רשומות קיימות בלי קבלה תואמת: קודם לפי סכום קרוב
+  const c = (_icLast._lastCompare || { extra: [] });
+  const recNames = r => [r.client, r.project, r.location, ...(r.suppliers || []).map(x => x.name)];
+  const extraIds = new Set(c.extra.map(p => p.rec.id));
+  const dd = r => Math.abs(new Date(r.date || d.date) - new Date(d.date));
+  // רשומות מכל התקופות (גם שנים קודמות): לפי חיפוש, או כאלה שהשם מופיע בהן; ואחריהן רשומות בלי קבלה בסכום קרוב
+  const pool = getBillingRecords().filter(r => (r.total || 0) > 0);
+  const byName = pool.filter(r => q ? clientKey(recNames(r).join(' ')).includes(q) : recNames(r).some(n => _icNameMatch(d.name, n)))
+    .sort((x, y) => (Math.abs(x.total - d.amount) <= 2 ? 0 : 1) - (Math.abs(y.total - d.amount) <= 2 ? 0 : 1) || dd(x) - dd(y)).slice(0, 12);
+  const byAmount = q ? [] : pool.filter(r => extraIds.has(r.id) && !byName.includes(r)).sort((x, y) => Math.abs(x.total - d.amount) - Math.abs(y.total - d.amount)).slice(0, 4);
+  const extras = [...byName, ...byAmount];
+  const projs = state.projects.filter(p => {
+    const hay = clientKey([p.client, p.title, ...(p.payers || []).map(x => x.name)].join(' '));
+    if (q) return hay.includes(q);
+    return [p.client, p.title, ...(p.payers || []).map(x => x.name)].some(n => _icNameMatch(d.name, n));
+  }).sort((a, b) => (b.date || '').localeCompare(a.date || '')).slice(0, 12);
+  body.innerHTML = `
+    ${title(q ? 'פרויקטים' : 'פרויקטים שהשם מופיע בהם')}
+    ${projs.map(p => btn(`${p.client}${p.title ? ' — ' + p.title : ''}`, (STAGES[p.stage] || '') + (p.date ? ' · ' + fd(p.date.slice(0, 10)) : ''), '', `_iclProj='${p.id}';renderICLink()`)).join('') || '<div class="cp-empty">לא נמצאו — חפשי לפי שם לקוח, פרויקט או ספק</div>'}
+    ${title('הכנסות שכבר רשומות באפליקציה — זו אותה קבלה')}
+    ${extras.map(r => btn(`${(r.suppliers || []).map(s => s.name).filter(Boolean).join(', ') || r.client || '—'}`, `${r.client || ''}${r.project ? ' · ' + r.project : ''} · ${fd(r.date)}${(r.icDocs || []).length ? ' · מקושרת ל' + r.icDocs.join(', ') : ''}`, fmtMoney(r.total), `icLinkRecord(${r.id})`)).join('') || '<div class="cp-empty">אין</div>'}
+    ${title('או')}
+    ${btn('הכנסה כללית — לא קשורה לפרויקט', '', fmtMoney(d.amount), `icAddGeneralFromLink()`)}`;
+}
+function icLinkRecord(id) {
+  const r = (state.billing || []).find(x => x.id === id); if (!r || !_iclDoc) return;
+  _icTagRec(r, _iclDoc); _iclDone();
+}
+function icLinkPayer(idx) {
+  const p = state.projects.find(x => String(x.id) === String(_iclProj)); const d = _iclDoc; if (!p || !d) return;
+  const pay = p.payers[idx]; if (!pay || pay.paid) return;
+  togglePaid(p.id, idx);
+  const rec = (state.billing || []).find(r => r.id === pay.billingRecordId);
+  if (rec) { rec.date = d.date; _icTagRec(rec, d); }
+  _iclDone();
+}
+function icLinkNewInProject() {
+  const p = state.projects.find(x => String(x.id) === String(_iclProj)); const d = _iclDoc; if (!p || !d) return;
+  if (!p.payers) p.payers = [];
+  const rec = { id: Date.now(), date: d.date, client: p.client || '', project: p.title || '', designerFee: 0, suppliers: [{ name: d.name, amount: d.amount, direct: true }], total: d.amount, projectId: p.id, icDocs: [_icKey(d)] };
+  p.payers.push({ name: d.name, amount: Math.round(d.amount / 1.18), type: 'direct', paid: true, invoiceSent: true, billingRecordId: rec.id });
+  if (!state.billing) state.billing = [];
+  state.billing.push(rec);
+  _iclDone();
+}
+function icAddGeneralFromLink() {
+  const d = _iclDoc; if (!d) return;
+  closeICLink();
+  openGeneralIncomeModal(null, { date: d.date, name: d.name, amount: d.amount, desc: '', icKey: _icKey(d) });
+}
+
 function closeICountModal() { document.getElementById('ic-modal').style.display = 'none'; }
 
 function importBillingCSV(event) {
