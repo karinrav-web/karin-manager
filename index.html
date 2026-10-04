@@ -765,7 +765,7 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
     <div style="padding:16px 24px;border-top:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">סנכרון ענן</div>
       <div id="sync-status" style="font-size:12px;color:var(--text3);margin-bottom:10px">מתחבר...</div>
-      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-04 · מספר חשבונית</div>
+      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-04 · מילוי מספרי חשבונית</div>
       <div id="other-session-warning" class="hidden" style="font-size:11px;color:#fff;background:var(--urgent);border-radius:6px;padding:6px 8px;margin-bottom:10px;line-height:1.4;">⚠ האפליקציה פתוחה כרגע גם במקום/דפדפן אחר — שינויים עלולים להתנגש. מומלץ לסגור שם.</div>
     </div>
   </aside>
@@ -3707,6 +3707,7 @@ function renderICountCompare() {
   _icLast.docs.forEach(d => delete d._m);
   const c = computeICountCompare(_icLast);
   const fd = d => d ? d.slice(8, 10) + '/' + d.slice(5, 7) : '';
+  _icLast._missing = c.missing; _icLast._lastCompare = c;
   const diff = Math.round(c.icTotal - c.prevTotal - c.appTotal);
   const tile = (l, v, col) => `<div style="flex:1;min-width:130px;background:var(--bg);border-radius:var(--radius-sm);padding:10px 12px;"><div style="font-size:11px;color:var(--text2);">${l}</div><div style="font-size:18px;font-weight:600;${col ? 'color:' + col : ''}">${v}</div></div>`;
   const sec = (title, sub, body, open) => `<details ${open ? 'open' : ''} style="margin-top:14px;"><summary style="cursor:pointer;font-weight:600;font-size:14px;">${title}</summary><div style="font-size:12px;color:var(--text2);margin:4px 0 6px;">${sub}</div>${body || '<div class="cp-empty">אין</div>'}</details>`;
@@ -3714,7 +3715,6 @@ function renderICountCompare() {
   const missingHtml = c.missing.map((d, i) => row(`<span class="cp-date">${fd(d.date)}</span><span style="flex:1;min-width:0;">${d.name}<span class="cp-sub"> · ${d.kind} ${d.num}</span></span><b style="white-space:nowrap;">${fmtMoney(d.amount)}</b><button class="edit-btn" style="font-size:11px;white-space:nowrap;" onclick="icOpenLink(${i})">שיוך</button>`)).join('');
   const extraHtml = c.extra.map(p => row(`<span class="cp-date">${fd(p.rec.date)}</span><span style="flex:1;min-width:0;">${p.name || '—'}<span class="cp-sub"> · ${p.rec.general ? 'הכנסה כללית' : (p.rec.client || '')}${p.rec.project ? ' · ' + p.rec.project : ''}</span></span><b style="white-space:nowrap;">${fmtMoney(p.amount)}</b><button class="panel-link-btn" onclick="icEditRec(${p.rec.id})" aria-label="עריכה">✏️</button>`)).join('');
   const pairHtml = arr => arr.map(m => row(`<span class="cp-date">${fd(m.doc.date)}</span><span style="flex:1;min-width:0;">${m.doc.name}<span class="cp-sub"> ↔ ${m.piece.name || m.piece.rec.client || '—'}${m.piece.rec.project ? ' · ' + m.piece.rec.project : ''} (${fd(m.piece.rec.date)})</span></span><b style="white-space:nowrap;">${fmtMoney(m.doc.amount)}</b>`)).join('');
-  _icLast._missing = c.missing; _icLast._lastCompare = c;
   document.getElementById('ic-body').innerHTML = `
     <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">${c.range ? `תקופת הדוח: ${fd(c.range.from)}/${c.range.from.slice(0, 4)} – ${fd(c.range.to)}/${c.range.to.slice(0, 4)} · ` : ''}ההשוואה רק מציגה — שום דבר לא משתנה בלי שתלחצי.</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -3723,6 +3723,7 @@ function renderICountCompare() {
       ${tile('רשום באפליקציה', fmtMoney(Math.round(c.appTotal)))}
       ${tile(diff >= 0 ? 'חסר באפליקציה' : 'עודף באפליקציה', fmtMoney(Math.abs(diff)), diff ? 'var(--urgent)' : '')}
     </div>
+    ${(() => { const n = _icFillable().length; return n ? `<div style="margin-top:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--accent-light);border-radius:var(--radius-sm);padding:10px 12px;font-size:13px;"><span>ל-${n} תשלומים בפרויקטים שנמצאה להם התאמה ודאית אין עדיין מספר חשבונית.</span><button class="btn-save" style="white-space:nowrap;" onclick="icFillInvoiceNums()">מלאי מספרי חשבונית</button></div>` : ''; })()}
     ${sec(`ב-iCount ולא באפליקציה (${c.missing.length}) · ${fmtMoney(Math.round(c.missing.reduce((s, d) => s + d.amount, 0)))}`, 'קבלות שלא מצאתי להן רשומה תואמת. "שיוך" מקשר את הקבלה לפרויקט, לרשומה קיימת, או רושם אותה כהכנסה כללית.', missingHtml, true)}
     ${sec(`באפליקציה ולא ב-iCount (${c.extra.length}) · ${fmtMoney(Math.round(c.extra.reduce((s, p) => s + p.amount, 0)))}`, 'רשומות בלי קבלה תואמת בדוח: אולי כפילות, סכום שונה, תשלום שעוד לא הופקה עליו קבלה, או קבלה מחוץ לתקופת הדוח.', extraHtml, true)}
     ${sec(`התאמה משוערת (${c.weak.length})`, 'הסכום זהה אבל השם שונה (למשל שם החברה בקבלה מול שם הספק באפליקציה), או תשלום שפוצל לשתי קבלות — כדאי להציץ.', pairHtml(c.weak), false)}
@@ -3837,6 +3838,26 @@ function icAddGeneralFromLink() {
   openGeneralIncomeModal(null, { date: d.date, name: d.name, amount: d.amount, desc: '', icKey: _icKey(d) });
 }
 
+// מילוי מספרי חשבונית בתשלומים שבפרויקטים, לפי ההתאמות הוודאיות (אותו סכום ואותו שם / שיוך ידני)
+function _icFillable() {
+  const c = _icLast && _icLast._lastCompare; if (!c) return [];
+  const out = [];
+  c.matched.forEach(m => {
+    const inv = _icInvNum(m.doc), rec = m.piece && m.piece.rec; if (!inv || !rec || rec.projectId == null) return;
+    const p = state.projects.find(x => String(x.id) === String(rec.projectId)); if (!p) return;
+    const pay = (p.payers || []).find(x => x.billingRecordId === rec.id);
+    // כשיש בפרויקט כמה תשלומים באותו סכום, ממלאים רק אם שם המשלם עצמו תואם (או שיוך ידני) — כדי לא להחליף מספרים בין ספקים
+    const sameAmt = getBillingRecords().filter(r => String(r.projectId) === String(rec.projectId) && Math.abs((r.total || 0) - (rec.total || 0)) <= 2).length;
+    const sure = m.linked || sameAmt === 1 || _icNameMatch(m.doc.name, pay && pay.name);
+    if (pay && !pay.invoiceNum && sure) out.push({ pay, inv });
+  });
+  return out;
+}
+function icFillInvoiceNums() {
+  const list = _icFillable(); if (!list.length) return;
+  list.forEach(o => { o.pay.invoiceNum = o.inv; o.pay.invoiceSent = true; });
+  save(); renderProjects(); icRefresh();
+}
 function closeICountModal() { document.getElementById('ic-modal').style.display = 'none'; }
 
 function importBillingCSV(event) {
