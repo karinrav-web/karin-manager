@@ -765,7 +765,7 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
     <div style="padding:16px 24px;border-top:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">סנכרון ענן</div>
       <div id="sync-status" style="font-size:12px;color:var(--text3);margin-bottom:10px">מתחבר...</div>
-      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-04 · שיוך קבלות</div>
+      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-04 · מספר חשבונית</div>
       <div id="other-session-warning" class="hidden" style="font-size:11px;color:#fff;background:var(--urgent);border-radius:6px;padding:6px 8px;margin-bottom:10px;line-height:1.4;">⚠ האפליקציה פתוחה כרגע גם במקום/דפדפן אחר — שינויים עלולים להתנגש. מומלץ לסגור שם.</div>
     </div>
   </aside>
@@ -3640,7 +3640,12 @@ function computeICountCompare(parsed) {
   const allRecs = getBillingRecords();
   sorted.forEach(d => {
     const k = _icKey(d);
-    const rec = allRecs.find(r => (r.icDocs || []).includes(k)); if (!rec) return;
+    let rec = allRecs.find(r => (r.icDocs || []).includes(k));
+    if (!rec && _icInvNum(d)) { // תשלום בפרויקט שמספר החשבונית שלו נרשם ידנית
+      const inv = _icInvNum(d);
+      for (const p of state.projects) { const pay = (p.payers || []).find(x => x.paid && x.billingRecordId && String(x.invoiceNum || '').trim() === inv); if (pay) { rec = allRecs.find(r => r.id === pay.billingRecordId); break; } }
+    }
+    if (!rec) return;
     const free = pieces.filter(p => p.rec === rec && !p._m).sort((a, b) => Math.abs(a.amount - d.amount) - Math.abs(b.amount - d.amount))[0];
     if (free) free._m = true;
     d._m = true; matched.push({ doc: d, piece: free || { rec, name: rec.client, amount: rec.total }, linked: true });
@@ -3740,6 +3745,11 @@ function icRefresh() { if (_icLast && document.getElementById('ic-modal').style.
    הקבלה כבר מזוהה כתואמת גם אם השם או התאריך שונים. */
 let _iclDoc = null, _iclProj = null;
 function _icKey(d) { return d.kind + ' ' + d.num; }
+// מספר החשבונית של המסמך: חשבונית מס קבלה = המספר שלה; קבלה = החשבונית שהיא משלמת
+function _icInvNum(d) {
+  if (d.kind === 'חשבונית מס קבלה') return String(d.num);
+  const m = String(d.info || '').match(/חשבונית מס\s+(\d+)/); return m ? m[1] : '';
+}
 function _icTagRec(rec, d) { if (!rec) return; const k = _icKey(d); rec.icDocs = [...new Set([...(rec.icDocs || []), k])]; }
 function icOpenLink(i) {
   _iclDoc = _icLast && _icLast._missing && _icLast._missing[i]; if (!_iclDoc) return;
@@ -3809,13 +3819,14 @@ function icLinkPayer(idx) {
   togglePaid(p.id, idx);
   const rec = (state.billing || []).find(r => r.id === pay.billingRecordId);
   if (rec) { rec.date = d.date; _icTagRec(rec, d); }
+  if (_icInvNum(d)) { pay.invoiceNum = _icInvNum(d); pay.invoiceSent = true; }
   _iclDone();
 }
 function icLinkNewInProject() {
   const p = state.projects.find(x => String(x.id) === String(_iclProj)); const d = _iclDoc; if (!p || !d) return;
   if (!p.payers) p.payers = [];
   const rec = { id: Date.now(), date: d.date, client: p.client || '', project: p.title || '', designerFee: 0, suppliers: [{ name: d.name, amount: d.amount, direct: true }], total: d.amount, projectId: p.id, icDocs: [_icKey(d)] };
-  p.payers.push({ name: d.name, amount: Math.round(d.amount / 1.18), type: 'direct', paid: true, invoiceSent: true, billingRecordId: rec.id });
+  p.payers.push({ name: d.name, amount: Math.round(d.amount / 1.18), type: 'direct', paid: true, invoiceSent: true, billingRecordId: rec.id, ...(_icInvNum(d) ? { invoiceNum: _icInvNum(d) } : {}) });
   if (!state.billing) state.billing = [];
   state.billing.push(rec);
   _iclDone();
@@ -4971,6 +4982,17 @@ function toggleInvoiceSent(projId, idx) {
 // if this payer was already marked paid, its auto-generated billing/income
 // record was created as a one-time snapshot — editing the amount afterwards
 // left that record stale (still showing the old number). Keep them in sync.
+// מספר חשבונית ליד כל תשלום בפרויקט (נשמר ב-pay.invoiceNum; מתמלא לבד בשיוך מ-iCount)
+function invNumHtml(p, idx) {
+  const pay = (p.payers || [])[idx] || {};
+  return `<input type="text" inputmode="numeric" value="${pay.invoiceNum || ''}" placeholder="מס׳" title="מספר חשבונית / קבלה" aria-label="מספר חשבונית" onchange="setInvoiceNum(${p.id},${idx},this.value)" onclick="event.stopPropagation()" style="width:58px;padding:3px 6px;font-size:12px;border:1px solid var(--border2);border-radius:6px;font-family:'Rubik',sans-serif;text-align:center;background:var(--surface);color:var(--text);" />`;
+}
+function setInvoiceNum(projId, idx, val) {
+  const p = state.projects.find(p => p.id === projId); if (!p || !p.payers || !p.payers[idx]) return;
+  const v = String(val || '').trim();
+  if (v) { p.payers[idx].invoiceNum = v; p.payers[idx].invoiceSent = true; } else delete p.payers[idx].invoiceNum;
+  save(); renderProjects();
+}
 function syncPayerBillingRecord(p, pay) {
   if (!pay.paid || !pay.billingRecordId || !state.billing) return;
   const rec = state.billing.find(r => r.id === pay.billingRecordId);
@@ -5099,7 +5121,7 @@ function renderBillingSection(p) {
       </div>
       <label title="נשלחה חשבונית" style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--text3);cursor:pointer;">
         <input type="checkbox" ${pay.invoiceSent ? 'checked' : ''} onchange="toggleInvoiceSent(${p.id},${realIdx})" style="cursor:pointer;" />חשבונית
-      </label>
+      </label>${invNumHtml(p, realIdx)}
       <button class="billing-paid-btn ${pay.paid ? 'paid' : ''}" onclick="togglePaid(${p.id},${realIdx})">${pay.paid ? '✓' : ''}</button>
       <button class="billing-delete-btn" onclick="deletePayer(${p.id},${realIdx})">✕</button>
     </div>`;
@@ -5128,7 +5150,7 @@ function renderBillingSection(p) {
       </div>
       <label title="נשלחה חשבונית" style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--text3);cursor:pointer;">
         <input type="checkbox" ${pay.invoiceSent ? 'checked' : ''} onchange="toggleInvoiceSent(${p.id},${realIdx})" style="cursor:pointer;" />חשבונית
-      </label>
+      </label>${invNumHtml(p, realIdx)}
       <button class="billing-paid-btn ${pay.paid ? 'paid' : ''}" onclick="togglePaid(${p.id},${realIdx})">${pay.paid ? '✓' : ''}</button>
       <button class="billing-delete-btn" onclick="deletePayer(${p.id},${realIdx})">✕</button>
     </div>`;
@@ -5149,7 +5171,7 @@ function renderBillingSection(p) {
       </div>
       <label title="נשלחה חשבונית" style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--text3);cursor:pointer;">
         <input type="checkbox" ${pay.invoiceSent ? 'checked' : ''} onchange="toggleInvoiceSent(${p.id},${realIdx})" style="cursor:pointer;" />חשבונית
-      </label>
+      </label>${invNumHtml(p, realIdx)}
       <button class="billing-paid-btn ${pay.paid ? 'paid' : ''}" onclick="togglePaid(${p.id},${realIdx})">${pay.paid ? '✓' : ''}</button>
       <button class="billing-delete-btn" onclick="deletePayer(${p.id},${realIdx})">✕</button>
     </div>`;
@@ -5167,7 +5189,7 @@ function renderBillingSection(p) {
       </div>
       <label title="נשלחה חשבונית" style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--text3);cursor:pointer;">
         <input type="checkbox" ${pay.invoiceSent ? 'checked' : ''} onchange="toggleInvoiceSent(${p.id},${realIdx})" style="cursor:pointer;" />חשבונית
-      </label>
+      </label>${invNumHtml(p, realIdx)}
       <button class="billing-delete-btn" onclick="deletePayer(${p.id},${realIdx})" style="margin-right:auto;">✕</button>
     </div>`;
   }).join('');
@@ -5184,7 +5206,7 @@ function renderBillingSection(p) {
       </div>
       <label title="נשלחה חשבונית" style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--text3);cursor:pointer;">
         <input type="checkbox" ${pay.invoiceSent ? 'checked' : ''} onchange="toggleInvoiceSent(${p.id},${realIdx})" style="cursor:pointer;" />חשבונית
-      </label>
+      </label>${invNumHtml(p, realIdx)}
       <button class="billing-delete-btn" onclick="deletePayer(${p.id},${realIdx})" style="margin-right:auto;">✕</button>
     </div>`;
   }).join('');
@@ -5205,7 +5227,7 @@ function renderBillingSection(p) {
       </div>
       <label title="נשלחה חשבונית" style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--text3);cursor:pointer;">
         <input type="checkbox" ${client.invoiceSent ? 'checked' : ''} onchange="toggleInvoiceSent(${p.id},${realIdx})" style="cursor:pointer;" />חשבונית
-      </label>
+      </label>${invNumHtml(p, realIdx)}
       <button class="billing-paid-btn ${client.paid ? 'paid' : ''}" onclick="${client.paid ? `togglePaid(${p.id},${realIdx})` : `openReceivePaymentModal(${p.id},${realIdx})`}">${client.paid ? '✓' : ''}</button>
       <button class="billing-delete-btn" onclick="deletePayer(${p.id},${realIdx})">✕</button>
     </div>`;
