@@ -763,7 +763,7 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
     <div style="padding:16px 24px;border-top:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">סנכרון ענן</div>
       <div id="sync-status" style="font-size:12px;color:var(--text3);margin-bottom:10px">מתחבר...</div>
-      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-04 · עיצוב כהה</div>
+      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-04 · השוואה ל-iCount</div>
       <div id="other-session-warning" class="hidden" style="font-size:11px;color:#fff;background:var(--urgent);border-radius:6px;padding:6px 8px;margin-bottom:10px;line-height:1.4;">⚠ האפליקציה פתוחה כרגע גם במקום/דפדפן אחר — שינויים עלולים להתנגש. מומלץ לסגור שם.</div>
     </div>
   </aside>
@@ -1036,11 +1036,16 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
     <div id="page-billing" class="page">
       <div class="page-header">
         <div><div class="page-title">כספים</div></div>
-        <div style="display:flex;gap:8px;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
           <label style="padding:8px 16px;font-size:13px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">
             📥 ייבוא CSV
             <input type="file" accept=".csv" onchange="importBillingCSV(event)" style="display:none"/>
           </label>
+          <label style="padding:8px 16px;font-size:13px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;" title="דוח ריכוז תנועות למנהל החשבונות (xls)">
+            השוואה ל-iCount
+            <input type="file" accept=".xls,.xlsx" onchange="importICountReport(event)" style="display:none"/>
+          </label>
+          <button onclick="openGeneralIncomeModal()" style="padding:8px 16px;font-size:13px;font-family:'Rubik',sans-serif;border:1px solid var(--accent);border-radius:var(--radius-sm);background:transparent;color:var(--accent);cursor:pointer;" title="הכנסה שלא קשורה לפרויקט מסוים — למשל ספק שקנה תמונות מכמה פרויקטים">+ הכנסה כללית</button>
           <button onclick="openBillingModal()" style="padding:8px 16px;font-size:13px;font-family:'Rubik',sans-serif;border:none;border-radius:var(--radius-sm);background:var(--accent);color:#fff;cursor:pointer;">+ הוסף</button>
         </div>
       </div>
@@ -1247,7 +1252,35 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
 </div>
 
 <!-- Billing Modal -->
-<div class="modal-bg" id="billing-modal" style="display:none">
+<div class="modal-bg" id="gi-modal" style="display:none;z-index:210">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-title" id="gi-title">הכנסה כללית</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:12px;">הכנסה שלא שייכת לפרויקט מסוים — למשל ספק שקנה כמה תמונות מפרויקטים שונים. נספרת בהכנסות, לא נספרת כפרויקט.</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+      <div class="modal-field"><label>תאריך</label><input id="gi-date" type="date"/></div>
+      <div class="modal-field"><label>מי שילם</label><input id="gi-name" type="text" placeholder="שם הספק / הקונה"/></div>
+      <div class="modal-field" style="grid-column:span 2;"><label>תיאור (לא חובה)</label><input id="gi-desc" type="text" placeholder="למשל: 4 תמונות מפרויקטים שונים"/></div>
+      <div class="modal-field"><label>סכום</label><input id="gi-amount" type="number" min="0" placeholder="0" oninput="updateGeneralIncomeHint()"/></div>
+      <div class="modal-field"><label>הסכום הוא</label><select id="gi-vat" onchange="updateGeneralIncomeHint()"><option value="incl">כולל מע״מ</option><option value="excl">לפני מע״מ</option></select></div>
+    </div>
+    <div id="gi-hint" style="font-size:12px;color:var(--text2);min-height:18px;"></div>
+    <div class="modal-actions">
+      <button class="btn-delete" id="gi-delete" onclick="deleteGeneralIncome()" style="display:none">🗑 מחק</button>
+      <button class="btn-cancel" onclick="closeGeneralIncomeModal()">ביטול</button>
+      <button class="btn-confirm" onclick="saveGeneralIncome()">שמור</button>
+    </div>
+  </div>
+</div>
+<div class="modal-bg" id="ic-modal" style="display:none;z-index:150" onclick="if(event.target===this)closeICountModal()">
+  <div class="modal" style="width:min(760px,94vw);max-height:88vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div class="modal-title" style="margin:0;">השוואה ל-iCount</div>
+      <button class="btn-cancel" onclick="closeICountModal()">סגירה</button>
+    </div>
+    <div id="ic-body"></div>
+  </div>
+</div>
+<div class="modal-bg" id="billing-modal" style="display:none;z-index:160">
   <div class="modal" style="max-width:540px">
     <div class="modal-title" id="bm-title">הכנסה חדשה</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
@@ -2596,7 +2629,7 @@ function renderBillingSearch() {
       return `<div class="billing-record">
         <div class="billing-record-date">${dateStr}</div>
         <div style="flex:1;min-width:0;">
-          <div class="billing-record-client"><span class="proj-link" onclick="event.stopPropagation();openClientPanel('${jsq(r.client)}')">${r.client||'—'}</span> ${recProjHtml(r)}</div>
+          <div class="billing-record-client">${recClientHtml(r)} ${recProjHtml(r)}</div>
           ${r.designerFee>0||supplierStr?`<div class="billing-record-sub">${r.designerFee>0?'מעצבת '+fmtMoney(r.designerFee):''}${r.designerFee>0&&supplierStr?' · ':''}${supplierStr}</div>`:''}
         </div>
         <div class="billing-record-amount">${fmtMoney(r.total)}</div>
@@ -2863,7 +2896,7 @@ function renderBillingPage() {
     const diff = currentToDate !== null ? currentToDate - prevYearToDate : null;
     const diffPct = prevYearToDate > 0 && diff !== null ? Math.round((diff/prevYearToDate)*100) : null;
 
-    const uniqueYearProjects = new Set(yearRecs.map(r => (r.client||'') + '|' + (r.project||''))).size;
+    const uniqueYearProjects = new Set(yearRecs.filter(r => !r.general).map(r => (r.client||'') + '|' + (r.project||''))).size;
     const avgPerProject = uniqueYearProjects > 0 ? Math.round(totalYear / uniqueYearProjects) : 0;
 
     if (sumEl) sumEl.innerHTML = `
@@ -2989,7 +3022,7 @@ function renderBillingPage() {
             return `<div class="billing-record">
               <div class="billing-record-date">${dateStr}</div>
               <div style="flex:1;min-width:0;">
-                <div class="billing-record-client"><span class="proj-link" onclick="event.stopPropagation();openClientPanel('${jsq(r.client)}')">${r.client||'—'}</span> ${recProjHtml(r)}</div>
+                <div class="billing-record-client">${recClientHtml(r)} ${recProjHtml(r)}</div>
               </div>
               <div class="billing-record-amount">${fmtMoney(r.total)}</div>
               <button class="billing-record-edit" onclick="openBillingModal(${r.id})">✏️</button>
@@ -3045,7 +3078,7 @@ function renderBillingPage() {
       return `<div class="billing-record">
         <div class="billing-record-date">${dateStr}</div>
         <div style="flex:1;min-width:0;">
-          <div class="billing-record-client"><span class="proj-link" onclick="event.stopPropagation();openClientPanel('${jsq(r.client)}')">${r.client||'—'}</span> ${recProjHtml(r)}</div>
+          <div class="billing-record-client">${recClientHtml(r)} ${recProjHtml(r)}</div>
           ${r.designerFee>0||supplierStr?`<div class="billing-record-sub">${r.designerFee>0?'מעצבת '+fmtMoney(r.designerFee):''}${r.designerFee>0&&supplierStr?' · ':''}${supplierStr}</div>`:''}
         </div>
         <div class="billing-record-amount">${fmtMoney(r.total)}</div>
@@ -3311,6 +3344,7 @@ function setMonthFilter(monthIndex) {
 function clearMonthFilter() { billingMonthFilter = null; renderBillingPage(); }
 
 function openBillingModal(id) {
+  if (id && ((state.billing||[]).find(r=>r.id===id)||{}).general) return openGeneralIncomeModal(id);
   editingBillingId = id || null;
   const modal = document.getElementById('billing-modal');
   const rec = id ? (state.billing||[]).find(r=>r.id===id) : null;
@@ -3438,7 +3472,7 @@ function saveBillingRecord() {
   } else {
     state.billing.push({id:Date.now(), date, client, project, location, designerFee, suppliers, total});
   }
-  save(); closeBillingModal(); renderBillingPage();
+  save(); closeBillingModal(); renderBillingPage(); icRefresh();
 }
 
 function deleteBillingRecord() {
@@ -3448,6 +3482,235 @@ function deleteBillingRecord() {
   markDeleted('billing', [editingBillingId]);
   save(); closeBillingModal(); renderBillingPage();
 }
+
+
+/* ===== הכנסה כללית (לא קשורה לפרויקט) — למשל ספק שקונה תמונות מכמה פרויקטים ===== */
+// נשמרת כרשומת הכנסה עם general:true, client ריק (כדי שלא תיספר כלקוח/פרויקט),
+// והקונה ב-suppliers[0] עם direct:true.
+let _giEditId = null;
+function recClientHtml(r) {
+  if (r.general) return `<span>${(r.suppliers && r.suppliers[0] && r.suppliers[0].name) || '—'}</span> <span style="font-size:10px;padding:1px 7px;border-radius:10px;background:var(--accent-light);color:var(--accent);font-weight:500;">הכנסה כללית</span>`;
+  return `<span class="proj-link" onclick="event.stopPropagation();openClientPanel('${jsq(r.client)}')">${r.client||'—'}</span>`;
+}
+function openGeneralIncomeModal(id, prefill) {
+  const rec = id ? (state.billing || []).find(r => r.id === id) : null;
+  _giEditId = rec ? rec.id : null;
+  const p = prefill || {};
+  document.getElementById('gi-title').textContent = rec ? 'עריכת הכנסה כללית' : 'הכנסה כללית — לא קשורה לפרויקט';
+  document.getElementById('gi-date').value = rec ? (rec.date || '') : (p.date || new Date().toISOString().slice(0, 10));
+  document.getElementById('gi-name').value = rec ? ((rec.suppliers && rec.suppliers[0] && rec.suppliers[0].name) || '') : (p.name || '');
+  document.getElementById('gi-desc').value = rec ? (rec.project || '') : (p.desc || '');
+  document.getElementById('gi-amount').value = rec ? (rec.total || '') : (p.amount || '');
+  document.getElementById('gi-vat').value = 'incl';
+  document.getElementById('gi-delete').style.display = rec ? '' : 'none';
+  updateGeneralIncomeHint();
+  document.getElementById('gi-modal').style.display = 'flex';
+}
+function closeGeneralIncomeModal() { document.getElementById('gi-modal').style.display = 'none'; _giEditId = null; }
+function _giTotal() {
+  const a = parseFloat(document.getElementById('gi-amount').value) || 0;
+  return document.getElementById('gi-vat').value === 'excl' ? Math.round(a * 1.18) : a;
+}
+function updateGeneralIncomeHint() {
+  const el = document.getElementById('gi-hint'); if (!el) return;
+  const t = _giTotal();
+  el.textContent = t ? `יירשם: ${fmtMoney(t)} כולל מע״מ` : '';
+}
+function saveGeneralIncome() {
+  const date = document.getElementById('gi-date').value;
+  const name = document.getElementById('gi-name').value.trim();
+  const desc = document.getElementById('gi-desc').value.trim() || 'מכירת תמונות';
+  const total = _giTotal();
+  if (!name || !total) { alert('צריך שם וסכום'); return; }
+  if (!state.billing) state.billing = [];
+  const data = { date, client: '', project: desc, location: '', designerFee: 0, suppliers: [{ name, amount: total, direct: true }], total, general: true };
+  if (_giEditId) {
+    const i = state.billing.findIndex(r => r.id === _giEditId);
+    if (i >= 0) state.billing[i] = { ...state.billing[i], ...data };
+  } else state.billing.push({ id: Date.now(), ...data });
+  save(); closeGeneralIncomeModal(); renderBillingPage();
+  icRefresh();
+}
+function deleteGeneralIncome() {
+  if (!_giEditId || !confirm('למחוק רשומה זו?')) return;
+  state.billing = (state.billing || []).filter(r => r.id !== _giEditId);
+  markDeleted('billing', [_giEditId]);
+  save(); closeGeneralIncomeModal(); renderBillingPage();
+}
+
+/* ===== השוואה לדוח iCount ("ריכוז תנועות למנהל החשבונות", קובץ xls) ===== */
+// קוראים רק את מה שנכנס בפועל: "חשבוניות מס קבלה" + "קבלות". לא משנה שום נתון — רק מציג.
+let _icLast = null;
+function _icLoadLib() {
+  return new Promise((res, rej) => {
+    if (window.XLSX) return res();
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload = () => res(); s.onerror = () => rej(new Error('load'));
+    document.head.appendChild(s);
+  });
+}
+function _icDate(v) {
+  if (v instanceof Date) return v.toISOString().slice(0, 10);
+  const m = String(v || '').trim().match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})$/);
+  return m ? `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : '';
+}
+function parseICountRows(rows) {
+  const docs = []; let range = null, reported = null, sec = null, cols = null, invCol = -1, minInv = null;
+  const first = r => String((r && r[0]) || '').trim();
+  rows.forEach((r, i) => {
+    const a = first(r);
+    const rm = a.match(/^(\d{2}-\d{2}-\d{4})\s*-\s*(\d{2}-\d{2}-\d{4})$/);
+    if (rm) { range = { from: _icDate(rm[1]), to: _icDate(rm[2]) }; return; }
+    if (a === 'סה"כ תקבולים') { reported = Number(r[1]) || null; return; }
+    if (a === 'שם הלקוח') {
+      sec = first(rows[i - 1]);
+      const h = r.map(x => String(x || '').trim());
+      const kind = sec === 'קבלות' ? 'קבלה' : sec === 'חשבוניות מס קבלה' ? 'חשבונית מס קבלה' : null;
+      invCol = sec === 'חשבונית מס' ? h.indexOf('מספר') : -1;
+      cols = kind ? { kind, num: h.indexOf('מספר'), date: h.indexOf('תאריך'), amt: h.indexOf(kind === 'קבלה' ? 'סכום' : 'סכום כולל'), info: h.indexOf('מידע') } : null;
+      return;
+    }
+    if (invCol >= 0 && a && Number(r[invCol]) > 0) minInv = minInv === null ? Number(r[invCol]) : Math.min(minInv, Number(r[invCol]));
+    if (!cols || !a) return;
+    const date = _icDate(r[cols.date]); const amount = Number(r[cols.amt]) || 0;
+    if (!date || !amount) return;
+    docs.push({ kind: cols.kind, name: a, num: r[cols.num], date, amount, info: cols.info >= 0 ? String(r[cols.info] || '') : '' });
+  });
+  // קבלה על חשבונית מס שמספרה קטן מהחשבונית הראשונה בתקופה = תשלום על עבודה מתקופה קודמת
+  docs.forEach(d => { const m = d.info.match(/חשבונית מס\s+(\d+)/); d.prev = !!(m && minInv !== null && Number(m[1]) < minInv); });
+  return { docs, range, reported };
+}
+const _IC_STOP = new Set(['בעמ', 'בע״מ', 'בע"מ', 'עיצוב', 'אדריכלות', 'סטודיו', 'מוצרי', 'תעשיות', 'פנים', 'ועיצוב', 'בית', 'the', 'ltd']);
+function _icTokens(s) { return String(s || '').replace(/["'״׳.,\-–()]/g, ' ').split(/\s+/).map(t => t.trim().toLowerCase()).filter(t => t.length >= 3 && !_IC_STOP.has(t)); }
+function _icNameMatch(a, b) {
+  const ka = clientKey(a || ''), kb = clientKey(b || '');
+  if (!ka || !kb) return false;
+  if (ka.length >= 3 && kb.length >= 3 && (ka.includes(kb) || kb.includes(ka))) return true;
+  const tb = new Set(_icTokens(b));
+  return _icTokens(a).some(t => tb.has(t));
+}
+function computeICountCompare(parsed) {
+  const { docs, range } = parsed;
+  const inRange = d => !range || (d >= range.from && d <= range.to);
+  const pieces = [];
+  getBillingRecords().forEach(r => {
+    if (!inRange(r.date || '') || !(r.total > 0)) return;
+    const before = pieces.length;
+    if (r.designerFee > 0) pieces.push({ rec: r, name: r.client, amount: r.designerFee });
+    (r.suppliers || []).forEach(s => {
+      const amt = s.photo ? (Number(s.qty) || 1) * (Number(s.amount) || 0) : (Number(s.amount) || 0);
+      if (amt > 0) pieces.push({ rec: r, name: s.name, amount: amt });
+    });
+    if (pieces.length === before) pieces.push({ rec: r, name: r.client, amount: r.total });
+  });
+  const days = (a, b) => Math.abs((new Date(a) - new Date(b)) / 86400000);
+  const names = pc => [pc.name, pc.rec.client, pc.rec.project];
+  const matched = [], weak = [];
+  const sorted = docs.filter(d => !d.prev).sort((a, b) => a.date.localeCompare(b.date));
+  const prev = docs.filter(d => d.prev);
+  const pass = (strict) => sorted.forEach(d => {
+    if (d._m) return;
+    let best = null, bestScore = Infinity;
+    pieces.forEach(pc => {
+      if (pc._m || Math.abs(pc.amount - d.amount) > 1.5) return;
+      const nm = names(pc).some(n => _icNameMatch(d.name, n));
+      const dd = days(d.date, pc.rec.date || d.date);
+      if (strict ? !nm : dd > 14) return;
+      if (dd < bestScore) { best = pc; bestScore = dd; }
+    });
+    if (best) { best._m = d._m = true; (strict ? matched : weak).push({ doc: d, piece: best }); }
+  });
+  pass(true); pass(false);
+  // סכום שמופיע פעם אחת בלבד בכל צד (מה שנשאר) — כנראה אותה עסקה גם אם השם והתאריך שונים
+  const cnt = (arr, f) => arr.reduce((m, x) => { const k = Math.round(f(x)); m[k] = (m[k] || 0) + 1; return m; }, {});
+  const dc = cnt(sorted.filter(d => !d._m), d => d.amount), pcn = cnt(pieces.filter(p => !p._m), p => p.amount);
+  sorted.forEach(d => {
+    const k = Math.round(d.amount);
+    if (d._m || dc[k] !== 1 || pcn[k] !== 1) return;
+    const pc = pieces.find(p => !p._m && Math.round(p.amount) === k);
+    if (pc) { pc._m = d._m = true; weak.push({ doc: d, piece: pc }); }
+  });
+  // פיצולים: רשומה אחת באפליקציה = שתי קבלות, או קבלה אחת = שתי רשומות
+  const near = (a, b) => Math.abs(a - b) <= 2;
+  pieces.filter(p => !p._m).forEach(pc => {
+    const ds = sorted.filter(d => !d._m);
+    for (let i = 0; i < ds.length; i++) for (let j = i + 1; j < ds.length; j++) {
+      if (!near(ds[i].amount + ds[j].amount, pc.amount)) continue;
+      if (ds[i].date !== ds[j].date && !names(pc).some(n => _icNameMatch(ds[i].name, n) || _icNameMatch(ds[j].name, n))) continue;
+      pc._m = ds[i]._m = ds[j]._m = true;
+      weak.push({ doc: ds[i], piece: pc }, { doc: ds[j], piece: pc }); return;
+    }
+  });
+  sorted.filter(d => !d._m).forEach(d => {
+    const ps = pieces.filter(p => !p._m && names(p).some(n => _icNameMatch(d.name, n)));
+    for (let i = 0; i < ps.length; i++) for (let j = i + 1; j < ps.length; j++) {
+      if (!near(ps[i].amount + ps[j].amount, d.amount)) continue;
+      d._m = ps[i]._m = ps[j]._m = true;
+      weak.push({ doc: d, piece: ps[i] }); return;
+    }
+  });
+  const missing = sorted.filter(d => !d._m);
+  const extra = pieces.filter(pc => !pc._m).sort((a, b) => (a.rec.date || '').localeCompare(b.rec.date || ''));
+  const sum = (arr, f) => arr.reduce((s, x) => s + f(x), 0);
+  return {
+    range, matched, weak, missing, extra, prev,
+    prevTotal: sum(prev, d => d.amount),
+    icTotal: sum(docs, d => d.amount), appTotal: sum(pieces, p => p.amount),
+    reported: parsed.reported
+  };
+}
+async function importICountReport(event) {
+  const file = event.target.files[0]; event.target.value = '';
+  if (!file) return;
+  try { await _icLoadLib(); } catch (e) { alert('לא הצלחתי לטעון את רכיב קריאת האקסל — צריך חיבור לאינטרנט'); return; }
+  try {
+    const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: '' });
+    const parsed = parseICountRows(rows);
+    if (!parsed.docs.length) { alert('לא מצאתי קבלות בקובץ. צריך את הדוח "ריכוז תנועות למנהל החשבונות" מ-iCount (קובץ xls).'); return; }
+    _icLast = parsed;
+    renderICountCompare();
+  } catch (e) { console.error(e); alert('שגיאה בקריאת הקובץ'); }
+}
+function renderICountCompare() {
+  if (!_icLast) return;
+  _icLast.docs.forEach(d => delete d._m);
+  const c = computeICountCompare(_icLast);
+  const fd = d => d ? d.slice(8, 10) + '/' + d.slice(5, 7) : '';
+  const diff = Math.round(c.icTotal - c.prevTotal - c.appTotal);
+  const tile = (l, v, col) => `<div style="flex:1;min-width:130px;background:var(--bg);border-radius:var(--radius-sm);padding:10px 12px;"><div style="font-size:11px;color:var(--text2);">${l}</div><div style="font-size:18px;font-weight:600;${col ? 'color:' + col : ''}">${v}</div></div>`;
+  const sec = (title, sub, body, open) => `<details ${open ? 'open' : ''} style="margin-top:14px;"><summary style="cursor:pointer;font-weight:600;font-size:14px;">${title}</summary><div style="font-size:12px;color:var(--text2);margin:4px 0 6px;">${sub}</div>${body || '<div class="cp-empty">אין</div>'}</details>`;
+  const row = (inner) => `<div class="cp-row" style="flex-wrap:nowrap;">${inner}</div>`;
+  const missingHtml = c.missing.map((d, i) => row(`<span class="cp-date">${fd(d.date)}</span><span style="flex:1;min-width:0;">${d.name}<span class="cp-sub"> · ${d.kind} ${d.num}</span></span><b style="white-space:nowrap;">${fmtMoney(d.amount)}</b><button class="edit-btn" style="font-size:11px;white-space:nowrap;" onclick="icAddMissing(${i})">+ הוסיפי</button>`)).join('');
+  const extraHtml = c.extra.map(p => row(`<span class="cp-date">${fd(p.rec.date)}</span><span style="flex:1;min-width:0;">${p.name || '—'}<span class="cp-sub"> · ${p.rec.general ? 'הכנסה כללית' : (p.rec.client || '')}${p.rec.project ? ' · ' + p.rec.project : ''}</span></span><b style="white-space:nowrap;">${fmtMoney(p.amount)}</b><button class="panel-link-btn" onclick="icEditRec(${p.rec.id})" aria-label="עריכה">✏️</button>`)).join('');
+  const pairHtml = arr => arr.map(m => row(`<span class="cp-date">${fd(m.doc.date)}</span><span style="flex:1;min-width:0;">${m.doc.name}<span class="cp-sub"> ↔ ${m.piece.name || m.piece.rec.client || '—'}${m.piece.rec.project ? ' · ' + m.piece.rec.project : ''} (${fd(m.piece.rec.date)})</span></span><b style="white-space:nowrap;">${fmtMoney(m.doc.amount)}</b>`)).join('');
+  _icLast._missing = c.missing;
+  document.getElementById('ic-body').innerHTML = `
+    <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">${c.range ? `תקופת הדוח: ${fd(c.range.from)}/${c.range.from.slice(0, 4)} – ${fd(c.range.to)}/${c.range.to.slice(0, 4)} · ` : ''}ההשוואה רק מציגה — שום דבר לא משתנה בלי שתלחצי.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      ${tile('התקבל לפי iCount', fmtMoney(Math.round(c.icTotal)))}
+      ${c.prevTotal ? tile('מזה על חשבוניות קודמות', fmtMoney(Math.round(c.prevTotal))) : ''}
+      ${tile('רשום באפליקציה', fmtMoney(Math.round(c.appTotal)))}
+      ${tile(diff >= 0 ? 'חסר באפליקציה' : 'עודף באפליקציה', fmtMoney(Math.abs(diff)), diff ? 'var(--urgent)' : '')}
+    </div>
+    ${sec(`ב-iCount ולא באפליקציה (${c.missing.length}) · ${fmtMoney(Math.round(c.missing.reduce((s, d) => s + d.amount, 0)))}`, 'קבלות שלא מצאתי להן רשומה תואמת. "הוסיפי" פותח הכנסה כללית מוכנה; אם זה שייך לפרויקט — עדיף לסמן שם את התשלום כשולם.', missingHtml, true)}
+    ${sec(`באפליקציה ולא ב-iCount (${c.extra.length}) · ${fmtMoney(Math.round(c.extra.reduce((s, p) => s + p.amount, 0)))}`, 'רשומות בלי קבלה תואמת בדוח: אולי כפילות, סכום שונה, תשלום שעוד לא הופקה עליו קבלה, או קבלה מחוץ לתקופת הדוח.', extraHtml, true)}
+    ${sec(`התאמה משוערת (${c.weak.length})`, 'הסכום זהה אבל השם שונה (למשל שם החברה בקבלה מול שם הספק באפליקציה), או תשלום שפוצל לשתי קבלות — כדאי להציץ.', pairHtml(c.weak), false)}
+    ${c.prev.length ? sec(`קבלות על חשבוניות מתקופה קודמת (${c.prev.length}) · ${fmtMoney(Math.round(c.prevTotal))}`, 'כסף שנכנס בתקופת הדוח על חשבוניות שהופקו לפניה. באפליקציה ההכנסה הזו רשומה בדרך כלל בתקופה הקודמת, ולכן היא לא נחשבת חסרה.', c.prev.map(d => row(`<span class="cp-date">${fd(d.date)}</span><span style="flex:1;min-width:0;">${d.name}<span class="cp-sub"> · ${d.info}</span></span><b style="white-space:nowrap;">${fmtMoney(d.amount)}</b>`)).join(''), false) : ''}
+    ${sec(`תואמים (${c.matched.length})`, 'אותו סכום ואותו שם.', pairHtml(c.matched), false)}`;
+  document.getElementById('ic-modal').style.display = 'flex';
+}
+function icAddMissing(i) {
+  const d = _icLast && _icLast._missing && _icLast._missing[i]; if (!d) return;
+  openGeneralIncomeModal(null, { date: d.date, name: d.name, amount: d.amount, desc: '' });
+}
+function icEditRec(id) {
+  const r = (state.billing || []).find(x => x.id === id); if (!r) return;
+  if (r.general) openGeneralIncomeModal(id); else openBillingModal(id);
+}
+function icRefresh() { if (_icLast && document.getElementById('ic-modal').style.display === 'flex') renderICountCompare(); }
+function closeICountModal() { document.getElementById('ic-modal').style.display = 'none'; }
 
 function importBillingCSV(event) {
   const file = event.target.files[0];
