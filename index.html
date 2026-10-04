@@ -765,7 +765,7 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
     <div style="padding:16px 24px;border-top:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">סנכרון ענן</div>
       <div id="sync-status" style="font-size:12px;color:var(--text3);margin-bottom:10px">מתחבר...</div>
-      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-04 · מילוי מספרי חשבונית</div>
+      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-04 · ארכיון פרויקטים</div>
       <div id="other-session-warning" class="hidden" style="font-size:11px;color:#fff;background:var(--urgent);border-radius:6px;padding:6px 8px;margin-bottom:10px;line-height:1.4;">⚠ האפליקציה פתוחה כרגע גם במקום/דפדפן אחר — שינויים עלולים להתנגש. מומלץ לסגור שם.</div>
     </div>
   </aside>
@@ -3485,7 +3485,7 @@ function saveBillingRecord() {
   } else {
     state.billing.push({id:Date.now(), date, client, project, location, designerFee, suppliers, total});
   }
-  save(); closeBillingModal(); renderBillingPage(); icRefresh();
+  save(); closeBillingModal(); renderBillingPage(); icRefresh(); if (stageFilter === "archive") renderProjects();
 }
 
 function deleteBillingRecord() {
@@ -4361,6 +4361,48 @@ function renderDeadlineAlerts() {
   }).join('');
 }
 
+// ארכיון: פרויקטים שקיימים רק כרשומות הכנסה (יובאו מהאקסל לפני שהאפליקציה הייתה בשימוש).
+// קריאה בלבד — מקובצים לפי לקוח + שם פרויקט + תאריך, כמו בכרטיס הלקוח.
+function legacyProjects() {
+  const ids = new Set(state.projects.map(p => String(p.id)));
+  const map = new Map();
+  getBillingRecords().forEach(r => {
+    if (r.general || !(r.client || '').trim() || (r.total || 0) === 0) return;
+    if (r.projectId != null && ids.has(String(r.projectId))) return;
+    const key = clientKey(r.client) + '|' + clientKey(r.project || r.location || '') + '|' + (r.date || '');
+    let g = map.get(key);
+    if (!g) { g = { client: r.client.trim(), name: r.project || r.location || '—', location: (r.location && r.location !== r.project) ? r.location : '', date: r.date || '', total: 0, designerFee: 0, suppliers: [], ids: [] }; map.set(key, g); }
+    g.total += r.total || 0; g.designerFee += Number(r.designerFee) || 0; g.ids.push(r.id);
+    (r.suppliers || []).forEach(x => { if (x.name) g.suppliers.push(x); });
+  });
+  return [...map.values()].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+}
+function renderLegacyProjects(el, searchQ) {
+  const q = clientKey(searchQ || '');
+  const list = legacyProjects().filter(g => !q || clientKey([g.client, g.name, g.location, ...g.suppliers.map(x => x.name)].join(' ')).includes(q));
+  const titleEl = document.getElementById('proj-page-title');
+  if (titleEl) titleEl.textContent = `ארכיון (${list.length})`;
+  if (!list.length) { el.innerHTML = '<p style="font-size:13px;color:var(--text3);padding:16px 0">לא נמצאו פרויקטים בארכיון</p>'; return; }
+  const fd = d => d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : '';
+  let year = null;
+  el.innerHTML = `<div style="font-size:12px;color:var(--text2);margin-bottom:12px;">פרויקטים מלפני האפליקציה (יובאו מהאקסל). הם מוצגים לקריאה בלבד; העיפרון פותח את רשומת ההכנסה.</div>` + list.map(g => {
+    const y = (g.date || '').slice(0, 4) || 'ללא תאריך';
+    const head = y !== year ? `<div style="font-size:13px;font-weight:600;color:var(--text2);margin:${year === null ? '0' : '18px'} 2px 8px;">${y} · ${list.filter(x => ((x.date || '').slice(0, 4) || 'ללא תאריך') === y).length} פרויקטים</div>` : '';
+    year = y;
+    const sup = g.suppliers.map(x => { const a = x.photo ? (Number(x.qty) || 1) * (Number(x.amount) || 0) : (Number(x.amount) || 0); return `${x.name}${a > 0 ? ' ' + fmtMoney(a) : ''}`; }).join(' · ');
+    return head + `<div class="proj-card" style="padding:12px 16px;margin-bottom:8px;border:1px solid var(--border);background:var(--surface);">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:0;">
+          <span class="proj-link" style="font-weight:600;font-size:14px;" onclick="openClientPanel('${jsq(g.client)}')">${g.client}</span><span style="font-size:14px;"> — ${g.name}</span>${g.location ? `<span class="cp-sub"> · ${g.location}</span>` : ''}
+        </div>
+        <span class="cp-date">${fd(g.date)}</span>
+        <span style="font-size:14px;font-weight:600;color:var(--accent);white-space:nowrap;">${fmtMoney(g.total)}</span>
+        ${g.ids.map(id => `<button class="panel-link-btn" onclick="openBillingModal(${id})" aria-label="עריכת רשומת ההכנסה">✏️</button>`).join('')}
+      </div>
+      ${g.designerFee > 0 || sup ? `<div style="font-size:12px;color:var(--text2);margin-top:5px;">${g.designerFee > 0 ? 'מהלקוח ' + fmtMoney(g.designerFee) : ''}${g.designerFee > 0 && sup ? ' · ' : ''}${sup}</div>` : ''}
+    </div>`;
+  }).join('');
+}
 function renderProjects(searchVal) {
   const el = document.getElementById('projects-list'); if (!el) return;
   renderProjectPanel();
@@ -4396,9 +4438,11 @@ function renderProjects(searchVal) {
       { key: 'notes',   label: 'הערות',          color: 'var(--s-notes-b)' },
       { key: 'billing', label: 'גביה',           color: 'var(--s-billing-b)' },
       { key: 'done',    label: 'הסתיים',         color: 'var(--s-done-b)' },
+      { key: 'archive', label: 'ארכיון',         color: 'var(--text3)' },
     ];
+    const _legacy = legacyProjects();
     tabsEl.innerHTML = stageDefs.map(s => {
-      const count = s.key === null ? state.projects.length : state.projects.filter(p => p.stage === s.key).length;
+      const count = s.key === null ? state.projects.length : s.key === 'archive' ? _legacy.length : state.projects.filter(p => p.stage === s.key).length;
       const isActive = stageFilter === s.key;
       return `<button onclick="filterStage(${s.key===null?'null':`'${s.key}'`})"
         style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;font-size:13px;font-family:'Rubik',sans-serif;border-radius:20px;cursor:pointer;transition:all 0.15s;
@@ -4411,6 +4455,7 @@ function renderProjects(searchVal) {
     }).join('');
   }
 
+  if (stageFilter === 'archive') { renderLegacyProjects(el, searchQ); return; }
   const titleEl = document.getElementById('proj-page-title');
   if (titleEl) {
     const baseName = stageFilter ? STAGES[stageFilter] : 'פרויקטים';
