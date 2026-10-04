@@ -699,6 +699,7 @@ html[data-skin="dark"] .dup-banner { border-color:#5a4326; }
 /* dark text on bright fills (accent / status colours are light in this skin) */
 html[data-skin="dark"] :is(.logo-avatar,.task-check.done,.btn-save,.df-timer.running,.timer-btn.running,.wday-btn.active,.rem-badge.rem-ok,.billing-paid-btn.paid,.mobile-filter-btn.active,.billing-year-tab.active,.lock-submit),
 html[data-skin="dark"] :is([style*="background:var(--accent)"],[style*="background: var(--accent)"],[style*="background:var(--urgent)"],[style*="background:var(--high)"],[style*="background:var(--s-"],[style*="background: var(--s-"]) { color:#141518 !important; }
+html[data-skin="dark"] #proj-stage-tabs button[style*="background:var(--accent)"] { color:#141518 !important; }
 html[data-skin="dark"] .lock-submit:hover { background:#d39a52; }
 html[data-skin="dark"] .df-goal.done { color:#63c79a; }
 /* hard-coded light pastels in inline styles → dark equivalents */
@@ -765,7 +766,7 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
     <div style="padding:16px 24px;border-top:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">סנכרון ענן</div>
       <div id="sync-status" style="font-size:12px;color:var(--text3);margin-bottom:10px">מתחבר...</div>
-      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-04 · ארכיון פרויקטים</div>
+      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-04 · סינון לפי שנה</div>
       <div id="other-session-warning" class="hidden" style="font-size:11px;color:#fff;background:var(--urgent);border-radius:6px;padding:6px 8px;margin-bottom:10px;line-height:1.4;">⚠ האפליקציה פתוחה כרגע גם במקום/דפדפן אחר — שינויים עלולים להתנגש. מומלץ לסגור שם.</div>
     </div>
   </aside>
@@ -4363,6 +4364,9 @@ function renderDeadlineAlerts() {
 
 // ארכיון: פרויקטים שקיימים רק כרשומות הכנסה (יובאו מהאקסל לפני שהאפליקציה הייתה בשימוש).
 // קריאה בלבד — מקובצים לפי לקוח + שם פרויקט + תאריך, כמו בכרטיס הלקוח.
+var projYearFilter = null; // null = כל השנים, אחרת '2026' וכו'
+function setProjYear(y) { projYearFilter = y; renderProjects(); }
+function _projYear(p) { return String(p.date || p.deadline || '').slice(0, 4); }
 function legacyProjects() {
   const ids = new Set(state.projects.map(p => String(p.id)));
   const map = new Map();
@@ -4377,15 +4381,16 @@ function legacyProjects() {
   });
   return [...map.values()].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 }
-function renderLegacyProjects(el, searchQ) {
+function legacyListFiltered(searchQ) {
   const q = clientKey(searchQ || '');
-  const list = legacyProjects().filter(g => !q || clientKey([g.client, g.name, g.location, ...g.suppliers.map(x => x.name)].join(' ')).includes(q));
-  const titleEl = document.getElementById('proj-page-title');
-  if (titleEl) titleEl.textContent = `ארכיון (${list.length})`;
-  if (!list.length) { el.innerHTML = '<p style="font-size:13px;color:var(--text3);padding:16px 0">לא נמצאו פרויקטים בארכיון</p>'; return; }
+  return legacyProjects()
+    .filter(g => !projYearFilter || (g.date || '').slice(0, 4) === projYearFilter)
+    .filter(g => !q || clientKey([g.client, g.name, g.location, ...g.suppliers.map(x => x.name)].join(' ')).includes(q));
+}
+function legacyListHtml(list) {
   const fd = d => d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : '';
   let year = null;
-  el.innerHTML = `<div style="font-size:12px;color:var(--text2);margin-bottom:12px;">פרויקטים מלפני האפליקציה (יובאו מהאקסל). הם מוצגים לקריאה בלבד; העיפרון פותח את רשומת ההכנסה.</div>` + list.map(g => {
+  return list.map(g => {
     const y = (g.date || '').slice(0, 4) || 'ללא תאריך';
     const head = y !== year ? `<div style="font-size:13px;font-weight:600;color:var(--text2);margin:${year === null ? '0' : '18px'} 2px 8px;">${y} · ${list.filter(x => ((x.date || '').slice(0, 4) || 'ללא תאריך') === y).length} פרויקטים</div>` : '';
     year = y;
@@ -4395,6 +4400,7 @@ function renderLegacyProjects(el, searchQ) {
         <div style="flex:1;min-width:0;">
           <span class="proj-link" style="font-weight:600;font-size:14px;" onclick="openClientPanel('${jsq(g.client)}')">${g.client}</span><span style="font-size:14px;"> — ${g.name}</span>${g.location ? `<span class="cp-sub"> · ${g.location}</span>` : ''}
         </div>
+        <span style="font-size:10px;padding:1px 8px;border-radius:10px;background:var(--surface2);color:var(--text2);">ארכיון</span>
         <span class="cp-date">${fd(g.date)}</span>
         <span style="font-size:14px;font-weight:600;color:var(--accent);white-space:nowrap;">${fmtMoney(g.total)}</span>
         ${g.ids.map(id => `<button class="panel-link-btn" onclick="openBillingModal(${id})" aria-label="עריכת רשומת ההכנסה">✏️</button>`).join('')}
@@ -4403,6 +4409,7 @@ function renderLegacyProjects(el, searchQ) {
     </div>`;
   }).join('');
 }
+const LEGACY_NOTE = '<div style="font-size:12px;color:var(--text2);margin-bottom:12px;">פרויקטים מלפני האפליקציה (יובאו מהאקסל). הם מוצגים לקריאה בלבד; העיפרון פותח את רשומת ההכנסה.</div>';
 function renderProjects(searchVal) {
   const el = document.getElementById('projects-list'); if (!el) return;
   renderProjectPanel();
@@ -4411,6 +4418,7 @@ function renderProjects(searchVal) {
   const searchQ = (searchVal !== undefined ? searchVal : (document.getElementById('proj-search')?.value || '')).trim().toLowerCase();
   const list = [...state.projects]
     .filter(p => stageFilter === null || p.stage === stageFilter)
+    .filter(p => !projYearFilter || _projYear(p) === projYearFilter)
     .filter(p => !searchQ || (p.client||'').toLowerCase().includes(searchQ) || (p.title||'').toLowerCase().includes(searchQ))
     .sort((a, b) => {
       if (projectSortMode === 'date-desc') {
@@ -4440,9 +4448,10 @@ function renderProjects(searchVal) {
       { key: 'done',    label: 'הסתיים',         color: 'var(--s-done-b)' },
       { key: 'archive', label: 'ארכיון',         color: 'var(--text3)' },
     ];
-    const _legacy = legacyProjects();
+    const _legacy = legacyProjects().filter(g => !projYearFilter || (g.date || '').slice(0, 4) === projYearFilter);
+    const _inYear = state.projects.filter(p => !projYearFilter || _projYear(p) === projYearFilter);
     tabsEl.innerHTML = stageDefs.map(s => {
-      const count = s.key === null ? state.projects.length : s.key === 'archive' ? _legacy.length : state.projects.filter(p => p.stage === s.key).length;
+      const count = s.key === null ? _inYear.length + _legacy.length : s.key === 'archive' ? _legacy.length : _inYear.filter(p => p.stage === s.key).length;
       const isActive = stageFilter === s.key;
       return `<button onclick="filterStage(${s.key===null?'null':`'${s.key}'`})"
         style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;font-size:13px;font-family:'Rubik',sans-serif;border-radius:20px;cursor:pointer;transition:all 0.15s;
@@ -4452,18 +4461,29 @@ function renderProjects(searchVal) {
         <span style="width:7px;height:7px;border-radius:50%;background:${isActive?'rgba(255,255,255,0.7)':s.color};flex-shrink:0;display:inline-block;"></span>
         ${s.label}${count > 0 ? ` <span style="opacity:0.85;font-size:12px;">(${count})</span>` : ''}
       </button>`;
-    }).join('');
+    }).join('') + (() => {
+      const years = [...new Set([...state.projects.map(_projYear), ...legacyProjects().map(g => (g.date || '').slice(0, 4))].filter(y => /^\d{4}$/.test(y)))].sort().reverse();
+      const chip = (y, label) => `<button onclick="setProjYear(${y === null ? 'null' : `'${y}'`})" style="padding:5px 12px;font-size:12px;font-family:'Rubik',sans-serif;border-radius:16px;cursor:pointer;border:1px solid ${projYearFilter === y ? 'var(--accent)' : 'var(--border2)'};background:${projYearFilter === y ? 'var(--accent)' : 'transparent'};color:${projYearFilter === y ? '#fff' : 'var(--text2)'};font-weight:${projYearFilter === y ? 600 : 400};">${label}</button>`;
+      return `<div style="flex-basis:100%;display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:4px;"><span style="font-size:12px;color:var(--text3);">שנה:</span>${chip(null, 'כל השנים')}${years.map(y => chip(y, y)).join('')}</div>`;
+    })();
   }
 
-  if (stageFilter === 'archive') { renderLegacyProjects(el, searchQ); return; }
+  const _leg = (stageFilter === null || stageFilter === 'archive') ? legacyListFiltered(searchQ) : [];
+  if (stageFilter === 'archive') {
+    const t = document.getElementById('proj-page-title'); if (t) t.textContent = `ארכיון (${_leg.length})`;
+    el.innerHTML = _leg.length ? LEGACY_NOTE + legacyListHtml(_leg) : '<p style="font-size:13px;color:var(--text3);padding:16px 0">לא נמצאו פרויקטים בארכיון</p>';
+    return;
+  }
   const titleEl = document.getElementById('proj-page-title');
   if (titleEl) {
     const baseName = stageFilter ? STAGES[stageFilter] : 'פרויקטים';
-    titleEl.textContent = list.length > 0 ? `${baseName} (${list.length})` : baseName;
+    titleEl.textContent = (list.length + _leg.length) > 0 ? `${baseName} (${list.length + _leg.length})` : baseName;
   }
+  const _legBlock = _leg.length ? `<div style="font-size:15px;font-weight:600;margin:26px 2px 6px;">ארכיון (${_leg.length})</div>` + LEGACY_NOTE + legacyListHtml(_leg) : '';
+  if (!list.length && _legBlock) { el.innerHTML = _legBlock; return; }
   if (!list.length) { el.innerHTML = `<p style="font-size:13px;color:var(--text3);padding:16px 0">${stageFilter ? 'אין פרויקטים בשלב זה' : 'עוד אין פרויקטים — הוסיפי את הראשון למטה'}</p>`; return; }
   const _allFinish = computeAllFinishDates();
-  el.innerHTML = list.map(p => projectCardHtml(p, _allFinish, false)).join('');
+  el.innerHTML = list.map(p => projectCardHtml(p, _allFinish, false)).join('') + _legBlock;
 }
 
 // Builds one project card. inPanel=true renders it fully expanded for the side panel;
