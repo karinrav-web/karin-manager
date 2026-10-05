@@ -766,7 +766,7 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
     <div style="padding:16px 24px;border-top:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">סנכרון ענן</div>
       <div id="sync-status" style="font-size:12px;color:var(--text3);margin-bottom:10px">מתחבר...</div>
-      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-05 · סה״כ לתשלום</div>
+      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-05 · עיצוב פירוט תשלום</div>
       <div id="other-session-warning" class="hidden" style="font-size:11px;color:#fff;background:var(--urgent);border-radius:6px;padding:6px 8px;margin-bottom:10px;line-height:1.4;">⚠ האפליקציה פתוחה כרגע גם במקום/דפדפן אחר — שינויים עלולים להתנגש. מומלץ לסגור שם.</div>
     </div>
   </aside>
@@ -5439,90 +5439,81 @@ function _paymentExportData(projId) {
   return { p, client, vendorRows, paymentRows, totalWithVat, paidAmount, remainAmount, discount, creditTotal, adj, adjItems, calc };
 }
 
-function exportPaymentPDF(projId) {
-  const d = _paymentExportData(projId); if (!d) return;
-  const { p, vendorRows, paymentRows, totalWithVat, paidAmount, remainAmount, discount, adj, adjItems, calc } = d;
-  const M = n => '₪' + Math.round(n).toLocaleString();
+function paymentPdfHtml(projId) {
+  const d = _paymentExportData(projId); if (!d) return '';
+  const { p, vendorRows, paymentRows, paidAmount, remainAmount, discount, adjItems, calc } = d;
+  // amounts: number (with sign) isolated left-to-right, shekel sign after it — reads correctly in RTL
+  const N = (n, sign) => `<span class="num"><bdi dir="ltr">${sign || ''}${Math.round(Math.abs(n)).toLocaleString()}</bdi> ₪</span>`;
   const dateStr = p.date ? new Date(p.date).toLocaleDateString('he-IL') : '';
-  const base = Number(p.billingBase) || 0;
   const totalPhotos = Number(p.total) || 0;
-  const win = window.open('', '_blank');
-  win.document.write(`<!DOCTYPE html><html lang="he" dir="rtl"><head>
-  <meta charset="UTF-8"><title>פירוט ספקים ותשלומים — ${p.client}</title>
+  const row = (label, val, cls, note) => `<tr class="${cls || ''}"><td>${label}${note ? `<div class="note">${note}</div>` : ''}</td><td class="amt">${val}</td></tr>`;
+  const sub = [p.title, dateStr, totalPhotos ? totalPhotos + ' תמונות' : ''].filter(Boolean).join(' · ');
+  return `<!DOCTYPE html><html lang="he" dir="rtl"><head>
+  <meta charset="UTF-8"><title>פירוט תשלום — ${p.client}</title>
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Rubik',sans-serif;background:#fff;color:#1a1a2e;padding:40px;max-width:620px;margin:0 auto;}
-    h1{font-size:22px;font-weight:700;margin-bottom:4px;}
-    .sub{font-size:14px;color:#666;margin-bottom:16px;}
-    .meta{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;}
-    .meta-item{background:#f8f9fa;border-radius:8px;padding:8px 16px;font-size:13px;}
-    .meta-label{font-size:10px;color:#999;margin-bottom:2px;}
-    .meta-val{font-weight:600;}
-    .client-card{background:#f5f0ff;border:1px solid #ddd6fe;border-radius:10px;padding:14px 20px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;}
-    .client-name{font-size:15px;font-weight:700;color:#4c1d95;}
-    .client-nums{display:flex;gap:20px;flex-wrap:wrap;}
-    .client-nums .s-item{text-align:center;}
-    .section-title{font-size:12px;color:#888;font-weight:600;margin:20px 0 8px;}
-    table{width:100%;border-collapse:collapse;margin-bottom:8px;}
-    th{text-align:right;font-size:12px;color:#888;font-weight:500;padding:8px 12px;border-bottom:2px solid #eee;}
-    td{padding:10px 12px;font-size:14px;border-bottom:1px solid #f0f0f0;}
-    .badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600;}
-    .paid{background:#dcfce7;color:#15803d;}
-    .pending{background:#fef3c7;color:#92400e;}
-    .summary{background:#f8f9fa;border-radius:10px;padding:16px 20px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:16px;}
-    .s-item{text-align:center;}
-    .s-label{font-size:11px;color:#888;margin-bottom:4px;}
-    .s-val{font-size:18px;font-weight:700;}
-    .green{color:#15803d;} .red{color:#dc2626;}
-    .calc{border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;margin-bottom:24px;}
-    .calc .r{display:flex;justify-content:space-between;gap:16px;padding:9px 18px;font-size:14px;border-bottom:1px solid #f1f1f1;}
-    .calc .r:last-child{border-bottom:none;}
-    .calc .r.sub{padding:5px 30px 5px 18px;font-size:12.5px;color:#666;border-bottom:none;}
-    .calc .r.tot{background:#f8f9fa;font-weight:600;}
-    .calc .r.big{background:#f5f0ff;color:#4c1d95;font-weight:700;font-size:16px;padding:13px 18px;}
-    .calc .r.due{background:#4c1d95;color:#fff;font-weight:700;font-size:17px;padding:14px 18px;}
-    .calc .r > span:last-child{direction:ltr;unicode-bidi:isolate;white-space:nowrap;}
-    .calc .minus{color:#b45309;} .calc .plus{color:#15803d;}
-    .calc small{font-weight:400;font-size:11px;opacity:.75;margin-right:6px;}
-    .footer{margin-top:32px;font-size:11px;color:#bbb;text-align:center;border-top:1px solid #eee;padding-top:16px;}
-    @media print{button{display:none!important}}
+    body{font-family:'Rubik',sans-serif;background:#fff;color:#1c1b1f;padding:44px 40px;max-width:600px;margin:0 auto;font-size:14px;line-height:1.45;}
+    .eyebrow{font-size:12px;color:#77747c;letter-spacing:.04em;margin-bottom:6px;}
+    h1{font-size:26px;font-weight:700;line-height:1.2;}
+    .sub{font-size:14px;color:#5f5c64;margin-top:4px;}
+    h2{font-size:13px;font-weight:600;color:#5f5c64;margin:30px 0 8px;}
+    table{width:100%;border-collapse:collapse;}
+    td{padding:11px 0;border-bottom:1px solid #ebe9ee;vertical-align:top;}
+    td.amt{text-align:left;white-space:nowrap;width:150px;font-variant-numeric:tabular-nums;}
+    .num{white-space:nowrap;}
+    .note{font-size:12px;color:#77747c;margin-top:2px;font-weight:400;}
+    tr.plus td.amt{color:#17663a;} tr.minus td.amt{color:#9a3412;}
+    tr.subtotal td{font-weight:600;border-bottom:2px solid #1c1b1f;border-top:1px solid #1c1b1f;}
+    tr.total td{font-weight:600;font-size:15px;}
+    tr.due td{background:#1c1b1f;color:#fff;font-weight:700;font-size:17px;padding:15px 16px;border-bottom:none;}
+    tr.due td:first-child{border-radius:0 10px 10px 0;} tr.due td.amt{border-radius:10px 0 0 10px;font-size:19px;}
+    tr.due .note{color:#cfcdd4;}
+    tr.gap td{border-bottom:none;padding:5px 0;}
+    .st{display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600;margin-right:10px;}
+    .st.paid{background:#dcfce7;color:#17663a;} .st.wait{background:#fef3c7;color:#854d0e;}
+    .footer{margin-top:40px;font-size:11px;color:#77747c;text-align:center;border-top:1px solid #ebe9ee;padding-top:14px;}
+    @media print{body{padding:24px 28px;}}
   </style>
   </head><body>
-  <h1>פירוט ספקים ותשלומים</h1>
-  <div class="sub">${p.client}${p.title ? ' · ' + p.title : ''}${dateStr ? ' · ' + dateStr : ''}</div>
-  <div class="meta">
-    ${totalPhotos ? `<div class="meta-item"><div class="meta-label">תמונות</div><div class="meta-val">${totalPhotos} תמונות</div></div>` : ''}
-  </div>
-  <div class="section-title" style="margin-top:0;">החשבון של ${p.client}</div>
-  <div class="calc">
-    ${calc.base ? `<div class="r"><span>מחיר בסיס</span><span>${M(calc.base)}</span></div>` : ''}
-    ${adjItems.filter(x => Number(x.amount)).map(x => `<div class="r"><span>${x.desc||'תוספת'}</span><span class="plus">+${M(Number(x.amount))}</span></div>`).join('')}
-    ${calc.vendorBonus > 0 ? `<div class="r"><span>תוספת ספקים <small>${calc.vendorCount} ספקים</small></span><span class="plus">+${M(calc.vendorBonus)}</span></div>` : ''}
-    ${discount > 0 ? `<div class="r"><span>הנחה</span><span class="minus">−${M(discount)}</span></div>` : ''}
-    <div class="r tot"><span>סה״כ הפרויקט <small>לפני מע״מ</small></span><span>${M(calc.gross)}</span></div>
-    ${calc.vendorPaid > 0 ? `<div class="r"><span>ספקים משלמים ישירות לקרין <small>${calc.vendorPre.length} ספקים · פירוט למטה</small></span><span class="minus">−${M(calc.vendorPaid)}</span></div>` : ''}
-    ${calc.creditTotal > 0 ? `<div class="r"><span>זיכוי</span><span class="minus">−${M(calc.creditTotal)}</span></div>` : ''}
-    <div class="r big"><span>סה״כ לתשלום <small>לפני מע״מ</small> — ${p.client}</span><span>${M(calc.clientPre)}</span></div>
-    <div class="r"><span>מע״מ 18%</span><span>+${M(calc.vat)}</span></div>
-    <div class="r big"><span>סה״כ לתשלום כולל מע״מ — ${p.client}</span><span>${M(calc.clientWithVat)}</span></div>
-    ${paidAmount > 0 ? `<div class="r"><span>שולם עד עכשיו</span><span class="plus">−${M(paidAmount)}</span></div>` : ''}
-    ${paidAmount > 0 || remainAmount <= 0 ? `<div class="r due"><span>${remainAmount < 0 ? 'זיכוי ללקוח' : remainAmount === 0 ? 'שולם במלואו' : 'יתרה לתשלום'} ${remainAmount > 0 ? '<small>כולל מע״מ</small>' : ''}</span><span>${M(Math.abs(remainAmount))}</span></div>` : ''}
-  </div>
-  ${paymentRows.length ? `<div class="section-title">תשלומים שהתקבלו</div>
+  <div class="eyebrow">פירוט תשלום</div>
+  <h1>${p.client}</h1>
+  ${sub ? `<div class="sub">${sub}</div>` : ''}
+
+  <h2>חישוב</h2>
   <table><tbody>
-    ${paymentRows.map(r => `<tr><td style="font-weight:500;">${r.name}</td><td style="font-weight:600;">₪${r.amount.toLocaleString()}${r.isCash ? '<span style="font-size:10px;color:#888;font-weight:400;margin-right:4px;">מזומן · ללא מעמ</span>' : ''}</td></tr>`).join('')}
+    ${calc.base ? row('מחיר בסיס', N(calc.base)) : ''}
+    ${adjItems.filter(x => Number(x.amount)).map(x => row(x.desc || 'תוספת', N(Number(x.amount), '+'), 'plus')).join('')}
+    ${calc.vendorBonus > 0 ? row('תוספת ספקים', N(calc.vendorBonus, '+'), 'plus', calc.vendorCount + ' ספקים') : ''}
+    ${discount > 0 ? row('הנחה', N(discount, '−'), 'minus') : ''}
+    ${row('סה״כ הפרויקט', N(calc.gross), 'subtotal', 'לפני מע״מ')}
+    ${calc.vendorPre.map(v => row('חלקו של ' + v.name, N(v.amount, '−'), 'minus')).join('')}
+    ${calc.creditTotal > 0 ? row('זיכוי', N(calc.creditTotal, '−'), 'minus') : ''}
+    ${row('סה״כ לתשלום — ' + p.client, N(calc.clientPre), 'total', 'לפני מע״מ')}
+    ${row('מע״מ 18%', N(calc.vat, '+'))}
+    <tr class="gap"><td></td><td></td></tr>
+    ${row('סה״כ לתשלום כולל מע״מ — ' + p.client, N(calc.clientWithVat), 'due')}
+    ${paidAmount > 0 ? `<tr class="gap"><td></td><td></td></tr>` + row('שולם עד עכשיו', N(paidAmount, '−'), 'plus') + row(remainAmount < 0 ? 'זיכוי ללקוח' : remainAmount === 0 ? 'שולם במלואו' : 'יתרה לתשלום', N(remainAmount), 'total', remainAmount > 0 ? 'כולל מע״מ' : '') : ''}
+  </tbody></table>
+
+  ${paymentRows.length ? `<h2>תשלומים שהתקבלו</h2>
+  <table><tbody>
+    ${paymentRows.map(r => row(r.name, N(r.amount), '', r.isCash ? 'מזומן · ללא מע״מ' : '')).join('')}
   </tbody></table>` : ''}
-  ${vendorRows.length ? `<div class="section-title">ספקים — מצב תשלום (סכומים כולל מע״מ)</div>
+
+  ${vendorRows.length ? `<h2>ספקים — מצב תשלום</h2>
   <table><tbody>
-    ${vendorRows.map(v => `<tr><td style="font-weight:500;">${v.name}</td><td>${v.direct
-      ? '<span style="font-size:12px;color:#888;">שילם ללקוח/מעצב</span>'
-      : `<span style="font-weight:600;">₪${v.amount.toLocaleString()}</span> ${v.paid ? '<span class="badge paid">✓ שולם</span>' : '<span class="badge pending">ממתין</span>'}`
-    }</td></tr>`).join('')}
+    ${vendorRows.map(v => row(v.name, v.direct
+      ? '<span class="note">שילם ללקוח/מעצב</span>'
+      : `${N(v.amount)}<span class="st ${v.paid ? 'paid' : 'wait'}">${v.paid ? 'שולם' : 'ממתין'}</span>`, '', v.direct ? '' : 'כולל מע״מ')).join('')}
   </tbody></table>` : ''}
   <div class="footer">קרין רבנה — צילום אדריכלות ועיצוב פנים</div>
-  <script>window.onload=()=>window.print();<\/script>
-  </body></html>`);
+  </body></html>`;
+}
+function exportPaymentPDF(projId) {
+  const html = paymentPdfHtml(projId); if (!html) return;
+  const win = window.open('', '_blank');
+  win.document.write(html.replace('</body>', '<script>window.onload=()=>window.print();<\/script></body>'));
   win.document.close();
 }
 
@@ -5544,7 +5535,7 @@ function exportPaymentWhatsApp(projId) {
   lines.push(`👤 *${p.client}*`);
   if (calc.vendorBonus > 0) lines.push(`תוספת ספקים (${calc.vendorCount}): +${M(calc.vendorBonus)}`);
   lines.push(`סה"כ הפרויקט: ${M(calc.gross)} לפני מעמ`);
-  if (calc.vendorPaid > 0) lines.push(`ספקים משלמים ישירות: −${M(calc.vendorPaid)} (${calc.vendorPre.map(v => v.name + ' ' + M(v.amount)).join(', ')})`);
+  calc.vendorPre.forEach(v => lines.push(`חלקו של ${v.name}: −${M(v.amount)}`));
   if (calc.creditTotal > 0) lines.push(`זיכוי: −${M(calc.creditTotal)}`);
   lines.push(`*סה"כ לתשלום — ${p.client}: ${M(calc.clientPre)} לפני מעמ*`);
   lines.push(`*סה"כ לתשלום כולל מעמ — ${p.client}: ${M(calc.clientWithVat)}*`);
