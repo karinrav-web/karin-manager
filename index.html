@@ -766,7 +766,7 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
     <div style="padding:16px 24px;border-top:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">סנכרון ענן</div>
       <div id="sync-status" style="font-size:12px;color:var(--text3);margin-bottom:10px">מתחבר...</div>
-      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-05 · רשימת ספקים מסודרת</div>
+      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-06 · ספקים פעם אחת</div>
       <div id="other-session-warning" class="hidden" style="font-size:11px;color:#fff;background:var(--urgent);border-radius:6px;padding:6px 8px;margin-bottom:10px;line-height:1.4;">⚠ האפליקציה פתוחה כרגע גם במקום/דפדפן אחר — שינויים עלולים להתנגש. מומלץ לסגור שם.</div>
     </div>
   </aside>
@@ -5493,7 +5493,7 @@ function _paymentExportData(projId) {
   const clientPre = totalBeforeVat - creditTotal; // negative = the client is in credit
   const calc = { base: base0, vendorBonus, vendorCount: vendors.length, gross, vendorPaid, creditTotal, clientPre,
     vat: totalWithVat - clientPre, clientWithVat: totalWithVat,
-    vendorPre: vendors.filter(x => Number(x.amount) > 0).map(x => ({ name: x.name, amount: Number(x.amount) })) };
+    vendorPre: vendors.filter(x => Number(x.amount) > 0).map(x => ({ name: x.name, amount: Number(x.amount), paid: !!x.paid })) };
   return { p, client, vendorRows, paymentRows, totalWithVat, paidAmount, remainAmount, discount, creditTotal, adj, adjItems, calc };
 }
 
@@ -5536,6 +5536,7 @@ function paymentPdfHtml(projId) {
     .bank{margin-top:12px;font-size:12px;color:#5f5c64;}
     .bank b{color:#1c1b1f;font-weight:600;}
     .vend{margin-top:10px;font-size:11px;color:#77747c;line-height:1.6;}
+    td .vs{font-size:10.5px;font-weight:600;margin-right:8px;} td .vs.ok{color:#17663a;} td .vs.wait{color:#9a3412;}
     .vend-t{margin-top:16px;font-size:11px;font-weight:600;color:#5f5c64;} .vend-t span{font-weight:400;}
     .vgrid{display:grid;grid-template-columns:1fr 1fr;column-gap:28px;margin-top:4px;}
     .vrow{display:flex;align-items:baseline;gap:8px;padding:3px 0;border-bottom:1px solid #f0eef2;font-size:11px;color:#5f5c64;}
@@ -5559,7 +5560,7 @@ function paymentPdfHtml(projId) {
     ${calc.vendorBonus > 0 ? row('תוספת ספקים', N(calc.vendorBonus, '+'), 'plus', calc.vendorCount + ' ספקים') : ''}
     ${discount > 0 ? row('הנחה', N(discount, '−'), 'minus') : ''}
     ${row('סה״כ הפרויקט', N(calc.gross), 'subtotal', 'לפני מע״מ')}
-    ${calc.vendorPre.map(v => row('תשלום ספק — ' + v.name, N(v.amount, '−'), 'minus')).join('')}
+    ${calc.vendorPre.map(v => row('תשלום ספק — ' + v.name + `<span class="vs ${v.paid ? 'ok' : 'wait'}">${v.paid ? 'שולם' : 'ממתין'}</span>`, N(v.amount, '−'), 'minus')).join('')}
     ${calc.creditTotal > 0 ? row('זיכוי', N(calc.creditTotal, '−'), 'minus') : ''}
     ${row((calc.clientPre < 0 ? 'זיכוי — ' : 'סה״כ לתשלום — ') + p.client, N(calc.clientPre), 'total', 'לפני מע״מ')}
     ${row('מע״מ 18%', N(calc.vat, calc.clientPre < 0 ? '' : '+'))}
@@ -5572,10 +5573,7 @@ function paymentPdfHtml(projId) {
 
   ${(state.settings.bankDetails || '').trim() && remainAmount > 0 ? `<div class="bank">פרטי חשבון להעברה: <b>${state.settings.bankDetails.trim().replace(/</g, '&lt;')}</b></div>` : ''}
 
-  ${vendorRows.length ? `<div class="vend-t">ספקים — מצב תשלום <span>(סכומים כולל מע״מ)</span></div>
-  <div class="vgrid">${vendorRows.map(v => `<div class="vrow"><span class="vn">${v.name}</span>${v.direct
-      ? '<span class="vs">שילם ללקוח/מעצב</span>'
-      : `<span class="va">${N(v.amount)}</span><span class="vs ${v.paid ? 'ok' : 'wait'}">${v.paid ? 'שולם' : 'ממתין'}</span>`}</div>`).join('')}</div>` : ''}
+  ${vendorRows.some(v => v.direct) ? `<div class="vend">ספקים ששילמו ללקוח/מעצב: ${vendorRows.filter(v => v.direct).map(v => v.name).join(' · ')}</div>` : ''}
   <div class="footer">קרין רבנה — צילום אדריכלות ועיצוב פנים</div>
   </body></html>`;
 }
@@ -5604,7 +5602,7 @@ function exportPaymentWhatsApp(projId) {
   lines.push(`👤 *${p.client}*`);
   if (calc.vendorBonus > 0) lines.push(`תוספת ספקים (${calc.vendorCount}): +${M(calc.vendorBonus)}`);
   lines.push(`סה"כ הפרויקט: ${M(calc.gross)} לפני מעמ`);
-  calc.vendorPre.forEach(v => lines.push(`תשלום ספק — ${v.name}: −${M(v.amount)}`));
+  calc.vendorPre.forEach(v => lines.push(`${v.paid ? '✅' : '⏳'} תשלום ספק — ${v.name}: −${M(v.amount)} (${v.paid ? 'שולם' : 'ממתין'})`));
   if (calc.creditTotal > 0) lines.push(`זיכוי: −${M(calc.creditTotal)}`);
   lines.push(`*${calc.clientPre < 0 ? 'זיכוי' : 'סה"כ לתשלום'} — ${p.client}: ${M(Math.abs(calc.clientPre))} לפני מעמ*`);
   lines.push(`*${calc.clientWithVat < 0 ? 'זיכוי' : 'סה"כ לתשלום'} כולל מעמ — ${p.client}: ${M(Math.abs(calc.clientWithVat))}*`);
@@ -5614,14 +5612,7 @@ function exportPaymentWhatsApp(projId) {
     lines.push('*תשלומים שהתקבלו:*');
     paymentRows.forEach(r => lines.push(`💵 ${r.name}: ₪${r.amount.toLocaleString()}${r.isCash ? ' (מזומן · ללא מעמ)' : ''}`));
   }
-  if (vendorRows.length) {
-    lines.push('');
-    lines.push('*ספקים:*');
-    vendorRows.forEach(v => lines.push(v.direct
-      ? `${v.name} — שילם ללקוח/מעצב`
-      : `${v.paid ? '✅' : '⏳'} ${v.name}: ₪${v.amount.toLocaleString()} — ${v.paid ? 'שולם' : 'ממתין'}`
-    ));
-  }
+  if (vendorRows.some(v => v.direct)) { lines.push(''); lines.push('ספקים ששילמו ללקוח/מעצב: ' + vendorRows.filter(v => v.direct).map(v => v.name).join(', ')); }
   lines.push('');
   if (remainAmount === 0) lines.push(`✅ שולם במלואו`);
   if (remainAmount > 0 && (state.settings.bankDetails || '').trim()) lines.push(`🏦 פרטי חשבון להעברה: ${state.settings.bankDetails.trim()}`);
