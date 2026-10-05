@@ -766,7 +766,7 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
     <div style="padding:16px 24px;border-top:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">סנכרון ענן</div>
       <div id="sync-status" style="font-size:12px;color:var(--text3);margin-bottom:10px">מתחבר...</div>
-      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-06 · ספקים פעם אחת</div>
+      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-06 · סכום לפני ואחרי הנחה</div>
       <div id="other-session-warning" class="hidden" style="font-size:11px;color:#fff;background:var(--urgent);border-radius:6px;padding:6px 8px;margin-bottom:10px;line-height:1.4;">⚠ האפליקציה פתוחה כרגע גם במקום/דפדפן אחר — שינויים עלולים להתנגש. מומלץ לסגור שם.</div>
     </div>
   </aside>
@@ -5558,8 +5558,8 @@ function paymentPdfHtml(projId) {
     ${calc.base ? row('מחיר בסיס', N(calc.base), '', projBaseText(p).replace(/</g, '&lt;')) : ''}
     ${adjItems.filter(x => Number(x.amount)).map(x => row(x.desc || 'תוספת', N(Number(x.amount), '+'), 'plus', x.unit ? `${x.qty || 1} × ${x.unit} ₪` : '')).join('')}
     ${calc.vendorBonus > 0 ? row('תוספת ספקים', N(calc.vendorBonus, '+'), 'plus', calc.vendorCount + ' ספקים') : ''}
-    ${discount > 0 ? row('הנחה', N(discount, '−'), 'minus') : ''}
-    ${row('סה״כ הפרויקט', N(calc.gross), 'subtotal', 'לפני מע״מ')}
+    ${discount > 0 ? row('סה״כ', N(calc.gross + discount), 'total', 'לפני הנחה') + row('הנחה', N(discount, '−'), 'minus') : ''}
+    ${row(discount > 0 ? 'סה״כ אחרי הנחה' : 'סה״כ הפרויקט', N(calc.gross), 'subtotal', 'לפני מע״מ')}
     ${calc.vendorPre.map(v => row('תשלום ספק — ' + v.name + `<span class="vs ${v.paid ? 'ok' : 'wait'}">${v.paid ? 'שולם' : 'ממתין'}</span>`, N(v.amount, '−'), 'minus')).join('')}
     ${calc.creditTotal > 0 ? row('זיכוי', N(calc.creditTotal, '−'), 'minus') : ''}
     ${row((calc.clientPre < 0 ? 'זיכוי — ' : 'סה״כ לתשלום — ') + p.client, N(calc.clientPre), 'total', 'לפני מע״מ')}
@@ -5596,12 +5596,12 @@ function exportPaymentWhatsApp(projId) {
   else lines.push(`📁 ${p.client}`);
   if (base) lines.push(`💵 מחיר בסיס: ₪${base.toLocaleString()} לפני מעמ${projBaseText(p) ? ' (' + projBaseText(p) + ')' : ''}`);
   adjItems.forEach(x => { if (Number(x.amount)) lines.push(`➕ ${adjItemLabel(x)}: ₪${Number(x.amount).toLocaleString()}`); });
-  if (discount > 0) lines.push(`🏷️ הנחה: −₪${discount.toLocaleString()}`);
   if (totalPhotos) lines.push(`📷 ${totalPhotos} תמונות`);
   lines.push('');
   lines.push(`👤 *${p.client}*`);
   if (calc.vendorBonus > 0) lines.push(`תוספת ספקים (${calc.vendorCount}): +${M(calc.vendorBonus)}`);
-  lines.push(`סה"כ הפרויקט: ${M(calc.gross)} לפני מעמ`);
+  if (discount > 0) { lines.push(`סה"כ לפני הנחה: ${M(calc.gross + discount)}`); lines.push(`🏷️ הנחה: −${M(discount)}`); }
+  lines.push(`${discount > 0 ? 'סה"כ אחרי הנחה' : 'סה"כ הפרויקט'}: ${M(calc.gross)} לפני מעמ`);
   calc.vendorPre.forEach(v => lines.push(`${v.paid ? '✅' : '⏳'} תשלום ספק — ${v.name}: −${M(v.amount)} (${v.paid ? 'שולם' : 'ממתין'})`));
   if (calc.creditTotal > 0) lines.push(`זיכוי: −${M(calc.creditTotal)}`);
   lines.push(`*${calc.clientPre < 0 ? 'זיכוי' : 'סה"כ לתשלום'} — ${p.client}: ${M(Math.abs(calc.clientPre))} לפני מעמ*`);
