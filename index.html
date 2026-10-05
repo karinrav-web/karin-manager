@@ -766,7 +766,7 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
     <div style="padding:16px 24px;border-top:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">סנכרון ענן</div>
       <div id="sync-status" style="font-size:12px;color:var(--text3);margin-bottom:10px">מתחבר...</div>
-      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-05 · סכום לתשלום באדום</div>
+      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-05 · תוספות קבועות</div>
       <div id="other-session-warning" class="hidden" style="font-size:11px;color:#fff;background:var(--urgent);border-radius:6px;padding:6px 8px;margin-bottom:10px;line-height:1.4;">⚠ האפליקציה פתוחה כרגע גם במקום/דפדפן אחר — שינויים עלולים להתנגש. מומלץ לסגור שם.</div>
     </div>
   </aside>
@@ -5025,6 +5025,30 @@ function updateBillingBase(projId, val) {
   recalcClientShare(p);
   save(); renderProjects(); renderBillingSummaryMorning();
 }
+// מה כלול בכל מחיר בסיס, ותוספות קבועות לפי כמות (מחיר ליחידה × כמות)
+const BASE_PACKAGES = { 3700: { photos: 30, hours: 5 }, 5000: { photos: 45, hours: 8 } };
+const ADJ_PRESETS = { photo: { desc: 'עריכת תמונה נוספת', unit: 100 }, hour: { desc: 'שעת צילום נוספת', unit: 250 } };
+function basePackageText(base) { const k = BASE_PACKAGES[base]; return k ? `כולל ${k.photos} תמונות ערוכות · ${k.hours} שעות צילום` : ''; }
+function adjItemLabel(x) { return (x.desc || 'תוספת') + (x.unit ? ` × ${x.qty || 1}` : ''); }
+function addAdjPreset(projId, kind) {
+  const p = state.projects.find(p => p.id === projId); const pre = ADJ_PRESETS[kind]; if (!p || !pre) return;
+  if (!p.adjItems) p.adjItems = [];
+  // תמונות: מציע את ההפרש בין כמות התמונות בפרויקט למה שכלול במחיר הבסיס
+  const pkg = BASE_PACKAGES[Number(p.billingBase) || 0];
+  const qty = kind === 'photo' && pkg && (Number(p.total) || 0) > pkg.photos ? (Number(p.total) - pkg.photos) : 1;
+  const ex = p.adjItems.find(x => x.kind === kind);
+  if (ex) { ex.qty = (Number(ex.qty) || 0) + 1; ex.amount = ex.qty * ex.unit; }
+  else p.adjItems.push({ desc: pre.desc, unit: pre.unit, qty, amount: pre.unit * qty, kind });
+  _syncBillingAdj(p); recalcClientShare(p);
+  save(); renderProjects(); renderBillingSummaryMorning();
+}
+function updateAdjQty(projId, idx, val) {
+  const p = state.projects.find(p => p.id === projId); if (!p || !p.adjItems || !p.adjItems[idx]) return;
+  const it = p.adjItems[idx];
+  it.qty = Math.max(0, Number(val) || 0); it.amount = it.qty * (Number(it.unit) || 0);
+  _syncBillingAdj(p); recalcClientShare(p);
+  save(); renderProjects(); renderBillingSummaryMorning();
+}
 function _syncBillingAdj(p) {
   p.billingAdj = (p.adjItems||[]).reduce((s,x) => s + (Number(x.amount)||0), 0);
 }
@@ -5337,12 +5361,23 @@ function renderBillingSection(p) {
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">${baseButtons}
           <input type="number" placeholder="אחר..." value="${base && ![2700,3700,5000].includes(base)?base:''}" style="width:90px;padding:4px 8px;font-size:12px;border:1px solid var(--border2);border-radius:20px;font-family:'Rubik',sans-serif;" onchange="updateBillingBase(${p.id},this.value)" />
         </div>
+        ${basePackageText(base) ? `<div style="font-size:12px;color:var(--text2);margin-bottom:8px;">${basePackageText(base)}</div>` : ''}
         <div style="margin-top:8px;border-top:1px dashed var(--border);padding-top:8px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${adjItems.length?'6':'0'}px;">
             <span style="font-size:11px;color:var(--accent);font-weight:500;">+ תוספות${adj>0?' · '+fmtILS(adj):''}</span>
-            <button type="button" onclick="event.stopPropagation();addAdjItem(${p.id})" style="font-size:11px;padding:2px 10px;border:1px dashed var(--accent);border-radius:var(--radius-sm);background:transparent;color:var(--accent);cursor:pointer;font-family:'Rubik',sans-serif;">+ הוסף</button>
+            <span style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;">
+              <button type="button" onclick="event.stopPropagation();addAdjPreset(${p.id},'photo')" style="font-size:11px;padding:2px 10px;border:1px dashed var(--accent);border-radius:var(--radius-sm);background:transparent;color:var(--accent);cursor:pointer;font-family:'Rubik',sans-serif;">+ תמונה נוספת ₪100</button>
+              <button type="button" onclick="event.stopPropagation();addAdjPreset(${p.id},'hour')" style="font-size:11px;padding:2px 10px;border:1px dashed var(--accent);border-radius:var(--radius-sm);background:transparent;color:var(--accent);cursor:pointer;font-family:'Rubik',sans-serif;">+ שעת צילום ₪250</button>
+              <button type="button" onclick="event.stopPropagation();addAdjItem(${p.id})" style="font-size:11px;padding:2px 10px;border:1px dashed var(--accent);border-radius:var(--radius-sm);background:transparent;color:var(--accent);cursor:pointer;font-family:'Rubik',sans-serif;">+ אחר</button>
+            </span>
           </div>
-          ${adjItems.map((item,idx) => `<div style="display:flex;gap:5px;margin-bottom:5px;align-items:center;">
+          ${adjItems.map((item,idx) => item.unit ? `<div style="display:flex;gap:6px;margin-bottom:5px;align-items:center;">
+            <span style="flex:1;font-size:12px;color:var(--text);">${item.desc}</span>
+            <input type="number" value="${item.qty||0}" min="0" aria-label="כמות" title="כמות" style="width:58px;padding:4px 6px;font-size:12px;border:1px solid var(--accent);border-radius:var(--radius-sm);font-family:'Rubik',sans-serif;text-align:center;" onchange="updateAdjQty(${p.id},${idx},this.value)" />
+            <span style="font-size:11px;color:var(--text3);white-space:nowrap;">× ₪${item.unit}</span>
+            <span style="min-width:62px;text-align:left;font-size:13px;font-weight:600;color:var(--accent);">${fmtILS(item.amount||0)}</span>
+            <button type="button" onclick="event.stopPropagation();deleteAdjItem(${p.id},${idx})" style="padding:3px 7px;font-size:12px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:transparent;color:var(--text3);cursor:pointer;">✕</button>
+          </div>` : `<div style="display:flex;gap:5px;margin-bottom:5px;align-items:center;">
             <input type="text" value="${item.desc||''}" placeholder="תיאור תוספת..." style="flex:1;padding:4px 8px;font-size:12px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-family:'Rubik',sans-serif;background:var(--surface);color:var(--text);" onchange="updateAdjItem(${p.id},${idx},'desc',this.value)" />
             <input type="number" value="${item.amount||''}" placeholder="₪" min="0" style="width:72px;padding:4px 8px;font-size:12px;border:1px solid var(--accent);border-radius:var(--radius-sm);font-family:'Rubik',sans-serif;text-align:center;" onchange="updateAdjItem(${p.id},${idx},'amount',this.value)" />
             <button type="button" onclick="event.stopPropagation();deleteAdjItem(${p.id},${idx})" style="padding:3px 7px;font-size:12px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:transparent;color:var(--text3);cursor:pointer;">✕</button>
@@ -5484,8 +5519,8 @@ function paymentPdfHtml(projId) {
 
   <h2>חישוב</h2>
   <table><tbody>
-    ${calc.base ? row('מחיר בסיס', N(calc.base)) : ''}
-    ${adjItems.filter(x => Number(x.amount)).map(x => row(x.desc || 'תוספת', N(Number(x.amount), '+'), 'plus')).join('')}
+    ${calc.base ? row('מחיר בסיס', N(calc.base), '', basePackageText(calc.base)) : ''}
+    ${adjItems.filter(x => Number(x.amount)).map(x => row(x.desc || 'תוספת', N(Number(x.amount), '+'), 'plus', x.unit ? `${x.qty || 1} × ${x.unit} ₪` : '')).join('')}
     ${calc.vendorBonus > 0 ? row('תוספת ספקים', N(calc.vendorBonus, '+'), 'plus', calc.vendorCount + ' ספקים') : ''}
     ${discount > 0 ? row('הנחה', N(discount, '−'), 'minus') : ''}
     ${row('סה״כ הפרויקט', N(calc.gross), 'subtotal', 'לפני מע״מ')}
@@ -5529,8 +5564,8 @@ function exportPaymentWhatsApp(projId) {
   lines.push(`💰 *פירוט ספקים ותשלומים*`);
   if (p.title) lines.push(`📁 ${p.client} · ${p.title}`);
   else lines.push(`📁 ${p.client}`);
-  if (base) lines.push(`💵 מחיר בסיס: ₪${base.toLocaleString()} לפני מעמ`);
-  adjItems.forEach(x => { if (Number(x.amount)) lines.push(`➕ ${x.desc||'תוספת'}: ₪${Number(x.amount).toLocaleString()}`); });
+  if (base) lines.push(`💵 מחיר בסיס: ₪${base.toLocaleString()} לפני מעמ${basePackageText(base) ? ' (' + basePackageText(base) + ')' : ''}`);
+  adjItems.forEach(x => { if (Number(x.amount)) lines.push(`➕ ${adjItemLabel(x)}: ₪${Number(x.amount).toLocaleString()}`); });
   if (discount > 0) lines.push(`🏷️ הנחה: −₪${discount.toLocaleString()}`);
   if (totalPhotos) lines.push(`📷 ${totalPhotos} תמונות`);
   lines.push('');
