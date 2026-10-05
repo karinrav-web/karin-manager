@@ -766,7 +766,7 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
     <div style="padding:16px 24px;border-top:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">סנכרון ענן</div>
       <div id="sync-status" style="font-size:12px;color:var(--text3);margin-bottom:10px">מתחבר...</div>
-      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-05 · פירוט תשלום קומפקטי</div>
+      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-05 · הערה למחיר בסיס</div>
       <div id="other-session-warning" class="hidden" style="font-size:11px;color:#fff;background:var(--urgent);border-radius:6px;padding:6px 8px;margin-bottom:10px;line-height:1.4;">⚠ האפליקציה פתוחה כרגע גם במקום/דפדפן אחר — שינויים עלולים להתנגש. מומלץ לסגור שם.</div>
     </div>
   </aside>
@@ -2179,6 +2179,7 @@ function mergeCloudState(d) {
       sessions: Math.max(lp.sessions||0, cp.sessions||0),
       // protect billing fields: if Firebase lost the value but local has it, keep local
       billingBase: (Number(cp.billingBase)||0) > 0 ? cp.billingBase : (lp.billingBase||cp.billingBase),
+      ...((lp.billingBaseNote || cp.billingBaseNote) ? { billingBaseNote: lp.billingBaseNote || cp.billingBaseNote } : {}),
       billingAdj: (Number(cp.billingAdj)||0) !== 0 ? cp.billingAdj : (lp.billingAdj||cp.billingAdj),
       billingDiscount: cp.billingDiscount !== undefined ? cp.billingDiscount : lp.billingDiscount,
       billingDiscountType: cp.billingDiscountType || lp.billingDiscountType,
@@ -5036,6 +5037,14 @@ function updateBillingBase(projId, val) {
 const BASE_PACKAGES = { 3700: { photos: 30, hours: 5 }, 5000: { photos: 45, hours: 8 } };
 const ADJ_PRESETS = { photo: { desc: 'עריכת תמונה נוספת', unit: 100 }, hour: { desc: 'שעת צילום נוספת', unit: 250 } };
 function basePackageText(base) { const k = BASE_PACKAGES[base]; return k ? `כולל ${k.photos} תמונות ערוכות · ${k.hours} שעות צילום` : ''; }
+// מה כלול במחיר הבסיס של פרויקט: חבילה קבועה, או הערה חופשית כשהמחיר הוא "אחר"
+function projBaseText(p) { const b = Number(p.billingBase) || 0; return basePackageText(b) || (b ? String(p.billingBaseNote || '').trim() : ''); }
+function updateBaseNote(projId, val) {
+  const p = state.projects.find(p => p.id === projId); if (!p) return;
+  const v = String(val || '').trim();
+  if (v) p.billingBaseNote = v; else delete p.billingBaseNote;
+  save();
+}
 function adjItemLabel(x) { return (x.desc || 'תוספת') + (x.unit ? ` × ${x.qty || 1}` : ''); }
 function addAdjPreset(projId, kind) {
   const p = state.projects.find(p => p.id === projId); const pre = ADJ_PRESETS[kind]; if (!p || !pre) return;
@@ -5368,7 +5377,8 @@ function renderBillingSection(p) {
         <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">${baseButtons}
           <input type="number" placeholder="אחר..." value="${base && ![2700,3700,5000].includes(base)?base:''}" style="width:90px;padding:4px 8px;font-size:12px;border:1px solid var(--border2);border-radius:20px;font-family:'Rubik',sans-serif;" onchange="updateBillingBase(${p.id},this.value)" />
         </div>
-        ${basePackageText(base) ? `<div style="font-size:12px;color:var(--text2);margin-bottom:8px;">${basePackageText(base)}</div>` : ''}
+        ${basePackageText(base) ? `<div style="font-size:12px;color:var(--text2);margin-bottom:8px;">${basePackageText(base)}</div>`
+          : base ? `<input type="text" value="${(p.billingBaseNote||'').replace(/"/g,'&quot;')}" placeholder="מה המחיר כולל? למשל: שני ימי צילום · 90 תמונות" aria-label="מה כלול במחיר הבסיס" onchange="updateBaseNote(${p.id},this.value)" style="width:100%;box-sizing:border-box;padding:5px 10px;font-size:12px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-family:'Rubik',sans-serif;background:var(--surface);color:var(--text);margin-bottom:8px;" />` : ''}
         <div style="margin-top:8px;border-top:1px dashed var(--border);padding-top:8px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${adjItems.length?'6':'0'}px;">
             <span style="font-size:11px;color:var(--accent);font-weight:500;">+ תוספות${adj>0?' · '+fmtILS(adj):''}</span>
@@ -5537,7 +5547,7 @@ function paymentPdfHtml(projId) {
   ${sub ? `<div class="sub">${sub}</div>` : ''}
 
   <table><tbody>
-    ${calc.base ? row('מחיר בסיס', N(calc.base), '', basePackageText(calc.base)) : ''}
+    ${calc.base ? row('מחיר בסיס', N(calc.base), '', projBaseText(p).replace(/</g, '&lt;')) : ''}
     ${adjItems.filter(x => Number(x.amount)).map(x => row(x.desc || 'תוספת', N(Number(x.amount), '+'), 'plus', x.unit ? `${x.qty || 1} × ${x.unit} ₪` : '')).join('')}
     ${calc.vendorBonus > 0 ? row('תוספת ספקים', N(calc.vendorBonus, '+'), 'plus', calc.vendorCount + ' ספקים') : ''}
     ${discount > 0 ? row('הנחה', N(discount, '−'), 'minus') : ''}
@@ -5578,7 +5588,7 @@ function exportPaymentWhatsApp(projId) {
   lines.push(`💰 *פירוט ספקים ותשלומים*`);
   if (p.title) lines.push(`📁 ${p.client} · ${p.title}`);
   else lines.push(`📁 ${p.client}`);
-  if (base) lines.push(`💵 מחיר בסיס: ₪${base.toLocaleString()} לפני מעמ${basePackageText(base) ? ' (' + basePackageText(base) + ')' : ''}`);
+  if (base) lines.push(`💵 מחיר בסיס: ₪${base.toLocaleString()} לפני מעמ${projBaseText(p) ? ' (' + projBaseText(p) + ')' : ''}`);
   adjItems.forEach(x => { if (Number(x.amount)) lines.push(`➕ ${adjItemLabel(x)}: ₪${Number(x.amount).toLocaleString()}`); });
   if (discount > 0) lines.push(`🏷️ הנחה: −₪${discount.toLocaleString()}`);
   if (totalPhotos) lines.push(`📷 ${totalPhotos} תמונות`);
