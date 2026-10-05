@@ -766,7 +766,7 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
     <div style="padding:16px 24px;border-top:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">סנכרון ענן</div>
       <div id="sync-status" style="font-size:12px;color:var(--text3);margin-bottom:10px">מתחבר...</div>
-      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-05 · פרטי חשבון</div>
+      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-05 · פירוט תשלום קומפקטי</div>
       <div id="other-session-warning" class="hidden" style="font-size:11px;color:#fff;background:var(--urgent);border-radius:6px;padding:6px 8px;margin-bottom:10px;line-height:1.4;">⚠ האפליקציה פתוחה כרגע גם במקום/דפדפן אחר — שינויים עלולים להתנגש. מומלץ לסגור שם.</div>
     </div>
   </aside>
@@ -5494,41 +5494,41 @@ function paymentPdfHtml(projId) {
   const N = (n, sign) => `<span class="num"><bdi dir="ltr">${sign || ''}${Math.round(Math.abs(n)).toLocaleString()}</bdi> ₪</span>`;
   const dateStr = p.date ? new Date(p.date).toLocaleDateString('he-IL') : '';
   const totalPhotos = Number(p.total) || 0;
-  const row = (label, val, cls, note) => `<tr class="${cls || ''}"><td>${label}${note ? `<div class="note">${note}</div>` : ''}</td><td class="amt">${val}</td></tr>`;
+  const row = (label, val, cls, note) => `<tr class="${cls || ''}"><td>${label}${note ? `<span class="note"> · ${note}</span>` : ''}</td><td class="amt">${val}</td></tr>`;
   const sub = [p.title, dateStr, totalPhotos ? totalPhotos + ' תמונות' : ''].filter(Boolean).join(' · ');
   return `<!DOCTYPE html><html lang="he" dir="rtl"><head>
   <meta charset="UTF-8"><title>פירוט תשלום — ${p.client}</title>
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Rubik',sans-serif;background:#fff;color:#1c1b1f;padding:44px 40px;max-width:600px;margin:0 auto;font-size:14px;line-height:1.45;}
-    .eyebrow{font-size:12px;color:#77747c;letter-spacing:.04em;margin-bottom:6px;}
-    h1{font-size:26px;font-weight:700;line-height:1.2;}
-    .sub{font-size:14px;color:#5f5c64;margin-top:4px;}
-    h2{font-size:13px;font-weight:600;color:#5f5c64;margin:30px 0 8px;}
+    body{font-family:'Rubik',sans-serif;background:#fff;color:#1c1b1f;padding:32px 36px;max-width:520px;margin:0 auto;font-size:13px;line-height:1.4;}
+    .eyebrow{font-size:11px;color:#77747c;letter-spacing:.04em;margin-bottom:2px;}
+    h1{font-size:20px;font-weight:700;line-height:1.2;}
+    .sub{font-size:12px;color:#5f5c64;margin-top:2px;margin-bottom:14px;}
+    h2{font-size:12px;font-weight:600;color:#5f5c64;margin:18px 0 4px;}
     table{width:100%;border-collapse:collapse;}
-    td{padding:11px 0;border-bottom:1px solid #ebe9ee;vertical-align:top;}
-    td.amt{text-align:left;white-space:nowrap;width:150px;font-variant-numeric:tabular-nums;}
+    td{padding:6px 0;border-bottom:1px solid #ebe9ee;vertical-align:baseline;}
+    td.amt{text-align:left;white-space:nowrap;width:120px;font-variant-numeric:tabular-nums;}
     .num{white-space:nowrap;}
-    .note{font-size:12px;color:#77747c;margin-top:2px;font-weight:400;}
+    .note{font-size:11px;color:#77747c;font-weight:400;}
     tr.plus td.amt{color:#17663a;} tr.minus td.amt{color:#9a3412;}
-    tr.subtotal td{font-weight:600;border-bottom:2px solid #1c1b1f;border-top:1px solid #1c1b1f;}
-    tr.total td{font-weight:600;font-size:15px;}
+    tr.subtotal td{font-weight:600;border-bottom:1.5px solid #1c1b1f;}
+    tr.total td{font-weight:600;}
     /* colour is carried by the text, not a background — browsers drop backgrounds when printing */
-    tr.due td{font-weight:700;font-size:18px;padding:14px 0;border-top:2px solid currentColor;border-bottom:2px solid currentColor;}
-    tr.due td.amt{font-size:21px;}
+    tr.due td{font-weight:700;font-size:15px;padding:9px 0;border-top:1.5px solid currentColor;border-bottom:1.5px solid currentColor;}
+    tr.due td.amt{font-size:17px;}
     tr.owe td{color:#c81e1e;} tr.settled td{color:#15803d;}
     tr.owe .note, tr.settled .note{color:inherit;opacity:.8;}
-    tr.gap td{border-bottom:none;padding:5px 0;}
+    tr.gap td{border-bottom:none;padding:2px 0;}
     table.mini td{padding:5px 0;font-size:12px;color:#5f5c64;}
     table.mini td.amt{width:170px;}
     h2.small{font-size:11.5px;margin-top:26px;font-weight:500;}
-    .bank{margin-top:22px;border:1px solid #d9d6de;border-radius:10px;padding:12px 16px;}
-    .bank .t{font-size:12px;color:#5f5c64;margin-bottom:3px;}
-    .bank .v{font-size:14px;font-weight:600;white-space:pre-line;}
+    .bank{margin-top:12px;font-size:12px;color:#5f5c64;}
+    .bank b{color:#1c1b1f;font-weight:600;}
+    .vend{margin-top:10px;font-size:11px;color:#77747c;line-height:1.6;}
     .st{display:inline-block;padding:1px 8px;border-radius:20px;font-size:10px;font-weight:600;margin-right:10px;}
     .st.paid{background:#dcfce7;color:#17663a;} .st.wait{background:#fef3c7;color:#854d0e;}
-    .footer{margin-top:40px;font-size:11px;color:#77747c;text-align:center;border-top:1px solid #ebe9ee;padding-top:14px;}
+    .footer{margin-top:22px;font-size:10px;color:#77747c;text-align:center;border-top:1px solid #ebe9ee;padding-top:8px;}
     @media print{body{padding:24px 28px;}}
   </style>
   </head><body>
@@ -5536,7 +5536,6 @@ function paymentPdfHtml(projId) {
   <h1>${p.client}</h1>
   ${sub ? `<div class="sub">${sub}</div>` : ''}
 
-  <h2>חישוב</h2>
   <table><tbody>
     ${calc.base ? row('מחיר בסיס', N(calc.base), '', basePackageText(calc.base)) : ''}
     ${adjItems.filter(x => Number(x.amount)).map(x => row(x.desc || 'תוספת', N(Number(x.amount), '+'), 'plus', x.unit ? `${x.qty || 1} × ${x.unit} ₪` : '')).join('')}
@@ -5552,19 +5551,13 @@ function paymentPdfHtml(projId) {
     ${paidAmount > 0 ? `<tr class="gap"><td></td><td></td></tr>` + row('שולם עד עכשיו', N(paidAmount, '−'), 'plus') + `<tr class="gap"><td></td><td></td></tr>` + row((remainAmount < 0 ? 'זיכוי — ' : remainAmount === 0 ? 'שולם במלואו — ' : 'יתרה לתשלום — ') + p.client, N(remainAmount), 'due ' + (remainAmount > 0 ? 'owe' : 'settled'), remainAmount > 0 ? 'כולל מע״מ' : '') : ''}
   </tbody></table>
 
-  ${paymentRows.length ? `<h2>תשלומים שהתקבלו</h2>
-  <table><tbody>
-    ${paymentRows.map(r => row(r.name, N(r.amount), '', r.isCash ? 'מזומן · ללא מע״מ' : '')).join('')}
-  </tbody></table>` : ''}
+  ${paymentRows.length ? `<div class="vend">תשלומים שהתקבלו: ${paymentRows.map(r => `${r.name} ${N(r.amount)}${r.isCash ? ' (מזומן, ללא מע״מ)' : ''}`).join(' · ')}</div>` : ''}
 
-  ${(state.settings.bankDetails || '').trim() && remainAmount > 0 ? `<div class="bank"><div class="t">פרטי חשבון להעברה</div><div class="v">${state.settings.bankDetails.trim().replace(/</g, '&lt;')}</div></div>` : ''}
+  ${(state.settings.bankDetails || '').trim() && remainAmount > 0 ? `<div class="bank">פרטי חשבון להעברה: <b>${state.settings.bankDetails.trim().replace(/</g, '&lt;')}</b></div>` : ''}
 
-  ${vendorRows.length ? `<h2 class="small">ספקים — מצב תשלום (סכומים כולל מע״מ)</h2>
-  <table class="mini"><tbody>
-    ${vendorRows.map(v => row(v.name, v.direct
-      ? 'שילם ללקוח/מעצב'
-      : `${N(v.amount)}<span class="st ${v.paid ? 'paid' : 'wait'}">${v.paid ? 'שולם' : 'ממתין'}</span>`)).join('')}
-  </tbody></table>` : ''}
+  ${vendorRows.length ? `<div class="vend">ספקים (כולל מע״מ): ${vendorRows.map(v => v.direct
+      ? `${v.name} — שילם ללקוח/מעצב`
+      : `${v.name} ${N(v.amount)} — ${v.paid ? 'שולם' : 'ממתין'}`).join(' · ')}</div>` : ''}
   <div class="footer">קרין רבנה — צילום אדריכלות ועיצוב פנים</div>
   </body></html>`;
 }
