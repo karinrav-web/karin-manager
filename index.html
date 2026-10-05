@@ -766,7 +766,7 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
     <div style="padding:16px 24px;border-top:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">סנכרון ענן</div>
       <div id="sync-status" style="font-size:12px;color:var(--text3);margin-bottom:10px">מתחבר...</div>
-      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-04 · תיקון תכנון חודשי</div>
+      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-05 · חשבון לקוח ברור</div>
       <div id="other-session-warning" class="hidden" style="font-size:11px;color:#fff;background:var(--urgent);border-radius:6px;padding:6px 8px;margin-bottom:10px;line-height:1.4;">⚠ האפליקציה פתוחה כרגע גם במקום/דפדפן אחר — שינויים עלולים להתנגש. מומלץ לסגור שם.</div>
     </div>
   </aside>
@@ -5428,12 +5428,21 @@ function _paymentExportData(projId) {
   }));
   const adjItems = p.adjItems && p.adjItems.length ? p.adjItems : (p.billingAdj ? [{desc:'תוספת',amount:Number(p.billingAdj)}] : []);
   const adj = adjItems.reduce((s,x) => s + (Number(x.amount)||0), 0);
-  return { p, client, vendorRows, paymentRows, totalWithVat, paidAmount, remainAmount, discount, creditTotal, adj, adjItems };
+  // calc: the step-by-step account shown to the client — project total → minus what
+  // suppliers pay → what is left for the client, before and after VAT
+  const base0 = Number(p.billingBase) || 0;
+  const gross = Math.max(0, base0 + vendorBonus + (Number(p.billingAdj)||0) - discount);
+  const clientPre = Math.max(0, totalBeforeVat - creditTotal);
+  const calc = { base: base0, vendorBonus, vendorCount: vendors.length, gross, vendorPaid, creditTotal, clientPre,
+    vat: totalWithVat - clientPre, clientWithVat: totalWithVat,
+    vendorPre: vendors.filter(x => Number(x.amount) > 0).map(x => ({ name: x.name, amount: Number(x.amount) })) };
+  return { p, client, vendorRows, paymentRows, totalWithVat, paidAmount, remainAmount, discount, creditTotal, adj, adjItems, calc };
 }
 
 function exportPaymentPDF(projId) {
   const d = _paymentExportData(projId); if (!d) return;
-  const { p, vendorRows, paymentRows, totalWithVat, paidAmount, remainAmount, discount, adj, adjItems } = d;
+  const { p, vendorRows, paymentRows, totalWithVat, paidAmount, remainAmount, discount, adj, adjItems, calc } = d;
+  const M = n => '₪' + Math.round(n).toLocaleString();
   const dateStr = p.date ? new Date(p.date).toLocaleDateString('he-IL') : '';
   const base = Number(p.billingBase) || 0;
   const totalPhotos = Number(p.total) || 0;
@@ -5466,6 +5475,16 @@ function exportPaymentPDF(projId) {
     .s-label{font-size:11px;color:#888;margin-bottom:4px;}
     .s-val{font-size:18px;font-weight:700;}
     .green{color:#15803d;} .red{color:#dc2626;}
+    .calc{border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;margin-bottom:24px;}
+    .calc .r{display:flex;justify-content:space-between;gap:16px;padding:9px 18px;font-size:14px;border-bottom:1px solid #f1f1f1;}
+    .calc .r:last-child{border-bottom:none;}
+    .calc .r.sub{padding:5px 30px 5px 18px;font-size:12.5px;color:#666;border-bottom:none;}
+    .calc .r.tot{background:#f8f9fa;font-weight:600;}
+    .calc .r.big{background:#f5f0ff;color:#4c1d95;font-weight:700;font-size:16px;padding:13px 18px;}
+    .calc .r.due{background:#4c1d95;color:#fff;font-weight:700;font-size:17px;padding:14px 18px;}
+    .calc .r > span:last-child{direction:ltr;unicode-bidi:isolate;white-space:nowrap;}
+    .calc .minus{color:#b45309;} .calc .plus{color:#15803d;}
+    .calc small{font-weight:400;font-size:11px;opacity:.75;margin-right:6px;}
     .footer{margin-top:32px;font-size:11px;color:#bbb;text-align:center;border-top:1px solid #eee;padding-top:16px;}
     @media print{button{display:none!important}}
   </style>
@@ -5473,24 +5492,28 @@ function exportPaymentPDF(projId) {
   <h1>פירוט ספקים ותשלומים</h1>
   <div class="sub">${p.client}${p.title ? ' · ' + p.title : ''}${dateStr ? ' · ' + dateStr : ''}</div>
   <div class="meta">
-    ${base ? `<div class="meta-item"><div class="meta-label">מחיר בסיס</div><div class="meta-val">₪${base.toLocaleString()} לפני מעמ</div></div>` : ''}
-    ${adjItems.map(x => `<div class="meta-item" style="background:#f0fdf4;"><div class="meta-label">${x.desc||'תוספת'}</div><div class="meta-val" style="color:#15803d;">+₪${(Number(x.amount)||0).toLocaleString()}</div></div>`).join('')}
-    ${discount > 0 ? `<div class="meta-item" style="background:#fff5f5;"><div class="meta-label">הנחה</div><div class="meta-val" style="color:#dc2626;">−₪${discount.toLocaleString()}</div></div>` : ''}
     ${totalPhotos ? `<div class="meta-item"><div class="meta-label">תמונות</div><div class="meta-val">${totalPhotos} תמונות</div></div>` : ''}
   </div>
-  <div class="client-card">
-    <div class="client-name">👤 ${p.client}</div>
-    <div class="client-nums">
-      <div class="s-item"><div class="s-label">סה"כ</div><div class="s-val">₪${totalWithVat.toLocaleString()}</div></div>
-      <div class="s-item"><div class="s-label">שולם</div><div class="s-val green">₪${paidAmount.toLocaleString()}</div></div>
-      <div class="s-item"><div class="s-label">${remainAmount < 0 ? 'זיכוי ללקוח' : 'נשאר'}</div><div class="s-val ${remainAmount > 0 ? 'red' : 'green'}">₪${Math.abs(remainAmount).toLocaleString()}</div></div>
-    </div>
+  <div class="section-title" style="margin-top:0;">החשבון של ${p.client}</div>
+  <div class="calc">
+    ${calc.base ? `<div class="r"><span>מחיר בסיס</span><span>${M(calc.base)}</span></div>` : ''}
+    ${adjItems.filter(x => Number(x.amount)).map(x => `<div class="r"><span>${x.desc||'תוספת'}</span><span class="plus">+${M(Number(x.amount))}</span></div>`).join('')}
+    ${calc.vendorBonus > 0 ? `<div class="r"><span>תוספת ספקים <small>${calc.vendorCount} ספקים</small></span><span class="plus">+${M(calc.vendorBonus)}</span></div>` : ''}
+    ${discount > 0 ? `<div class="r"><span>הנחה</span><span class="minus">−${M(discount)}</span></div>` : ''}
+    <div class="r tot"><span>סה״כ הפרויקט <small>לפני מע״מ</small></span><span>${M(calc.gross)}</span></div>
+    ${calc.vendorPaid > 0 ? `<div class="r"><span>ספקים משלמים ישירות לקרין <small>${calc.vendorPre.length} ספקים · פירוט למטה</small></span><span class="minus">−${M(calc.vendorPaid)}</span></div>` : ''}
+    ${calc.creditTotal > 0 ? `<div class="r"><span>זיכוי</span><span class="minus">−${M(calc.creditTotal)}</span></div>` : ''}
+    <div class="r big"><span>נשאר ל${p.client} לשלם <small>לפני מע״מ</small></span><span>${M(calc.clientPre)}</span></div>
+    <div class="r"><span>מע״מ 18%</span><span>+${M(calc.vat)}</span></div>
+    <div class="r big"><span>נשאר ל${p.client} לשלם <small>כולל מע״מ</small></span><span>${M(calc.clientWithVat)}</span></div>
+    ${paidAmount > 0 ? `<div class="r"><span>שולם עד עכשיו</span><span class="plus">−${M(paidAmount)}</span></div>` : ''}
+    ${paidAmount > 0 || remainAmount <= 0 ? `<div class="r due"><span>${remainAmount < 0 ? 'זיכוי ללקוח' : remainAmount === 0 ? 'שולם במלואו' : 'יתרה לתשלום'} ${remainAmount > 0 ? '<small>כולל מע״מ</small>' : ''}</span><span>${M(Math.abs(remainAmount))}</span></div>` : ''}
   </div>
   ${paymentRows.length ? `<div class="section-title">תשלומים שהתקבלו</div>
   <table><tbody>
     ${paymentRows.map(r => `<tr><td style="font-weight:500;">${r.name}</td><td style="font-weight:600;">₪${r.amount.toLocaleString()}${r.isCash ? '<span style="font-size:10px;color:#888;font-weight:400;margin-right:4px;">מזומן · ללא מעמ</span>' : ''}</td></tr>`).join('')}
   </tbody></table>` : ''}
-  ${vendorRows.length ? `<div class="section-title">ספקים</div>
+  ${vendorRows.length ? `<div class="section-title">ספקים — מצב תשלום (סכומים כולל מע״מ)</div>
   <table><tbody>
     ${vendorRows.map(v => `<tr><td style="font-weight:500;">${v.name}</td><td>${v.direct
       ? '<span style="font-size:12px;color:#888;">שילם ללקוח/מעצב</span>'
@@ -5505,7 +5528,8 @@ function exportPaymentPDF(projId) {
 
 function exportPaymentWhatsApp(projId) {
   const d = _paymentExportData(projId); if (!d) return;
-  const { p, vendorRows, paymentRows, totalWithVat, paidAmount, remainAmount, discount, adj, adjItems } = d;
+  const { p, vendorRows, paymentRows, totalWithVat, paidAmount, remainAmount, discount, adj, adjItems, calc } = d;
+  const M = n => '₪' + Math.round(n).toLocaleString();
   const base = Number(p.billingBase) || 0;
   const totalPhotos = Number(p.total) || 0;
   const lines = [];
@@ -5518,7 +5542,12 @@ function exportPaymentWhatsApp(projId) {
   if (totalPhotos) lines.push(`📷 ${totalPhotos} תמונות`);
   lines.push('');
   lines.push(`👤 *${p.client}*`);
-  lines.push(`סה"כ: ₪${totalWithVat.toLocaleString()} · שולם: ₪${paidAmount.toLocaleString()} · ${remainAmount < 0 ? 'זיכוי' : 'נשאר'}: ₪${Math.abs(remainAmount).toLocaleString()}`);
+  if (calc.vendorBonus > 0) lines.push(`תוספת ספקים (${calc.vendorCount}): +${M(calc.vendorBonus)}`);
+  lines.push(`סה"כ הפרויקט: ${M(calc.gross)} לפני מעמ`);
+  if (calc.vendorPaid > 0) lines.push(`ספקים משלמים ישירות: −${M(calc.vendorPaid)} (${calc.vendorPre.map(v => v.name + ' ' + M(v.amount)).join(', ')})`);
+  if (calc.creditTotal > 0) lines.push(`זיכוי: −${M(calc.creditTotal)}`);
+  lines.push(`*נשאר לך לשלם: ${M(calc.clientPre)} לפני מעמ = ${M(calc.clientWithVat)} כולל מעמ*`);
+  if (paidAmount > 0) lines.push(`שולם: ${M(paidAmount)} · ${remainAmount < 0 ? 'זיכוי' : 'יתרה'}: ${M(Math.abs(remainAmount))}`);
   if (paymentRows.length) {
     lines.push('');
     lines.push('*תשלומים שהתקבלו:*');
