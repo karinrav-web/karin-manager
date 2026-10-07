@@ -766,7 +766,7 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
     <div style="padding:16px 24px;border-top:1px solid var(--border)">
       <div style="font-size:11px;color:var(--text3);margin-bottom:4px">סנכרון ענן</div>
       <div id="sync-status" style="font-size:12px;color:var(--text3);margin-bottom:10px">מתחבר...</div>
-      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-06 · סכום לפני ואחרי הנחה</div>
+      <div style="font-size:10px;color:var(--text3);opacity:0.6;margin-bottom:10px">גרסה 2026-10-07 · תיקון משימות שחוזרות</div>
       <div id="other-session-warning" class="hidden" style="font-size:11px;color:#fff;background:var(--urgent);border-radius:6px;padding:6px 8px;margin-bottom:10px;line-height:1.4;">⚠ האפליקציה פתוחה כרגע גם במקום/דפדפן אחר — שינויים עלולים להתנגש. מומלץ לסגור שם.</div>
     </div>
   </aside>
@@ -2130,15 +2130,19 @@ function mergeCloudState(d) {
   const p = d.state;
   let local = {};
   try { const ls = localStorage.getItem('karin_pm'); if(ls) local = JSON.parse(ls); } catch(e){}
-  p.projects = dedup(p.projects.map(normalizeProject)).filter(p=>p.client&&p.client.trim());
-  p.tasks = dedup((p.tasks||[]).map(x=>({...x,done:Number(x.done)||0}))).filter(t=>!t.auto&&!t.projId);
+  // tombstones: a task/project deleted on either side stays deleted. Without this the
+  // union below brought deleted tasks back (stale cloud snapshot, or another device's local copy).
+  const _delT = new Set(unionIds((local.deletedIds||{}).tasks, (p.deletedIds||{}).tasks));
+  const _delP = new Set(unionIds((local.deletedIds||{}).projects, (p.deletedIds||{}).projects));
+  p.projects = dedup(p.projects.map(normalizeProject)).filter(p=>p.client&&p.client.trim()&&!_delP.has(String(p.id)));
+  p.tasks = dedup((p.tasks||[]).map(x=>({...x,done:Number(x.done)||0}))).filter(t=>!t.auto&&!t.projId&&!_delT.has(String(t.id)));
   // union in local-only projects/tasks not yet synced to cloud — prevents losing brand-new
   // work created just before an older/stale cloud snapshot arrives (e.g. right after reconnect)
   const cloudProjIds = new Set(p.projects.map(x=>x.id));
-  const newLocalProjects = (local.projects||[]).filter(x=>x.id&&!cloudProjIds.has(x.id)&&x.client&&x.client.trim()).map(normalizeProject);
+  const newLocalProjects = (local.projects||[]).filter(x=>x.id&&!cloudProjIds.has(x.id)&&x.client&&x.client.trim()&&!_delP.has(String(x.id))).map(normalizeProject);
   p.projects = [...p.projects, ...newLocalProjects];
   const cloudTaskIds = new Set(p.tasks.map(x=>x.id));
-  const newLocalTasks = (local.tasks||[]).filter(x=>x.id&&!cloudTaskIds.has(x.id)&&x.text&&x.text.trim()&&!x.auto&&!x.projId);
+  const newLocalTasks = (local.tasks||[]).filter(x=>x.id&&!cloudTaskIds.has(x.id)&&x.text&&x.text.trim()&&!x.auto&&!x.projId&&!_delT.has(String(x.id)));
   p.tasks = [...p.tasks, ...newLocalTasks];
   // prefer the later reset date so "new day" from any device propagates
   const mergedLastReset = (local.lastReset||'') > (p.lastReset||'') ? local.lastReset : (p.lastReset||'');
@@ -2202,7 +2206,7 @@ function mergeCloudState(d) {
     billing: mergeBilling(local.billing||[], p.billing||[], _delB),
     credits: mergeBilling(local.credits||[], p.credits||[], _delC),
     clients: {...(local.clients||{}), ...(p.clients||{})},
-    deletedIds: { billing: _delB, credits: _delC }
+    deletedIds: { billing: _delB, credits: _delC, tasks: [..._delT], projects: [..._delP] }
   });
   lastCloudBillingCount = Math.max(lastCloudBillingCount, (state.billing||[]).length);
   try{localStorage.setItem('karin_pm',JSON.stringify(state));}catch(e){}
@@ -4157,7 +4161,7 @@ function renderTasks() {
 }
 
 function toggleTask(id) { const t=state.tasks.find(t=>t.id===id); if(t){t.done=t.done?0:1;save();renderTasks();renderReport();} }
-function deleteTask(id) { state.tasks=state.tasks.filter(t=>t.id!==id); save(); renderTasks(); renderReport(); refreshSelects(); }
+function deleteTask(id) { state.tasks=state.tasks.filter(t=>t.id!==id); markDeleted('tasks',[id]); save(); renderTasks(); renderReport(); refreshSelects(); }
 
 function editTask(id) {
   const t = state.tasks.find(t => t.id === id); if (!t) return;
@@ -4934,7 +4938,7 @@ function saveEdit(){
   p.stage=document.getElementById('e-stage').value;
   closeModal(); save(); render();
 }
-function deleteProject(){if(!confirm('למחוק את הפרויקט לצמיתות?'))return;state.projects=state.projects.filter(p=>p.id!==editingId);closeModal();save();render();}
+function deleteProject(){if(!confirm('למחוק את הפרויקט לצמיתות?'))return;state.projects=state.projects.filter(p=>p.id!==editingId);markDeleted('projects',[editingId]);closeModal();save();render();}
 
 function refreshSelects(){
   const cl=document.getElementById('nt-client');

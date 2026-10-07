@@ -66,3 +66,4 @@ Everything lives in one `<script>` block in `index.html`. Structure, in order:
 - Client payment PDF/WhatsApp: `_paymentExportData().calc` holds the step-by-step account (base, extras, vendor bonus, gross, minus suppliers, client remainder before VAT, VAT, with VAT); the PDF renders it as the `.calc` table.
 - Base packages + preset extras: `BASE_PACKAGES` (3700 → 30 photos/5h, 5000 → 45 photos/8h) and `ADJ_PRESETS` (extra photo ₪100, extra shooting hour ₪250). Preset adjItems carry `{kind, unit, qty}` and amount = unit×qty (`addAdjPreset`, `updateAdjQty`); free-text extras stay `{desc, amount}`.
 - Bank details for the client PDF/WhatsApp live in `state.settings.bankDetails` (Settings page, `saveBankDetails`) — never hard-code them in this public repo.
+- Tombstones also cover tasks and projects: `deleteTask`/`deleteProject` call `markDeleted("tasks"|"projects", …)` and `mergeCloudState` filters both the cloud and the local-only union by `deletedIds.tasks/projects`.
