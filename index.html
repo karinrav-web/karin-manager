@@ -1201,7 +1201,7 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
     <div class="modal-title">💜 זיכוי לקוח</div>
     <div id="credit-modal-available" style="margin-bottom:14px;"></div>
     <div class="modal-field">
-      <label>סכום זיכוי לניכוי ₪ (לפני מעמ)</label>
+      <label>סכום הזיכוי ₪ (לפני מעמ)</label>
       <input id="credit-modal-amount" type="number" min="0" placeholder="0" />
     </div>
     <div class="modal-field">
@@ -1210,7 +1210,8 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
     </div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeCreditModal()">ביטול</button>
-      <button class="btn-confirm" style="background:#7c3aed;border-color:#7c3aed;" onclick="confirmAddCredit()">הוסף זיכוי</button>
+      <button class="btn-cancel" style="border-color:#c4b5fd;color:#7c3aed;" onclick="confirmAddCredit()" title="מוריד את הסכום מהתשלום של הפרויקט הזה">קזז מהפרויקט הזה</button>
+      <button class="btn-confirm" style="background:#7c3aed;border-color:#7c3aed;" onclick="confirmFutureCredit()" title="נשמר בלשונית זיכויים ומחכה לפרויקט הבא של הלקוח">שמור לפרויקט הבא</button>
     </div>
   </div>
 </div>
@@ -5345,7 +5346,8 @@ function renderBillingSection(p) {
       <label title="נשלחה חשבונית" style="display:flex;align-items:center;gap:3px;font-size:10px;color:var(--text3);cursor:pointer;">
         <input type="checkbox" ${pay.invoiceSent ? 'checked' : ''} onchange="toggleInvoiceSent(${p.id},${realIdx})" style="cursor:pointer;" />חשבונית
       </label>${invNumHtml(p, realIdx)}
-      <button class="billing-delete-btn" onclick="deletePayer(${p.id},${realIdx})" style="margin-right:auto;">✕</button>
+      <button class="edit-btn" style="font-size:11px;padding:2px 8px;border-color:#c4b5fd;color:#7c3aed;margin-right:auto;" onclick="moveCreditToFuture(${p.id},${realIdx})" title="מבטל את הקיזוז מהפרויקט הזה ושומר את הזיכוי לפרויקט הבא">↪ לפרויקט הבא</button>
+      <button class="billing-delete-btn" onclick="deletePayer(${p.id},${realIdx})">✕</button>
     </div>`;
   }).join('');
 
@@ -5969,8 +5971,8 @@ function openAddCreditModal(projId) {
     availEl.innerHTML = '';
   }
 
-  document.getElementById('credit-modal-amount').value = totalAvailable > 0 ? totalAvailable : '';
-  document.getElementById('credit-modal-note').value = clientName;
+  document.getElementById('credit-modal-amount').value = '';
+  document.getElementById('credit-modal-note').value = '';
   document.getElementById('credit-modal').style.display = 'flex';
 }
 
@@ -6006,6 +6008,40 @@ function confirmAddCredit() {
   }
 
   closeCreditModal();
+  save(); renderProjects(); renderBillingSummaryMorning(); renderCreditsSection();
+}
+
+// זיכוי שנשמר ללקוח לפרויקט הבא — לא משפיע על הסכום של הפרויקט הנוכחי
+function _pushFutureCredit(p, amount, note) {
+  if (!state.credits) state.credits = [];
+  state.credits.push({ id: Date.now(), client: p.client || p.title || '', amount, note: note || ('מפרויקט: ' + (p.title || p.client || '')), date: todayStr(), fromProject: p.id });
+}
+
+function confirmFutureCredit() {
+  const projId = _creditModalProjId; if (!projId) return;
+  const p = state.projects.find(p => p.id === projId); if (!p) return;
+  const amt = parseFloat(document.getElementById('credit-modal-amount').value) || 0;
+  if (amt <= 0) return;
+  _pushFutureCredit(p, amt, document.getElementById('credit-modal-note').value.trim());
+  closeCreditModal();
+  save(); renderProjects(); renderBillingSummaryMorning(); renderCreditsSection();
+}
+
+function moveCreditToFuture(projId, idx) {
+  const p = state.projects.find(p => p.id === projId); if (!p || !p.payers) return;
+  const pay = p.payers[idx]; if (!pay || pay.type !== 'credit') return;
+  const amt = Number(pay.amount) || 0;
+  if (!confirm(`להעביר זיכוי של ${fmtILS(amt)} לפרויקט הבא?\nהסכום יחזור לחשבון של הפרויקט הזה.`)) return;
+  p.payers.splice(idx, 1);
+  // אם הקיזוז נלקח מזיכויים רשומים — משחררים אותם במקום ליצור זיכוי חדש
+  const used = (state.credits || []).filter(c => c.used && c.usedInProject === projId);
+  const usedSum = used.reduce((s, c) => s + (Number(c.amount) || 0), 0);
+  if (used.length && usedSum === amt) {
+    used.forEach(c => { delete c.used; delete c.usedInProject; delete c.usedProjectTitle; delete c.usedDate; });
+  } else if (amt > 0) {
+    _pushFutureCredit(p, amt, pay.note || '');
+  }
+  recalcClientShare(p);
   save(); renderProjects(); renderBillingSummaryMorning(); renderCreditsSection();
 }
 
