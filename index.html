@@ -4530,10 +4530,10 @@ function projectCardHtml(p, _allFinish, inPanel) {
         const dl = new Date(p.deadline); dl.setHours(0,0,0,0);
         const fin = new Date(_finishDate); fin.setHours(0,0,0,0);
         const diff = Math.round((fin - dl) / 86400000);
-        if (diff <= 0) { color = '#059669'; deadlineNote = diff === 0 ? ' ✓' : ` ✓ ${Math.abs(diff)}י מוקדם`; }
-        else { color = '#dc2626'; deadlineNote = ` ⚠ ${diff}י איחור`; }
+        if (diff <= 0) { color = '#059669'; deadlineNote = diff === 0 ? ' · בדיוק בדדליין ✓' : ` · ${Math.abs(diff)} ימים לפני הזמן ✓`; }
+        else { color = '#dc2626'; deadlineNote = ` · ${diff} ימים אחרי הדדליין ⚠`; }
       }
-      return `<span style="color:${color};font-size:12px;font-weight:600;">📅 ~${label}${deadlineNote}</span>`;
+      return `<span style="color:${color};font-size:12px;font-weight:600;">צפי סיום: ${label}${deadlineNote}</span>`;
     })() : '';
     const _ppStages = `      <div class="stage-row" style="margin-top:10px;">${stages}</div>`;
     const _ppCtrl = `      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:10px;padding:7px 10px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);">
@@ -4663,7 +4663,7 @@ function projectCardHtml(p, _allFinish, inPanel) {
               <span style="color:var(--accent)">היום: ${et}</span>
               ${gt ? `<span style="color:${et >= gt ? 'var(--accent)' : 'var(--text3)'}">יעד: ${et}/${gt}</span>` : ''}
               <span>${pct}%</span>
-              ${p.deadline ? `<span style="color:var(--urgent);font-weight:500;">⏰ ${new Date(p.deadline).toLocaleDateString('he-IL')}</span>` : ''}
+              ${p.deadline ? `<span style="color:var(--urgent);font-weight:500;">דדליין: ${new Date(p.deadline).toLocaleDateString('he-IL',{day:'numeric',month:'numeric'})}</span>` : ''}
               ${_estHtml}
             </div>
           </div>
