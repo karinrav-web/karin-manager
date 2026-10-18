@@ -6072,38 +6072,59 @@ function deleteCredit(id) {
 
 function renderCreditsSection() {
   const el = document.getElementById('credits-list'); if (!el) return;
-  // מציגים רק זיכויים פתוחים: זיכוי שמומש (קוזז בפרויקט) לא מופיע כאן
+  const all = state.credits || [];
+  // פתוחים: זיכויים רשומים שלא מומשו + יתרות זכות אוטומטיות מפרויקטים
   const autoCredits = state.projects
     .map(p => { const d = _paymentExportData(p.id); return d && d.remainAmount < 0 ? { client: p.client, amount: Math.abs(d.remainAmount), projTitle: p.title } : null; })
     .filter(Boolean);
-  const credits = (state.credits || []).filter(c => !c.used);
-  if (!autoCredits.length && !credits.length) { el.innerHTML = '<div style="font-size:13px;color:var(--text3);padding:8px 0;">אין זיכויים פתוחים</div>'; return; }
-  const autoRows = autoCredits.map(c => `
-    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
-      <span style="font-size:11px;background:#7c3aed;color:#fff;padding:1px 8px;border-radius:10px;">זיכוי</span>
-      <span style="flex:1;font-size:13px;font-weight:500;">${c.client}</span>
-      <span style="font-size:14px;font-weight:700;color:#7c3aed;">${fmtILS(c.amount)}</span>
-      <span style="font-size:11px;color:var(--text3);">מפרויקט: ${c.projTitle}</span>
-      <span style="font-size:10px;background:#f3f0ff;color:#7c3aed;padding:2px 7px;border-radius:8px;font-weight:500;">אוטומטי</span>
-    </div>`).join('');
-  const manualRows = credits.map(c => `
-    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
-      <span style="font-size:11px;background:#7c3aed;color:#fff;padding:1px 8px;border-radius:10px;">זיכוי</span>
-      <span style="flex:1;font-size:13px;font-weight:500;">${c.client}</span>
-      <span style="font-size:14px;font-weight:700;color:#7c3aed;">${fmtILS(c.amount)}</span>
-      ${c.note ? `<span style="font-size:11px;color:var(--text3);">${c.note}</span>` : ''}
-      <button onclick="deleteCredit(${c.id})" style="width:20px;height:20px;border-radius:50%;border:1px solid var(--border);background:transparent;cursor:pointer;font-size:10px;color:var(--text3);">✕</button>
-    </div>`).join('');
-  el.innerHTML = autoRows + manualRows;
+  const open = all.filter(c => !c.used);
+  // מומשו: זיכויים רשומים שסומנו כמומשים + קיזוזי זיכוי בפרויקטים שלא נלקחו מזיכוי רשום
+  const usedReg = all.filter(c => c.used);
+  const usedProj = state.projects.map(p => {
+    const total = (p.payers || []).filter(x => x.type === 'credit').reduce((s, x) => s + (Number(x.amount) || 0), 0);
+    if (!total) return null;
+    const fromReg = usedReg.filter(c => c.usedInProject === p.id).reduce((s, c) => s + (Number(c.amount) || 0), 0);
+    const amount = total - fromReg;
+    return amount > 0 ? { id: p.id, client: p.client || p.title || '', amount, projTitle: (p.client || '') + (p.title ? ' · ' + p.title : '') } : null;
+  }).filter(Boolean);
+
+  const row = (inner, extra = '') => `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);${extra}">${inner}</div>`;
+  const badge = (txt, bg) => `<span style="font-size:11px;background:${bg};color:#fff;padding:1px 8px;border-radius:10px;">${txt}</span>`;
+  const amt = (a, col) => `<span style="font-size:14px;font-weight:700;color:${col};">${fmtILS(a)}</span>`;
+  const small = t => `<span style="font-size:11px;color:var(--text3);">${t}</span>`;
+
+  const openHtml = autoCredits.map(c => row(
+      badge('זיכוי', '#7c3aed') + `<span style="flex:1;font-size:13px;font-weight:500;">${c.client}</span>` + amt(c.amount, '#7c3aed') + small('מפרויקט: ' + c.projTitle) +
+      `<span style="font-size:10px;background:#f3f0ff;color:#7c3aed;padding:2px 7px;border-radius:8px;font-weight:500;">אוטומטי</span>`)).join('')
+    + open.map(c => row(
+      badge('זיכוי', '#7c3aed') + `<span style="flex:1;font-size:13px;font-weight:500;">${c.client}</span>` + amt(c.amount, '#7c3aed') + (c.note ? small(c.note) : '') +
+      `<button onclick="deleteCredit(${c.id})" style="width:20px;height:20px;border-radius:50%;border:1px solid var(--border);background:transparent;cursor:pointer;font-size:10px;color:var(--text3);">✕</button>`)).join('');
+
+  const usedHtml = usedReg.map(c => row(
+      badge('מומש', '#9ca3af') + `<span style="flex:1;font-size:13px;color:var(--text3);">${c.client}</span>` + amt(c.amount, '#9ca3af') +
+      small('← ' + (c.usedProjectTitle || '') + (c.usedDate ? ' · ' + c.usedDate : '')) +
+      `<button onclick="unuseCredit(${c.id})" title="מחזיר את הזיכוי לרשימת הפתוחים" style="font-size:11px;padding:1px 8px;border-radius:10px;border:1px solid #d1d5db;background:transparent;cursor:pointer;color:#6b7280;">בטל</button>`)).join('')
+    + usedProj.map(c => row(
+      badge('מומש', '#9ca3af') + `<span style="flex:1;font-size:13px;color:var(--text3);">${c.client}</span>` + amt(c.amount, '#9ca3af') + small('קוזז בפרויקט ← ' + c.projTitle),
+      'cursor:pointer;" onclick="openProjectPanel(' + c.id + ')')).join('');
+
+  el.innerHTML = (openHtml || '<div style="font-size:13px;color:var(--text3);padding:8px 0;">אין זיכויים פתוחים</div>')
+    + (usedHtml ? `<div style="margin-top:18px;font-size:13px;font-weight:600;color:var(--text3);">זיכויים שמומשו</div>` + `<div style="opacity:0.75;">${usedHtml}</div>` : '');
 }
 
 function unuseCredit(id) {
   const c = (state.credits || []).find(c => c.id === id); if (!c) return;
+  // מבטלים גם את הקיזוז בפרויקט שבו מומש, כדי שהזיכוי לא ייספר פעמיים
+  const p = state.projects.find(p => p.id === c.usedInProject);
+  if (p && p.payers) {
+    const i = p.payers.findIndex(x => x.type === 'credit' && Number(x.amount) === Number(c.amount));
+    if (i >= 0) { p.payers.splice(i, 1); recalcClientShare(p); }
+  }
   delete c.used;
   delete c.usedInProject;
   delete c.usedProjectTitle;
   delete c.usedDate;
-  save(); renderCreditsSection();
+  save(); renderProjects(); renderBillingSummaryMorning(); renderCreditsSection();
 }
 // ===== END גביה =====
 
