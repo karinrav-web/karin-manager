@@ -804,7 +804,7 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
       <div class="morning-metrics">
         <div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#fdf0ec;"><span class="material-symbols-outlined" style="color:var(--accent);">camera_alt</span></div><div><div class="metric-val" id="m-projects">0</div><div class="metric-label">פרויקטים פעילים</div></div></div>
         <div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#fdf0ec;"><span class="material-symbols-outlined" style="color:var(--accent);">photo_library</span></div><div><div class="metric-val" id="m-remaining">0</div><div class="metric-label">תמונות לעריכה</div></div></div>
-        <div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#e8f4ee;"><span class="material-symbols-outlined" style="color:#2D6A4F;">check_circle</span></div><div><div class="metric-val" id="m-edited-today">0</div><div class="metric-label" id="m-edited-label">נערכו היום</div><div class="metric-sub" id="m-edited-sub"></div></div></div>
+        <div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#e8f4ee;"><span class="material-symbols-outlined" style="color:#2D6A4F;">check_circle</span></div><div><div class="metric-val" id="m-edited-today">0</div><div class="metric-label" id="m-edited-label">סה״כ נערכו היום</div><div class="metric-sub" id="m-edited-sub"></div></div></div>
         <div class="metric-card metric-card-icon" style="border:2px dashed var(--border2);"><div class="metric-icon-circle" style="background:#fdf0ec;"><span class="material-symbols-outlined" style="color:var(--accent);">flag</span></div><div><div class="metric-val" id="m-goal-total">0</div><div class="metric-label">יעד יומי</div></div></div>
       </div>
       <div id="daily-focus" style="margin-bottom:10px;"></div>
@@ -2418,11 +2418,13 @@ function goalProgressToday() {
   });
   return { goal, inGoal, edited, outside: Math.max(0, edited - inGoal) };
 }
+// Two cards: "סה״כ נערכו היום" = everything edited today; "יעד יומי" = in-goal / goal.
 function goalMetricHtml(g) {
-  if (!(g.goal > 0)) return { val: String(g.edited), sub: '' };
-  const parts = [`סה״כ נערכו ${g.edited}`];
-  if (g.outside > 0) parts.push(`ועוד ${g.outside} מחוץ ליעדים`);
-  return { val: `${g.inGoal}/${g.goal}`, sub: parts.join(' · ') };
+  return {
+    edited: String(g.edited),
+    editedSub: g.goal > 0 && g.outside > 0 ? `מתוכם ${g.outside} מחוץ ליעדים` : '',
+    goal: g.goal > 0 ? `${g.inGoal}/${g.goal}` : '0'
+  };
 }
 // Next day marked as an edit day in the calendar (within 3 weeks); falls back to tomorrow.
 function nextEditDayStr() {
@@ -2614,8 +2616,8 @@ function renderReport() {
     <div class="report-metrics">
       <div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#fdf0ec;"><span class="material-symbols-outlined" style="color:var(--accent);">camera_alt</span></div><div><div class="metric-val">${mProjects}</div><div class="metric-label">פרויקטים פעילים</div></div></div>
       <div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#fdf0ec;"><span class="material-symbols-outlined" style="color:var(--accent);">photo_library</span></div><div><div class="metric-val">${mRemaining}</div><div class="metric-label">תמונות לעריכה</div></div></div>
-      <div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#e8f4ee;"><span class="material-symbols-outlined" style="color:#2D6A4F;">check_circle</span></div><div><div class="metric-val">${mGoalMetric.val}</div><div class="metric-label">${mTotalGoal > 0 ? 'מהיעדים היום' : 'נערכו היום'}</div>${mGoalMetric.sub ? `<div class="metric-sub">${mGoalMetric.sub}</div>` : ''}</div></div>
-      <div class="metric-card metric-card-icon" style="border:2px dashed var(--border2);"><div class="metric-icon-circle" style="background:#fdf0ec;"><span class="material-symbols-outlined" style="color:var(--accent);">flag</span></div><div><div class="metric-val">${mTotalGoal}</div><div class="metric-label">יעד יומי</div></div></div>
+      <div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#e8f4ee;"><span class="material-symbols-outlined" style="color:#2D6A4F;">check_circle</span></div><div><div class="metric-val">${mGoalMetric.edited}</div><div class="metric-label">סה״כ נערכו היום</div>${mGoalMetric.editedSub ? `<div class="metric-sub">${mGoalMetric.editedSub}</div>` : ''}</div></div>
+      <div class="metric-card metric-card-icon" style="border:2px dashed var(--border2);"><div class="metric-icon-circle" style="background:#fdf0ec;"><span class="material-symbols-outlined" style="color:var(--accent);">flag</span></div><div><div class="metric-val">${mGoalMetric.goal}</div><div class="metric-label">יעד יומי</div></div></div>
     </div>
     <div class="report-2col">
       <div class="card">
@@ -4263,10 +4265,9 @@ function renderTasks() {
   const totalGoal = state.projects.filter(p=>p.goalDaily>0&&p.stage!=='done'&&p.stage!=='billing').reduce((s,p)=>s+(p.goalDaily||0),0);
   const totalEditedToday = state.projects.reduce((s,p)=>s+(p.editedToday||0),0);
   const gm = goalMetricHtml(goalProgressToday());
-  document.getElementById('m-edited-today').textContent = gm.val;
-  const gl = document.getElementById('m-edited-label'); if (gl) gl.textContent = totalGoal > 0 ? 'מהיעדים היום' : 'נערכו היום';
-  const gs = document.getElementById('m-edited-sub'); if (gs) gs.textContent = gm.sub;
-  document.getElementById('m-goal-total').textContent = totalGoal;
+  document.getElementById('m-edited-today').textContent = gm.edited;
+  const gs = document.getElementById('m-edited-sub'); if (gs) gs.textContent = gm.editedSub;
+  document.getElementById('m-goal-total').textContent = gm.goal;
 
   document.getElementById('tasks-list').innerHTML = buildTasksHtml();
 }
