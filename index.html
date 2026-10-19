@@ -727,6 +727,12 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
 .df-name-wrap { display:flex; align-items:center; gap:10px; min-width:0; }
 .icl-opt{display:flex;align-items:center;gap:10px;width:100%;padding:10px 12px;margin-top:6px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-family:'Rubik',sans-serif;font-size:13px;cursor:pointer;text-align:right;}
 .icl-opt:hover{border-color:var(--accent);background:var(--accent-light);}
+
+/* daily goals: in-goal progress vs unplanned editing (2026-10-19) */
+.metric-sub{font-size:11px;color:var(--text3);margin-top:3px;line-height:1.3;order:-1;}
+.goal-bar{height:4px;border-radius:4px;background:var(--border);margin-top:6px;overflow:hidden;max-width:220px;}
+.goal-bar span{display:block;height:100%;background:var(--accent);border-radius:4px;}
+.goal-unplanned{font-size:10px;font-weight:500;padding:1px 7px;border-radius:10px;background:var(--surface2);color:var(--text3);border:1px solid var(--border2);vertical-align:middle;}
 </style>
 </head>
 <body>
@@ -798,7 +804,7 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
       <div class="morning-metrics">
         <div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#fdf0ec;"><span class="material-symbols-outlined" style="color:var(--accent);">camera_alt</span></div><div><div class="metric-val" id="m-projects">0</div><div class="metric-label">פרויקטים פעילים</div></div></div>
         <div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#fdf0ec;"><span class="material-symbols-outlined" style="color:var(--accent);">photo_library</span></div><div><div class="metric-val" id="m-remaining">0</div><div class="metric-label">תמונות לעריכה</div></div></div>
-        <div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#e8f4ee;"><span class="material-symbols-outlined" style="color:#2D6A4F;">check_circle</span></div><div><div class="metric-val" id="m-edited-today">0</div><div class="metric-label">נערכו היום</div></div></div>
+        <div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#e8f4ee;"><span class="material-symbols-outlined" style="color:#2D6A4F;">check_circle</span></div><div><div class="metric-val" id="m-edited-today">0</div><div class="metric-label" id="m-edited-label">נערכו היום</div><div class="metric-sub" id="m-edited-sub"></div></div></div>
         <div class="metric-card metric-card-icon" style="border:2px dashed var(--border2);"><div class="metric-icon-circle" style="background:#fdf0ec;"><span class="material-symbols-outlined" style="color:var(--accent);">flag</span></div><div><div class="metric-val" id="m-goal-total">0</div><div class="metric-label">יעד יומי</div></div></div>
       </div>
       <div id="daily-focus" style="margin-bottom:10px;"></div>
@@ -1310,6 +1316,7 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
       <div class="modal-field"><label>לקוח</label><input id="bm-client" type="text" placeholder="שם לקוח"/></div>
       <div class="modal-field"><label>שם פרויקט</label><input id="bm-project" type="text" placeholder="פרויקט"/></div>
       <div class="modal-field"><label>מיקום</label><input id="bm-location" type="text" placeholder="עיר / כתובת"/></div>
+      <div class="modal-field" id="bm-link-wrap" style="grid-column:1/-1;"><label>שייך לפרויקט באפליקציה</label><select id="bm-link-proj" style="width:100%;padding:7px 10px;font-size:14px;border:1px solid var(--border2);border-radius:6px;font-family:'Rubik',sans-serif;background:var(--surface);color:var(--text);"></select><div style="font-size:11px;color:var(--text3);margin-top:4px;">כשמשייכים, הרשומה נספרת בתוך הפרויקט ולא כשורה נפרדת בכרטיס הלקוח</div></div>
     </div>
     <div style="margin-bottom:12px;">
       <div style="font-size:12px;color:var(--text3);margin-bottom:6px;font-weight:500;">תשלום מעצבת</div>
@@ -2396,6 +2403,58 @@ function restoreTimer() {
 // תישאר רק עם מה שבאמת נשאר לעשות היום
 function goalDoneToday(p) { return (p.goalDaily||0) > 0 && (p.editedToday||0) >= (p.goalDaily||0); }
 
+// Today's progress split: only photos edited inside each project's own goal count
+// toward the goal; anything on a project without a goal (or above its goal) is
+// "outside the plan" — so editing an unplanned project can't look like a finished day.
+function goalProgressToday() {
+  let goal = 0, inGoal = 0, edited = 0;
+  state.projects.forEach(p => {
+    const et = p.editedToday || 0;
+    edited += et;
+    if ((p.goalDaily || 0) > 0 && p.stage !== 'done' && p.stage !== 'billing') {
+      goal += p.goalDaily;
+      inGoal += Math.min(et, p.goalDaily);
+    }
+  });
+  return { goal, inGoal, edited, outside: Math.max(0, edited - inGoal) };
+}
+function goalMetricHtml(g) {
+  if (!(g.goal > 0)) return { val: String(g.edited), sub: '' };
+  const parts = [`סה״כ נערכו ${g.edited}`];
+  if (g.outside > 0) parts.push(`ועוד ${g.outside} מחוץ ליעדים`);
+  return { val: `${g.inGoal}/${g.goal}`, sub: parts.join(' · ') };
+}
+// Next day marked as an edit day in the calendar (within 3 weeks); falls back to tomorrow.
+function nextEditDayStr() {
+  const t = todayStr().split('-').map(Number);
+  const d = new Date(t[0], t[1] - 1, t[2]);
+  const ed = state.editDays || {};
+  for (let i = 1; i <= 21; i++) {
+    d.setDate(d.getDate() + 1);
+    const k = calKey(d.getFullYear(), d.getMonth(), d.getDate());
+    if (ed[k]) return k;
+  }
+  d.setDate(d.getDate() - 20);
+  return calKey(d.getFullYear(), d.getMonth(), d.getDate());
+}
+function goalLeftovers() {
+  return state.projects
+    .filter(p => p.stage === 'edit' && (p.goalDaily || 0) > (p.editedToday || 0))
+    .map(p => ({ p, left: Math.min((p.goalDaily || 0) - (p.editedToday || 0), Math.max(0, (p.total || 0) - (p.edited || 0)) || Infinity) }))
+    .filter(o => o.left > 0);
+}
+function carryGoalsToNextDay() {
+  const list = goalLeftovers(); if (!list.length) return;
+  const day = nextEditDayStr();
+  const sum = list.reduce((s, o) => s + o.left, 0);
+  if (!confirm(`להעביר ${sum} תמונות שלא נערכו היום (${list.length} פרויקטים) ליום העבודה הבא, ${day.slice(8, 10)}/${day.slice(5, 7)}?`)) return;
+  list.forEach(({ p, left }) => {
+    if (!p.dailyPlan) p.dailyPlan = {};
+    p.dailyPlan[day] = (p.dailyPlan[day] || 0) + left;
+  });
+  save(); renderReport(); renderWorkPlan(); renderProjects();
+}
+
 let dragGoalId = null;
 function goalDragStart(e, id) {
   dragGoalId = id; e.dataTransfer.effectAllowed = 'move';
@@ -2469,6 +2528,7 @@ function renderReport() {
   const mRemaining = state.projects.filter(p=>p.stage==='edit').reduce((s,p)=>s+Math.max(0,(p.total||0)-(p.edited||0)),0);
   const mTotalGoal = state.projects.filter(p=>p.goalDaily>0&&p.stage!=='done'&&p.stage!=='billing').reduce((s,p)=>s+(p.goalDaily||0),0);
   const mEditedToday = state.projects.reduce((s,p)=>s+(p.editedToday||0),0);
+  const mGoalMetric = goalMetricHtml(goalProgressToday());
 
   // מה לעבוד עליו היום — כל פרויקט בעריכה. הסדר נקבע קודם כל ידנית (גרירה,
   // priorityOrder) — כך קרין קובעת סדר עדיפויות משלה. פרויקטים שעדיין לא נגררו
@@ -2491,14 +2551,19 @@ function renderReport() {
     const gt = p.goalDaily || 0;
     const et = p.editedToday || 0;
     const leftToGoal = gt > 0 ? Math.max(0, gt - et) : null;
+    const late = new Date().getHours() >= 18;
+    const leftColor = leftToGoal === 0 ? 'var(--accent)' : (late ? 'var(--urgent)' : 'var(--text3)');
+    const unplanned = gt === 0 && et > 0;
+    const bar = gt > 0 ? `<div class="goal-bar"><span style="width:${Math.min(100, Math.round(et / gt * 100))}%;${leftToGoal === 0 ? '' : late ? 'background:var(--urgent);' : ''}"></span></div>` : '';
     const dragAttrs = draggable ? `draggable="true" data-id="${p.id}" ondragstart="goalDragStart(event,${p.id})" ondragend="goalDragEnd(event)" ondragover="goalDragOver(event)" ondragleave="goalDragLeave(event)" ondrop="goalDrop(event,${p.id})"` : '';
     return `<div class="report-proj-row goal-row" ${dragAttrs} style="align-items:center;justify-content:space-between;gap:10px;">
       ${draggable ? `<div class="drag-handle" title="גרור לסידור עדיפויות">⠿</div>` : ''}
       <div style="min-width:0;flex:1;">
-        <div class="report-proj-name proj-link" onclick="openProjectPanel('${p.id}')">${p.client||'ללא שם'}${p.title?' — '+p.title:''}</div>
+        <div class="report-proj-name proj-link" onclick="openProjectPanel('${p.id}')">${p.client||'ללא שם'}${p.title?' — '+p.title:''}${unplanned ? ' <span class="goal-unplanned">לא מתוכנן</span>' : ''}</div>
         <div style="font-size:11px;color:var(--text3);margin-top:2px;">
           נשארו ${rem} בסה״כ${p.deadline?` · דדליין ${new Date(p.deadline).toLocaleDateString('he-IL')}`:''}
         </div>
+        ${bar}
       </div>
       <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
         <div style="display:flex;align-items:center;gap:3px;">
@@ -2511,7 +2576,7 @@ function renderReport() {
           <input type="number" value="${gt||''}" min="0" placeholder="—" onchange="updateGoalTarget(${p.id},this.value)"
             style="width:40px;border:1px solid var(--accent);border-radius:4px;background:var(--accent-light);font-size:13px;font-weight:600;color:var(--accent);font-family:'Rubik',sans-serif;text-align:center;padding:2px 4px;outline:none;" />
         </div>
-        ${leftToGoal !== null ? `<span style="font-size:12px;font-weight:600;color:${leftToGoal===0?'var(--accent)':'var(--text3)'};white-space:nowrap;">${leftToGoal===0?'✓ הושלם':'נותרו '+leftToGoal}</span>` : ''}
+        ${leftToGoal !== null ? `<span style="font-size:12px;font-weight:600;color:${leftColor};white-space:nowrap;">${leftToGoal===0?'✓ הושלם':'נותרו '+leftToGoal}</span>` : ''}
       </div>
     </div>`;
   };
@@ -2549,12 +2614,15 @@ function renderReport() {
     <div class="report-metrics">
       <div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#fdf0ec;"><span class="material-symbols-outlined" style="color:var(--accent);">camera_alt</span></div><div><div class="metric-val">${mProjects}</div><div class="metric-label">פרויקטים פעילים</div></div></div>
       <div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#fdf0ec;"><span class="material-symbols-outlined" style="color:var(--accent);">photo_library</span></div><div><div class="metric-val">${mRemaining}</div><div class="metric-label">תמונות לעריכה</div></div></div>
-      <div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#e8f4ee;"><span class="material-symbols-outlined" style="color:#2D6A4F;">check_circle</span></div><div><div class="metric-val">${mTotalGoal > 0 ? `${mEditedToday}/${mTotalGoal}` : mEditedToday}</div><div class="metric-label">נערכו היום</div></div></div>
+      <div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#e8f4ee;"><span class="material-symbols-outlined" style="color:#2D6A4F;">check_circle</span></div><div><div class="metric-val">${mGoalMetric.val}</div><div class="metric-label">${mTotalGoal > 0 ? 'מהיעדים היום' : 'נערכו היום'}</div>${mGoalMetric.sub ? `<div class="metric-sub">${mGoalMetric.sub}</div>` : ''}</div></div>
       <div class="metric-card metric-card-icon" style="border:2px dashed var(--border2);"><div class="metric-icon-circle" style="background:#fdf0ec;"><span class="material-symbols-outlined" style="color:var(--accent);">flag</span></div><div><div class="metric-val">${mTotalGoal}</div><div class="metric-label">יעד יומי</div></div></div>
     </div>
     <div class="report-2col">
       <div class="card">
-        <div class="card-title">🎯 יעדי עריכה להיום</div>
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span>🎯 יעדי עריכה להיום</span>
+          ${new Date().getHours() >= 16 && goalLeftovers().length ? `<button class="panel-link-btn" onclick="carryGoalsToNextDay()" title="מוסיף את מה שלא נערך היום ללוח העבודה של יום העבודה הבא">להעביר את מה שנשאר למחר ←</button>` : ''}
+        </div>
         ${goalRows}
       </div>
       <div class="card">
@@ -2729,6 +2797,7 @@ function renderBillingSearch() {
 // to it (isOrphanedBillingRecord) is the near-certain duplicate to remove.
 function isOrphanedBillingRecord(r) {
   if (!r.projectId) return false; // standalone record (not tied to a project payer) — can't tell
+  if (r.linkedManually) return !state.projects.some(x => String(x.id) === String(r.projectId)); // linked by hand on purpose
   const p = state.projects.find(x => x.id === r.projectId);
   if (!p) return true; // project itself is gone — nothing references this record anymore
   return !(p.payers||[]).some(pay => pay.billingRecordId === r.id);
@@ -2798,7 +2867,7 @@ function findDuplicateAutoRecords() {
   state.projects.forEach(p => (p.payers||[]).forEach(pay => { if (pay.billingRecordId) refs.add(String(pay.billingRecordId)); }));
   const groups = {};
   getBillingRecords().forEach(r => {
-    if (!r.projectId || !r.total) return;
+    if (!r.projectId || !r.total || r.linkedManually) return;
     const sup = (r.suppliers||[]).map(x => (x.name||'').trim()).sort().join('|');
     const k = r.projectId + '#' + r.total + '#' + sup;
     (groups[k] = groups[k] || []).push(r);
@@ -3389,6 +3458,7 @@ function openBillingModal(id) {
   document.getElementById('bm-project').value = rec?.project || '';
   document.getElementById('bm-location').value = rec?.location || '';
   document.getElementById('bm-designer').value = rec?.designerFee || '';
+  fillBillingLinkSelect(rec);
   document.getElementById('bm-delete-btn').style.display = id ? '' : 'none';
   document.getElementById('bm-exclude-dup').style.display = id ? '' : 'none';
   document.getElementById('bm-exclude-other').style.display = id ? '' : 'none';
@@ -3402,6 +3472,23 @@ function openBillingModal(id) {
   modal.style.display = 'flex';
 }
 
+// Link a manual / imported income record to an existing app project (rec.projectId + rec.linkedManually).
+// Records created by a project payer are already linked — the selector is hidden for them.
+function fillBillingLinkSelect(rec) {
+  const wrap = document.getElementById('bm-link-wrap'), sel = document.getElementById('bm-link-proj');
+  if (!wrap || !sel) return;
+  const autoLinked = rec && rec.projectId != null && !rec.linkedManually && !isOrphanedBillingRecord(rec);
+  wrap.style.display = autoLinked ? 'none' : '';
+  if (autoLinked) { sel.innerHTML = ''; return; }
+  const k = clientKey(rec?.client || '');
+  const fmtD = d => d ? d.slice(8, 10) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4) : '';
+  let projs = state.projects.filter(p => !k || clientKey(p.client) === k);
+  if (!projs.length) projs = state.projects.slice();
+  projs = projs.slice().sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const cur = rec && rec.projectId != null ? String(rec.projectId) : '';
+  sel.innerHTML = '<option value="">— לא משויך (שורה נפרדת) —</option>' + projs.map(p =>
+    `<option value="${p.id}"${String(p.id) === cur ? ' selected' : ''}>${(p.client || '').replace(/</g, '&lt;')} — ${(p.title || '—').replace(/</g, '&lt;')}${p.date ? ' · ' + fmtD(p.date) : ''}</option>`).join('');
+}
 function closeBillingModal() { document.getElementById('billing-modal').style.display='none'; }
 
 function addBillingSupplier(name='', amount='') {
@@ -3503,13 +3590,31 @@ function saveBillingRecord() {
   if (!state.billing) state.billing = [];
   if (editingBillingId) {
     const idx = state.billing.findIndex(r=>r.id===editingBillingId);
-    if (idx>=0) state.billing[idx] = {...state.billing[idx], date, client, project, location, designerFee, suppliers, total};
+    if (idx>=0) {
+      const r = {...state.billing[idx], date, client, project, location, designerFee, suppliers, total};
+      applyBillingLink(r);
+      state.billing[idx] = r;
+    }
   } else {
-    state.billing.push({id:Date.now(), date, client, project, location, designerFee, suppliers, total});
+    const r = {id:Date.now(), date, client, project, location, designerFee, suppliers, total};
+    applyBillingLink(r);
+    state.billing.push(r);
   }
   save(); closeBillingModal(); renderBillingPage(); icRefresh(); if (stageFilter === "archive") renderProjects();
 }
 
+function applyBillingLink(r) {
+  const wrap = document.getElementById('bm-link-wrap'), sel = document.getElementById('bm-link-proj');
+  if (!sel || (wrap && wrap.style.display === 'none')) return; // payer-created record: leave its link alone
+  const p = sel.value ? state.projects.find(x => String(x.id) === sel.value) : null;
+  if (p) {
+    r.projectId = p.id; r.linkedManually = true;
+    if (p.title) r.project = p.title;
+    if (!r.client && p.client) r.client = p.client;
+  } else if (r.linkedManually || (r.projectId != null && isOrphanedBillingRecord(r))) {
+    delete r.projectId; delete r.linkedManually; // never leave undefined keys (Firebase .set throws)
+  }
+}
 function deleteBillingRecord() {
   if (!editingBillingId) return;
   if (!confirm('למחוק רשומה זו?')) return;
@@ -4157,7 +4262,10 @@ function renderTasks() {
   document.getElementById('m-remaining').textContent = state.projects.filter(p=>p.stage==='edit').reduce((s,p)=>s+Math.max(0,(p.total||0)-(p.edited||0)),0);
   const totalGoal = state.projects.filter(p=>p.goalDaily>0&&p.stage!=='done'&&p.stage!=='billing').reduce((s,p)=>s+(p.goalDaily||0),0);
   const totalEditedToday = state.projects.reduce((s,p)=>s+(p.editedToday||0),0);
-  document.getElementById('m-edited-today').textContent = totalGoal > 0 ? `${totalEditedToday}/${totalGoal}` : totalEditedToday;
+  const gm = goalMetricHtml(goalProgressToday());
+  document.getElementById('m-edited-today').textContent = gm.val;
+  const gl = document.getElementById('m-edited-label'); if (gl) gl.textContent = totalGoal > 0 ? 'מהיעדים היום' : 'נערכו היום';
+  const gs = document.getElementById('m-edited-sub'); if (gs) gs.textContent = gm.sub;
   document.getElementById('m-goal-total').textContent = totalGoal;
 
   document.getElementById('tasks-list').innerHTML = buildTasksHtml();
