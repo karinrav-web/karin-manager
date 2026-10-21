@@ -1133,6 +1133,7 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
     <div id="page-projects" class="page">
       <div class="page-header">
         <div class="page-title" id="proj-page-title">פרויקטים</div>
+        <button onclick="openQuoteModal()" style="padding:7px 16px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--accent);border-radius:var(--radius-sm);background:var(--accent-light);color:var(--accent);cursor:pointer;font-weight:500;">📄 הצעת מחיר</button>
         <button onclick="collapseAll()" style="padding:7px 16px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">▲ קפל הכל</button>
         <button id="sort-toggle-btn" onclick="toggleProjectSort()" style="padding:7px 16px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">📅 לפי תאריך</button>
         <button id="sort-deadline-btn" onclick="toggleDeadlineSort()" style="padding:7px 16px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">⏰ לפי דדליין</button>
@@ -1306,6 +1307,26 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
     <div id="icl-head" style="font-size:13px;background:var(--bg);border-radius:var(--radius-sm);padding:10px 12px;margin-bottom:10px;"></div>
     <input id="icl-q" type="text" placeholder="🔍 חיפוש לקוח, פרויקט או ספק..." oninput="renderICLink()" style="width:100%;box-sizing:border-box;padding:9px 12px;font-size:14px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:8px;background:var(--surface);color:var(--text);"/>
     <div id="icl-body"></div>
+  </div>
+</div>
+<div class="modal-bg" id="quote-modal" style="display:none;z-index:160">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-title">הצעת מחיר לצילום</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+      <div class="modal-field" style="grid-column:1/-1;"><label>שם הלקוח</label><input id="q-name" type="text" placeholder="למשל: עדן – לב הארץ"/></div>
+      <div class="modal-field" style="grid-column:1/-1;"><label>מה מצלמים</label><input id="q-desc" type="text" placeholder="למשל: בית פרטי בנתניה, צילום פנים"/></div>
+      <div class="modal-field"><label>שעות צילום</label><input id="q-hours" type="number" placeholder="8" oninput="updateQuotePrice()" min="1"/></div>
+      <div class="modal-field"><label>תמונות ערוכות</label><input id="q-photos" type="number" placeholder="40" oninput="updateQuotePrice()" min="1"/></div>
+      <div class="modal-field"><label>תאריך</label><input id="q-date" type="date"/></div>
+      <div class="modal-field"><label>מחיר לפני מע״מ ₪</label><input id="q-price" type="number" min="0" oninput="this.dataset.manual=this.value?'1':''"/><div id="q-price-hint" style="font-size:11px;color:var(--text3);margin-top:3px;"></div></div>
+    </div>
+    <details style="margin-bottom:10px;"><summary style="cursor:pointer;font-size:13px;color:var(--text2);">תנאים ומחירי תוספות (רק אם ההצעה הזו שונה מהרגיל)</summary>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;"><div class="modal-field"><label>תמונה נוספת ₪</label><input id="q-addon1" type="number" min="0" data-def="100"/></div><div class="modal-field"><label>5 תמונות נוספות ₪</label><input id="q-addon5" type="number" min="0" data-def="400"/></div><div class="modal-field"><label>10 תמונות נוספות ₪</label><input id="q-addon10" type="number" min="0" data-def="700"/></div><div class="modal-field"><label>שעת צילום נוספת ₪</label><input id="q-hour" type="number" min="0" data-def="350"/></div><div class="modal-field"><label>זכויות שימוש לספקים ₪</label><input id="q-vendor" type="number" min="0" data-def="500"/></div><div class="modal-field"><label>תוקף לספקים (שבועות)</label><input id="q-vweeks" type="number" min="0" data-def="2"/></div><div class="modal-field"><label>זמן אספקה (ימי עסקים)</label><input id="q-turn" type="number" min="0" data-def="30"/></div><div class="modal-field"><label>תוקף ההצעה (ימים)</label><input id="q-valid" type="number" min="0" data-def="30"/></div><div class="modal-field"><label>ביטול פחות מ-14 ימי עסקים %</label><input id="q-c14" type="number" min="0" data-def="25"/></div><div class="modal-field"><label>ביטול פחות משבוע %</label><input id="q-c7" type="number" min="0" data-def="50"/></div></div>
+    </details>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeQuoteModal()">ביטול</button>
+      <button class="btn-confirm" onclick="printQuote()">תצוגה ושמירה כ-PDF</button>
+    </div>
   </div>
 </div>
 <div class="modal-bg" id="billing-modal" style="display:none;z-index:160">
@@ -3489,6 +3510,136 @@ function openBillingModal(id) {
   modal.style.display = 'flex';
 }
 
+/* ===== הצעת מחיר לצילום (2026-10-21) =====
+   Same document as Karin's photo-price-quote skill: fixed studio terms, editorial
+   design (beige / dark green, Heebo + Frank Ruhl Libre), price = photos × 100 + 1,000
+   before VAT unless typed by hand. Printed through the browser (print → Save as PDF). */
+const QUOTE_PER_PHOTO = 100, QUOTE_DAY_FEE = 1000;
+function quoteFormulaPrice() {
+  const n = parseInt(document.getElementById('q-photos').value) || 0;
+  return n > 0 ? n * QUOTE_PER_PHOTO + QUOTE_DAY_FEE : 0;
+}
+function updateQuotePrice() {
+  const el = document.getElementById('q-price'), f = quoteFormulaPrice();
+  if (!el.dataset.manual) el.value = f || '';
+  document.getElementById('q-price-hint').textContent = f ? `לפי הנוסחה: ${f.toLocaleString('he-IL')} ₪` : '';
+}
+function openQuoteModal(projId) {
+  const p = projId != null ? state.projects.find(x => String(x.id) === String(projId)) : null;
+  const t = todayStr();
+  document.getElementById('q-name').value = p ? (p.client || '') : '';
+  document.getElementById('q-desc').value = p ? [p.title, p.location].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).join(', ') : '';
+  const pk = p && typeof BASE_PACKAGES !== 'undefined' ? BASE_PACKAGES[Number(p.billingBase)] : null;
+  document.getElementById('q-photos').value = p ? (p.total || (pk && pk.photos) || '') : '';
+  document.getElementById('q-hours').value = pk && pk.hours ? pk.hours : '';
+  document.getElementById('q-date').value = t;
+  const pr = document.getElementById('q-price'); pr.dataset.manual = ''; pr.value = '';
+  document.querySelectorAll('#quote-modal [data-def]').forEach(i => i.value = i.dataset.def);
+  updateQuotePrice();
+  document.getElementById('quote-modal').style.display = 'flex';
+  setTimeout(() => document.getElementById(p ? 'q-hours' : 'q-name').focus(), 50);
+}
+function closeQuoteModal() { document.getElementById('quote-modal').style.display = 'none'; }
+function quoteHtml(q) {
+  const e = v => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const money = n => Number(n).toLocaleString('en-US');
+  const logo = new URL('quote-logo.png', location.href).href;
+  return `<!DOCTYPE html><html dir="rtl" lang="he"><head><meta charset="utf-8"><title>הצעת מחיר - ${e(q.name)}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;700&family=Heebo:wght@300;400;500;700&display=block" rel="stylesheet">
+<style>
+@page{size:A4;margin:0}
+:root{--beige:#F2ECE1;--green:#2C3E2D;--green-soft:#56685A;--ink:#2A2A26}
+*{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+html,body{margin:0}
+body{background:var(--beige);color:var(--ink);font-family:'Heebo',sans-serif;font-weight:300;font-size:11pt;line-height:1.5;direction:rtl;text-align:right;width:210mm;min-height:297mm;margin:0 auto;display:flex;flex-direction:column}
+@media print{html,body{height:296mm;overflow:hidden}}
+.page{padding:13mm 16mm 0 16mm;flex:1 1 auto;min-height:0}
+.ltr{direction:ltr;unicode-bidi:isolate}
+.title-row{display:flex;justify-content:space-between;align-items:baseline}
+h1.title{font-family:'Frank Ruhl Libre',serif;font-weight:400;font-size:28pt;letter-spacing:1px;margin:0 0 4mm;color:var(--green)}
+.date{font-size:10pt;color:var(--green-soft)}
+.title-rule{border:none;border-top:1px solid var(--green);margin:0 0 7mm}
+.project-name{font-weight:700;font-size:14pt;margin:0 0 2mm}
+.project-desc{font-size:11pt;color:var(--green-soft);margin:0 0 8mm}
+.package-box{border:1px solid var(--green);background:rgba(44,62,45,.04);padding:6mm 7mm;margin-bottom:9mm;display:flex;justify-content:space-between;align-items:center}
+.package-box ul{margin:0;padding:0 5mm 0 0;list-style:none}
+.package-box li{margin-bottom:2mm;font-weight:400;font-size:12pt}
+.package-box li:before{content:"○ ";color:var(--green)}
+.price-tag{font-family:'Frank Ruhl Libre',serif;font-weight:700;font-size:21pt;color:var(--green);white-space:nowrap;padding-inline-start:6mm}
+.price-tag .vat{font-family:'Heebo',sans-serif;font-weight:400;font-size:9pt;display:block;text-align:center;color:var(--green-soft)}
+.cols{display:flex;margin-bottom:8mm}
+.cols>div{flex:1}.cols-3>div+div{margin-inline-start:8mm}.cols-2>div+div{margin-inline-start:12mm}
+h2.section{font-family:'Frank Ruhl Libre',serif;font-weight:400;font-size:12.5pt;letter-spacing:1px;color:var(--green);margin:0 0 2.5mm;padding-bottom:1.5mm;border-bottom:1px solid var(--green)}
+ul.terms{margin:0;padding:0 3.5mm 0 0;list-style:none;font-size:10pt;line-height:1.45}
+ul.terms li{margin-bottom:1.6mm;padding-inline-end:3.5mm;position:relative}
+ul.terms li:before{content:"○";color:var(--green);position:absolute;right:-3.5mm;font-size:6.5pt;top:1.5pt}
+ul.terms p.sub{margin:.8mm 0 0 5mm;font-size:8.2pt;color:var(--green-soft)}
+.contact-line{text-align:center;font-size:10pt;font-weight:400;color:var(--green);margin-top:8mm;padding-bottom:2mm}
+.contact-line a{color:var(--green);text-decoration:none}
+.logo-band{width:100%;display:block}
+</style></head><body>
+<div class="page">
+  <div class="title-row"><h1 class="title">הצעת מחיר לצילום</h1>${q.date ? `<span class="date">תאריך: <span class="ltr">${e(q.date)}</span></span>` : ''}</div>
+  <hr class="title-rule">
+  <p class="project-name">${e(q.name)}</p>
+  <p class="project-desc">${e(q.desc)}</p>
+  <div class="package-box">
+    <ul><li>יום צילום – עד ${e(q.hours)} שעות צילום</li><li>עד ${e(q.photos)} תמונות ערוכות</li></ul>
+    <div class="price-tag">${money(q.price)} ₪<span class="vat">+ מע"מ</span></div>
+  </div>
+  <div class="cols cols-3">
+    <div><h2 class="section">תוספות</h2><ul class="terms">
+      <li>תמונה נוספת – ${e(q.addon1)} ₪</li><li>5 תמונות נוספות – ${e(q.addon5)} ₪</li><li>10 תמונות נוספות – ${e(q.addon10)} ₪</li><li>שעת צילום נוספת = ${e(q.hour)} ₪ + מע"מ</li></ul></div>
+    <div><h2 class="section">ספקים</h2><ul class="terms">
+      <li>זכויות שימוש לספקים = ${e(q.vendor)} ₪ + מע"מ</li>
+      <li>תקף עד ${Number(q.vweeks) === 2 ? 'שבועיים' : e(q.vweeks) + ' שבועות'} מיום הצילום, הגביה ע״י הלקוח בלבד<p class="sub">לאחר מכן — פנייה לצלמת לרכישה תמורת תשלום פר תמונה.</p></li></ul></div>
+    <div><h2 class="section">ביטולים ודחיות</h2><ul class="terms">
+      <li>דחיה/ביטול בהתראה של פחות מ-14 ימי עסקים – ${e(q.c14)}% מגובה העסקה</li>
+      <li>ביטול יום צילום בהתראה של פחות משבוע – ${e(q.c7)}% מגובה העסקה</li></ul></div>
+  </div>
+  <div class="cols cols-2">
+    <div><h2 class="section">הערות</h2><ul class="terms">
+      <li>לאחר יום הצילום התמונות עוברות ללקוח לבחירת תמונות לעריכה (למטרת סינון בלבד, אין לעשות שימוש בחומר גלם)</li>
+      <li>מרגע בחירת התמונות לעריכה, התמונות הערוכות יועברו ללקוח עד ${e(q.turn)} ימי עסקים</li>
+      <li>העברת התמונות מותנית בקבלת תשלום מלא עבור העבודה</li>
+      <li>לאחר קבלת התמונות, זכויות היוצרים על התמונות נשארות של הצלמת, חל איסור לעשות שינוי או לערוך את התמונות</li>
+      <li>המחיר כולל הוצאות נסיעה</li>
+      <li>על הלקוח לדאוג שהלוקיישן יהיה נקי מסודר ומוכן לצילומים מבעוד מועד</li>
+      <li>הצעת מחיר זו בתוקף של ${e(q.valid)} יום בלבד ממועד שליחתה ללקוח</li></ul></div>
+    <div><h2 class="section">זכויות יוצרים</h2><ul class="terms">
+      <li>מוסכם על הצדדים כי כל זכויות הקניין הרוחני על התמונות יהיו שייכים לצלמת</li>
+      <li>חל איסור לעשות שינוי או לערוך את התמונות</li>
+      <li>המזמין יוכל לעשות כל שימוש שהוא בתמונות למטרת עסקו ללא הגבלה בכל מדיה שהיא</li>
+      <li>מוסכם על הצדדים כי על המזמין חלה חובת מתן קרדיט לצלמת בכל מדיה שהיא, למעט אתר הבית של המזמין</li>
+      <li>המזמין לא יעביר את התמונות לספקים אחרים המעורבים בפרויקט המצולם ללא אישור נפרד ומפורש של הצלמת</li>
+      <li>זכות הצלמת לעשות שימוש בתמונות לצרכי שיווק ופרסום העסק שלה</li></ul></div>
+  </div>
+  <p class="contact-line ltr"><a href="https://www.karinravenna.com">www.karinravenna.com</a> &nbsp;|&nbsp; 0507-254409</p>
+</div>
+<img class="logo-band" src="${logo}">
+</body></html>`;
+}
+function readQuoteForm() {
+  const v = id => document.getElementById(id).value.trim();
+  const d = v('q-date');
+  const q = { name: v('q-name'), desc: v('q-desc'), hours: v('q-hours'), photos: v('q-photos'),
+    date: d ? d.slice(8, 10) + '.' + d.slice(5, 7) + '.' + d.slice(0, 4) : '',
+    price: parseFloat(v('q-price')) || quoteFormulaPrice() };
+  [['addon1','q-addon1'],['addon5','q-addon5'],['addon10','q-addon10'],['hour','q-hour'],['vendor','q-vendor'],['vweeks','q-vweeks'],['turn','q-turn'],['valid','q-valid'],['c14','q-c14'],['c7','q-c7']]
+    .forEach(([k, id]) => { const el = document.getElementById(id); q[k] = el.value === '' ? el.dataset.def : el.value; });
+  return q;
+}
+function printQuote() {
+  const q = readQuoteForm();
+  const missing = [['שם הלקוח', q.name], ['מה מצלמים', q.desc], ['שעות צילום', q.hours], ['תמונות ערוכות', q.photos]].filter(x => !x[1]).map(x => x[0]);
+  if (missing.length) { alert('חסר: ' + missing.join(', ')); return; }
+  const w = window.open('', '_blank');
+  if (!w) { alert('הדפדפן חסם את החלון — צריך לאשר חלונות קופצים לאתר הזה'); return; }
+  w.document.write(quoteHtml(q).replace('</body>', '<script>window.onload=()=>{(document.fonts?document.fonts.ready:Promise.resolve()).then(()=>setTimeout(()=>window.print(),150))};<\/script></body>'));
+  w.document.close();
+}
+
 // Link a manual / imported income record to an existing app project (rec.projectId + rec.linkedManually).
 // Records created by a project payer are already linked — the selector is hidden for them.
 function fillBillingLinkSelect(rec) {
@@ -4855,7 +5006,7 @@ function renderProjectPanel() {
   const clientHtml = `<div>
       <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
         <span>👤 ${p.client || 'לקוח'}</span>
-        <button class="panel-link-btn" onclick="openClientPanel('${jsq(p.client)}')">כרטיס לקוח מלא</button> <button class="panel-link-btn" onclick="openClientRecords('${String(p.client||'').replace(/'/g,"\\'")}')">רשומות בכספים ←</button>
+        <button class="panel-link-btn" onclick="openClientPanel('${jsq(p.client)}')">כרטיס לקוח מלא</button> <button class="panel-link-btn" onclick="openQuoteModal(${p.id})">הצעת מחיר</button> <button class="panel-link-btn" onclick="openClientRecords('${String(p.client||'').replace(/'/g,"\\'")}')">רשומות בכספים ←</button>
       </div>
       ${others.length ? others.map(o => `<div class="panel-other-row">
           <span class="proj-link" onclick="openProjectPanel('${o.id}')">${o.title || '—'}</span>
