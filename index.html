@@ -2246,7 +2246,8 @@ function mergeCloudState(d) {
     credits: mergeBilling(local.credits||[], p.credits||[], _delC),
     clients: {...(local.clients||{}), ...(p.clients||{})},
     deletedIds: { billing: _delB, credits: _delC, tasks: [..._delT], projects: [..._delP] },
-    editLog: mergeEditLogs(local.editLog, p.editLog)
+    // in-memory state too: localStorage can lose the log to a tab on an older version
+    editLog: mergeEditLogs(mergeEditLogs(state.editLog, local.editLog), p.editLog)
   });
   lastCloudBillingCount = Math.max(lastCloudBillingCount, (state.billing||[]).length);
   try{localStorage.setItem('karin_pm',JSON.stringify(state));}catch(e){}
@@ -2495,21 +2496,26 @@ function mergeEditLogs(a, b) {
   }));
   return out;
 }
-// One-time, per device: recover the last days from the local auto-backups, each
-// of which holds that day's final editedToday values. Returns true if it ran.
+// Runs on every load: recovers past days from the local auto-backups, both their
+// own editLog and their final editedToday values. It can run every time because
+// merging only ever keeps the higher count, and it also repairs the log if a tab
+// still running an older app version saved state without it. Returns true if it
+// changed anything.
 function backfillEditLogFromBackups(s) {
   try {
-    if (localStorage.getItem('karin_editlog_backfilled')) return false;
     const today = todayStr();
+    const before = JSON.stringify(s.editLog || {});
     Object.keys(localStorage).filter(k => k.startsWith(AUTO_BACKUP_PREFIX)).forEach(k => {
       const day = k.slice(AUTO_BACKUP_PREFIX.length);
       if (day >= today) return;
-      (JSON.parse(localStorage.getItem(k)).projects || []).forEach(p => {
+      const backup = JSON.parse(localStorage.getItem(k));
+      const pastLog = Object.fromEntries(Object.entries(backup.editLog || {}).filter(([d]) => d < today));
+      s.editLog = mergeEditLogs(s.editLog, pastLog);
+      (backup.projects || []).forEach(p => {
         if (p.editedTodayDate === day) recordEditLog(s, day, p.id, p.editedToday);
       });
     });
-    localStorage.setItem('karin_editlog_backfilled', '1');
-    return true;
+    return JSON.stringify(s.editLog || {}) !== before;
   } catch(e) { return false; }
 }
 // Week starts on Sunday; "today" comes from todayStr(), so the 2am work-day rule
