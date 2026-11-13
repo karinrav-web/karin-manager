@@ -884,6 +884,13 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
             <div id="shoot-year-morning"></div>
             <div class="panel-resize-handle" onmousedown="startPanelResize(event,this)">— — —</div>
           </div>
+          <div class="urgency-card morning-panel" id="panel-annual-goals" draggable="true"
+               ondragstart="panelDragStart(event,this)" ondragend="panelDragEnd()" style="min-height:80px">
+            <div class="panel-handle">⠿⠿⠿</div>
+            <div class="card-title">יעדים שנתיים</div>
+            <div id="annual-goals-morning"></div>
+            <div class="panel-resize-handle" onmousedown="startPanelResize(event,this)">— — —</div>
+          </div>
         </div>
       </div>
     </div>
@@ -1193,6 +1200,14 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
   <button class="mobile-nav-item" id="mnav-settings" onclick="showPageMobile('settings',this)"><span class="mobile-nav-icon">⚙</span>הגדרות</button>
 </nav>
 
+<div class="modal-bg" id="goal-celebrate" style="display:none;z-index:300" onclick="if(event.target===this)closeGoalCelebration()">
+  <div class="modal" style="max-width:420px;text-align:center;padding:32px 28px;">
+    <div style="font-size:52px;line-height:1;margin-bottom:12px;">🎉</div>
+    <div id="goal-celebrate-title" style="font-size:22px;font-weight:700;color:var(--accent);margin-bottom:10px;"></div>
+    <div id="goal-celebrate-body" style="font-size:15px;color:var(--text2);line-height:1.7;margin-bottom:20px;"></div>
+    <button class="btn btn-primary" onclick="closeGoalCelebration()">איזה כיף!</button>
+  </div>
+</div>
 <div class="modal-bg" id="edit-modal">
   <div class="modal">
     <div class="modal-title">עריכת פרויקט</div>
@@ -2122,7 +2137,112 @@ function renderShootYearSummary() {
   const el2 = document.getElementById('shoot-year-morning');
   if (el1) el1.innerHTML = html;
   if (el2) el2.innerHTML = html;
+  renderAnnualGoals();
 }
+/* ===== Annual goals (2026-11-13) =====
+   Two yearly goals: more shoot days than last year, and more income than
+   last year. Last year's full-year numbers are the default targets; they can
+   be set by hand in state.annualGoals[year] = {shoots, income}. When a goal is
+   passed, a one-time celebration shows (state.goalsCelebrated["YYYY-shoots"|
+   "YYYY-income"] = date), so it fires once per goal per year on any device.
+   - shoot days this year: app projects with a shoot date in the year, up to
+     today (same count as the "ימי צילום השנה" panel)
+   - shoot days last year: distinct projects in last year's income records
+     (general income excluded), because older years live only in billing
+   - income: sum of income records in the year via getBillingRecords(), so
+     duplicates and "not work income" records (e.g. war compensation) are out */
+function annualGoalNumbers(year) {
+  const y = String(year), prev = String(year - 1);
+  const today = todayStr();
+  const recs = getBillingRecords();
+  const shoots = (state.projects || []).filter(p => p.date && p.date.startsWith(y + '-') && p.date <= today).length;
+  const prevShoots = new Set(recs.filter(r => (r.date||'').startsWith(prev) && !r.general)
+    .map(r => (r.client||'') + '|' + (r.project||''))).size;
+  const income = recs.filter(r => (r.date||'').startsWith(y)).reduce((s,r) => s + (r.total||0), 0);
+  const prevIncome = recs.filter(r => (r.date||'').startsWith(prev)).reduce((s,r) => s + (r.total||0), 0);
+  const manual = (state.annualGoals||{})[y] || {};
+  return {
+    year: y, prev,
+    shoots, shootsTarget: Number(manual.shoots) > 0 ? Number(manual.shoots) : prevShoots, shootsManual: Number(manual.shoots) > 0,
+    income, incomeTarget: Number(manual.income) > 0 ? Number(manual.income) : prevIncome, incomeManual: Number(manual.income) > 0,
+  };
+}
+
+function goalRowHtml(label, cur, target, fmt, kind, manual, prev) {
+  if (!target) return `<div style="font-size:13px;color:var(--text3);margin-bottom:10px;">${label}: אין נתונים מ-${prev}</div>`;
+  const passed = cur > target, pct = Math.min(100, Math.round(cur / target * 100));
+  const left = target - cur;
+  const status = passed ? `<span style="color:#2D6A4F;font-weight:700;">✓ עברת את ${prev}! (+${fmt(cur - target)})</span>`
+    : left === 0 ? `<span style="color:var(--accent);font-weight:600;">השווית את ${prev} — עוד ${kind==='shoots'?'יום אחד':'קצת'} ועברת</span>`
+    : `<span style="color:var(--text3);">נשארו ${fmt(left)} כדי לעבור את ${prev}</span>`;
+  return `<div style="margin-bottom:14px;">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;">
+      <span style="font-weight:600;">${label}</span>
+      <span style="font-size:13px;"><strong style="font-size:15px;">${fmt(cur)}</strong> / ${fmt(target)}
+        <button class="df-set-goal" style="margin-inline-start:4px;" onclick="editAnnualGoal('${kind}')" title="${manual?'יעד שהוגדר ידנית':'היעד = כל שנת '+prev}">${manual?'יעד ידני':'יעד: '+prev}</button></span>
+    </div>
+    <div class="goal-bar" style="max-width:none;height:6px;"><span style="width:${pct}%;${passed?'background:#2D6A4F;':''}"></span></div>
+    <div style="font-size:12px;margin-top:4px;">${status}</div>
+  </div>`;
+}
+
+function renderAnnualGoals() {
+  const el = document.getElementById('annual-goals-morning'); if (!el) return;
+  const g = annualGoalNumbers(Number(todayStr().slice(0,4)));
+  el.innerHTML =
+    goalRowHtml('ימי צילום', g.shoots, g.shootsTarget, n => String(n), 'shoots', g.shootsManual, g.prev) +
+    goalRowHtml('הכנסה שנתית', g.income, g.incomeTarget, fmtMoney, 'income', g.incomeManual, g.prev);
+  checkGoalCelebrations(g);
+}
+
+function editAnnualGoal(kind) {
+  const g = annualGoalNumbers(Number(todayStr().slice(0,4)));
+  const cur = kind === 'shoots' ? g.shootsTarget : Math.round(g.incomeTarget);
+  const label = kind === 'shoots' ? 'מספר ימי הצילום' : 'ההכנסה השנתית (₪)';
+  const v = prompt(`היעד ל${label} ב-${g.year}.\nכרגע: ${cur} (לפי ${g.shootsManual||g.incomeManual?'הגדרה ידנית / ':''}כל שנת ${g.prev}).\nהשאירי ריק כדי לחזור לנתון של ${g.prev}.`, String(cur));
+  if (v === null) return;
+  const n = Number(String(v).replace(/[^\d.]/g, ''));
+  if (!state.annualGoals) state.annualGoals = {};
+  const yg = {...(state.annualGoals[g.year] || {})};
+  if (n > 0) yg[kind] = n; else delete yg[kind];
+  state.annualGoals[g.year] = yg;
+  // a new target can be passed again
+  if (state.goalsCelebrated) delete state.goalsCelebrated[g.year + '-' + kind];
+  save(); renderAnnualGoals();
+}
+
+let _goalQueue = [];
+function checkGoalCelebrations(g) {
+  if (!state.goalsCelebrated) state.goalsCelebrated = {};
+  const due = [];
+  if (g.shootsTarget > 0 && g.shoots > g.shootsTarget && !state.goalsCelebrated[g.year + '-shoots']) {
+    due.push({ key: g.year + '-shoots',
+      title: `עברת את ימי הצילום של ${g.prev}!`,
+      body: `${g.shoots} ימי צילום ב-${g.year}, לעומת ${g.shootsTarget} בכל שנת ${g.prev}.<br>וכל זה למרות חודשי המלחמה במרץ ובאפריל. כל הכבוד!` });
+  }
+  if (g.incomeTarget > 0 && g.income > g.incomeTarget && !state.goalsCelebrated[g.year + '-income']) {
+    due.push({ key: g.year + '-income',
+      title: `עברת את ההכנסה של ${g.prev}!`,
+      body: `${fmtMoney(g.income)} ב-${g.year}, לעומת ${fmtMoney(g.incomeTarget)} בכל שנת ${g.prev}.<br>וכל זה למרות חודשי המלחמה במרץ ובאפריל. כל הכבוד!` });
+  }
+  if (!due.length) return;
+  const stamp = todayStr();
+  due.forEach(d => { state.goalsCelebrated[d.key] = stamp; });
+  save();
+  _goalQueue.push(...due.filter(d => !_goalQueue.some(q => q.key === d.key)));
+  if (document.getElementById('goal-celebrate').style.display !== 'flex') showNextGoalCelebration();
+}
+function showNextGoalCelebration() {
+  const next = _goalQueue.shift(); if (!next) return;
+  document.getElementById('goal-celebrate-title').textContent = next.title;
+  document.getElementById('goal-celebrate-body').innerHTML = next.body;
+  document.getElementById('goal-celebrate').style.display = 'flex';
+}
+function closeGoalCelebration() {
+  document.getElementById('goal-celebrate').style.display = 'none';
+  setTimeout(showNextGoalCelebration, 250);
+}
+
 function countEditDaysUntil(deadline){
   const today=new Date(); today.setHours(0,0,0,0);
   const end=new Date(deadline); end.setHours(0,0,0,0);
@@ -2258,6 +2378,9 @@ function mergeCloudState(d) {
     credits: mergeBilling(local.credits||[], p.credits||[], _delC),
     clients: {...(local.clients||{}), ...(p.clients||{})},
     deletedIds: { billing: _delB, credits: _delC, tasks: [..._delT], projects: [..._delP] },
+    // annual goals: manual targets (local edits win) and goals already celebrated (union)
+    annualGoals: {...(p.annualGoals||{}), ...(local.annualGoals||{})},
+    goalsCelebrated: {...(p.goalsCelebrated||{}), ...(local.goalsCelebrated||{})},
     // in-memory state too: localStorage can lose the log to a tab on an older version
     editLog: mergeEditLogs(mergeEditLogs(state.editLog, local.editLog), p.editLog)
   });
@@ -6141,6 +6264,7 @@ function exportPaymentWhatsApp(projId) {
 }
 
 function renderBillingSummaryMorning() {
+  renderAnnualGoals();
   const el = document.getElementById('billing-summary-morning'); if (!el) return;
   const activeRows = [];   // פתוח לגביה — יש משלמים שלא שילמו
   const pendingRows = [];  // ממתין — יש מחיר אבל עוד לא בשלב גביה
