@@ -2164,13 +2164,22 @@ function annualGoalNumbers(year) {
   const recs = getBillingRecords();
   const shoots = (state.projects || []).filter(p => p.date && p.date.startsWith(y + '-') && p.date <= today).length;
   const prevShoots = recs.filter(r => (r.date||'').startsWith(prev) && isPastShootRecord(r)).length;
-  const income = recs.filter(r => (r.date||'').startsWith(y)).reduce((s,r) => s + (r.total||0), 0);
-  const prevIncome = recs.filter(r => (r.date||'').startsWith(prev)).reduce((s,r) => s + (r.total||0), 0);
+  // The annual income goal also counts money marked "not work income"
+  // (hiddenReason "other", e.g. the 2026 war compensation from ביטוח לאומי):
+  // it's left out of work-income totals everywhere else, but Karin wants it in
+  // the yearly goal. Duplicates ("dup") stay out.
+  const extra = (state.billing || []).filter(r => r.dupHidden && r.hiddenReason === 'other');
+  const sumYear = (list, yr) => list.filter(r => (r.date||'').startsWith(yr)).reduce((s,r) => s + (r.total||0), 0);
+  const incomeExtra = sumYear(extra, y);
+  const income = sumYear(recs, y) + incomeExtra;
+  const prevIncome = sumYear(recs, prev) + sumYear(extra, prev);
+  const extraNames = [...new Set(extra.filter(r => (r.date||'').startsWith(y)).map(r => r.client || r.project).filter(Boolean))];
   const manual = (state.annualGoals||{})[y] || {};
   return {
     year: y, prev,
     shoots, shootsTarget: Number(manual.shoots) > 0 ? Number(manual.shoots) : prevShoots, shootsManual: Number(manual.shoots) > 0,
     income, incomeTarget: Number(manual.income) > 0 ? Number(manual.income) : prevIncome, incomeManual: Number(manual.income) > 0,
+    incomeExtra, extraNames,
   };
 }
 
@@ -2221,7 +2230,8 @@ function renderAnnualGoals() {
   const g = annualGoalNumbers(Number(todayStr().slice(0,4)));
   el.innerHTML =
     goalRowHtml('ימי צילום', g.shoots, g.shootsTarget, n => String(n), 'shoots', g.shootsManual, g.prev) +
-    goalRowHtml('הכנסה שנתית', g.income, g.incomeTarget, fmtMoney, 'income', g.incomeManual, g.prev);
+    goalRowHtml('הכנסה שנתית', g.income, g.incomeTarget, fmtMoney, 'income', g.incomeManual, g.prev) +
+    (g.incomeExtra ? `<div style="font-size:11px;color:var(--text3);margin-top:-8px;">ההכנסה כוללת ${fmtMoney(g.incomeExtra)} שאינם מעבודה${g.extraNames.length ? ' (' + g.extraNames.join(', ') + ')' : ''}</div>` : '');
   checkGoalCelebrations(g);
 }
 
