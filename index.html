@@ -2111,7 +2111,7 @@ function renderShootYearSummary() {
 
   const projects = (state.projects || []).filter(p => p.date && p.date.startsWith(year+'-') && p.date <= todayStr3);
   // נתוני שנה שעברה — מעמוד ההכנסות (billing records)
-  const prevProjects = getBillingRecords().filter(r => r.date && r.date.startsWith(prevYear+'-') && r.date <= samedayPrevYear);
+  const prevProjects = getBillingRecords().filter(r => r.date && r.date.startsWith(prevYear+'-') && r.date <= samedayPrevYear && isPastShootRecord(r));
 
   const byMonth = {};
   projects.forEach(p => { const m = parseInt(p.date.slice(5,7))-1; byMonth[m] = (byMonth[m]||0)+1; });
@@ -2151,13 +2151,19 @@ function renderShootYearSummary() {
      (general income excluded), because older years live only in billing
    - income: sum of income records in the year via getBillingRecords(), so
      duplicates and "not work income" records (e.g. war compensation) are out */
+// A past year's shoot = one income record with an amount. Older years come
+// from the Excel import: one row per shoot, with generic project names
+// ("דירה", "בית פרטי"), so the same client+name is often a different shoot
+// months apart — counting distinct client|project undercounted. Zero-amount
+// rows (placeholders like "שולם") and general income aren't shoots.
+function isPastShootRecord(r) { return !r.general && (Number(r.total)||0) > 0; }
+
 function annualGoalNumbers(year) {
   const y = String(year), prev = String(year - 1);
   const today = todayStr();
   const recs = getBillingRecords();
   const shoots = (state.projects || []).filter(p => p.date && p.date.startsWith(y + '-') && p.date <= today).length;
-  const prevShoots = new Set(recs.filter(r => (r.date||'').startsWith(prev) && !r.general)
-    .map(r => (r.client||'') + '|' + (r.project||''))).size;
+  const prevShoots = recs.filter(r => (r.date||'').startsWith(prev) && isPastShootRecord(r)).length;
   const income = recs.filter(r => (r.date||'').startsWith(y)).reduce((s,r) => s + (r.total||0), 0);
   const prevIncome = recs.filter(r => (r.date||'').startsWith(prev)).reduce((s,r) => s + (r.total||0), 0);
   const manual = (state.annualGoals||{})[y] || {};
@@ -2214,6 +2220,12 @@ function editAnnualGoal(kind) {
 let _goalQueue = [];
 function checkGoalCelebrations(g) {
   if (!state.goalsCelebrated) state.goalsCelebrated = {};
+  let healed = false;
+  [['shoots', g.shoots, g.shootsTarget], ['income', g.income, g.incomeTarget]].forEach(([k, cur, target]) => {
+    const key = g.year + '-' + k;
+    if (state.goalsCelebrated[key] && !(target > 0 && cur > target)) { delete state.goalsCelebrated[key]; healed = true; }
+  });
+  if (healed) save();
   const due = [];
   if (g.shootsTarget > 0 && g.shoots > g.shootsTarget && !state.goalsCelebrated[g.year + '-shoots']) {
     due.push({ key: g.year + '-shoots',
