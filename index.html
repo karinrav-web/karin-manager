@@ -2587,7 +2587,28 @@ async function syncShootDates() {
 }
 
 
-function render() { setGreeting(); state.projects.forEach(p => recalcClientShare(p)); renderTasks(); renderProjects(); refreshSelects(); renderUrgency(); renderDailyFocus(); renderCalendar(); loadSettings(); renderBillingSummaryMorning(); renderShootYearSummary(); renderReport(); renderBillingPage(); renderWorkPlan(); document.querySelector('.main').classList.add('dashboard-mode'); initThemeSwatches(); loadDashboardSettings(); syncShootDates(); restoreTimer(); }
+// A project with every photo edited has nothing left to plan: clear its editing
+// goals from today on (today's only if nothing was edited today, so a project
+// finished today still shows its ✓). Before 2026-11-15 the plan kept asking for
+// photos after a project was done, and the work plan hides done projects, so
+// there was no way to remove them. Planned days are set to 0, not deleted: the
+// cloud merge unions dailyPlan with the local side winning, so a deleted key
+// would come back from the cloud copy.
+function clearGoalsForFinishedProjects() {
+  const today = todayStr();
+  let changed = false;
+  (state.projects || []).forEach(p => {
+    if (!((p.total||0) > 0 && (p.edited||0) >= p.total) || !p.dailyPlan) return;
+    const editedTodayNow = p.editedTodayDate === today && (p.editedToday||0) > 0;
+    Object.keys(p.dailyPlan).forEach(d => {
+      if ((p.dailyPlan[d]||0) > 0 && (d > today || (d === today && !editedTodayNow))) { p.dailyPlan[d] = 0; changed = true; }
+    });
+    if (!editedTodayNow && (p.goalDaily||0) > 0) { p.goalDaily = 0; changed = true; }
+  });
+  if (changed) save();
+}
+
+function render() { clearGoalsForFinishedProjects(); setGreeting(); state.projects.forEach(p => recalcClientShare(p)); renderTasks(); renderProjects(); refreshSelects(); renderUrgency(); renderDailyFocus(); renderCalendar(); loadSettings(); renderBillingSummaryMorning(); renderShootYearSummary(); renderReport(); renderBillingPage(); renderWorkPlan(); document.querySelector('.main').classList.add('dashboard-mode'); initThemeSwatches(); loadDashboardSettings(); syncShootDates(); restoreTimer(); }
 
 function restoreTimer() {
   try {
@@ -2967,7 +2988,8 @@ function renderReport() {
   // קרין וקלט "היום" — אותם שדות בדיוק כמו בכרטיס הפרויקט המורחב, אז עדכון כאן
   // משתקף שם ולהפך, בלי שום עותק נפרד
   const editProjects = [...state.projects]
-    .filter(p => p.stage === 'edit')
+    // a project with nothing left to edit shows only if it was worked on today
+    .filter(p => p.stage === 'edit' && ((p.total||0) > (p.edited||0) || (p.editedTodayDate === todayStr() && (p.editedToday||0) > 0)))
     .sort((a,b) => {
       const ao = a.priorityOrder!==undefined?a.priorityOrder:9999, bo = b.priorityOrder!==undefined?b.priorityOrder:9999;
       if (ao !== bo) return ao - bo;
