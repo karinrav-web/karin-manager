@@ -866,6 +866,9 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
 .today-sofar .ts-nums b{font-size:20px;color:var(--text);}
 .today-sofar .ts-nums span{font-size:12px;color:var(--text3);}
 .goal-tile .gt-finish{width:auto;padding:0 10px;font-size:12px;font-weight:600;white-space:nowrap;}
+.gt-pin{border:1px solid var(--border2);background:var(--surface);border-radius:6px;font-size:12px;line-height:1;padding:3px 6px;margin-inline-end:8px;cursor:pointer;vertical-align:middle;opacity:.55;}
+.gt-pin:hover{opacity:1;}
+.gt-pin.on{opacity:.8;color:var(--text2);}
 /* Lane colours (2026-11-17): each lane has its own tint so it's clear at a
    glance which group a tile belongs to; tiles carry the lane colour too. */
 .goal-lanes{--ln-bg:#efe7e1;--ln-tile:#fff;--ln-edge:#cbbcb1;--ln-head:var(--text);}
@@ -2458,6 +2461,7 @@ function mergeCloudState(d) {
       // rest of the day, since applyDayReset() only re-derives it when the
       // day actually rolls over, not on every sync.
       goalDaily: mergedDailyPlan[todayStr()] || 0,
+      ...(() => { const c = [lp.closeToday, cp.closeToday].filter(Boolean).sort((x, y) => (y.at || 0) - (x.at || 0))[0]; return c ? { closeToday: c } : {}; })(),
       ...(() => { const c = [lp.carried, cp.carried].filter(Boolean).sort((x, y) => (y.date || '').localeCompare(x.date || ''))[0]; return c ? { carried: c } : {}; })(),
       seconds: Math.max(lp.seconds||0, cp.seconds||0),
       sessions: Math.max(lp.sessions||0, cp.sessions||0),
@@ -2962,6 +2966,15 @@ function carryGoalsToNextDay() {
   save(); renderReport(); renderWorkPlan(); renderProjects();
 }
 // Undo a carry for one project: take the moved amount back off the target day.
+// "לסגור היום" lane is chosen by hand (2026-11-17): p.closeToday = {date, on, at}.
+// Dated so it clears itself the next day; mergeCloudState keeps the newer `at`.
+function isCloseToday(p) { return !!(p && p.closeToday && p.closeToday.on && p.closeToday.date === todayStr()); }
+function setCloseToday(id, on) {
+  const p = state.projects.find(x => String(x.id) === String(id)); if (!p) return;
+  p.closeToday = { date: todayStr(), on: !!on, at: Date.now() };
+  save(); renderReport();
+}
+
 function undoCarry(id) {
   const p = state.projects.find(x => x.id === id); const c = p && carriedToday(p); if (!c) return;
   if (p.dailyPlan && p.dailyPlan[c.to]) {
@@ -3089,7 +3102,7 @@ function renderReport(opts = {}) {
     return `<div class="goal-row goal-tile${leftToGoal === 0 ? ' is-done' : ''}" ${dragAttrs}>
       <div class="gt-top">
         <span class="gt-name proj-link" onclick="openProjectPanel('${p.id}')">${fIcon}${p.client||'ללא שם'}</span>
-        <span class="gt-num"><b>${et}</b> / ${gt || '—'}</span>
+        <span class="gt-num">${isCloseToday(p) ? `<button class="gt-pin on" onclick="setCloseToday(${p.id},false)" title="להוציא מ'לסגור היום'">✕</button>` : (leftToGoal !== 0 && rem > 0 ? `<button class="gt-pin" onclick="setCloseToday(${p.id},true)" title="להעביר ל'לסגור היום'">🔥</button>` : '')}<b>${et}</b> / ${gt || '—'}</span>
       </div>
       <div class="gt-sub">${p.title ? p.title + ' · ' : ''}נשארו ${rem}${p.deadline ? ` · דדליין ${new Date(p.deadline).toLocaleDateString('he-IL',{day:'numeric',month:'numeric'})}` : ''}${unplanned ? ' <span class="goal-unplanned">לא מתוכנן</span>' : ''}${fNote}</div>
       ${bar || `<div class="goal-bar gt-total" title="${p.edited||0} מתוך ${p.total||0} נערכו"><span style="width:${p.total ? Math.min(100, Math.round((p.edited||0) / p.total * 100)) : 0}%;"></span></div>`}
@@ -3119,7 +3132,7 @@ function renderReport(opts = {}) {
   // Three lanes (2026-11-17, option ב׳): projects to close today (urgent or
   // nearly done, per computeTodayFocus), the rest with a goal, and those with
   // no goal yet; finished-today goals sit at the bottom of the third lane.
-  const isNow = p => { const f = focus.byId[p.id]; return f && (f.tag === 'critical' || f.tag === 'quick'); };
+  const isNow = p => isCloseToday(p);  // Karin picks this lane herself (2026-11-17)
   const laneNow = activeGoalProjects.filter(isNow);
   const laneGoal = activeGoalProjects.filter(p => !isNow(p) && (p.goalDaily||0) > 0);
   const laneFree = activeGoalProjects.filter(p => !isNow(p) && !((p.goalDaily||0) > 0));
@@ -3130,7 +3143,7 @@ function renderReport(opts = {}) {
     </div>`;
   const doneBlock = doneGoalProjects.length ? `<div class="gl-head gl-done" style="margin-top:8px;"><span>✓ הושלם היום</span><span class="gl-count">${doneGoalProjects.length}</span></div>${doneGoalProjects.map(p => goalRow(p, false)).join('')}` : '';
   const goalRows = editProjects.length === 0 ? '<div class="report-empty">אין פרויקטים בעריכה כרגע</div>' : `<div class="goal-lanes">
-      ${lane('lane-now', '🔥 לסגור היום', laneNow, 'אין פרויקט דחוף או כמעט גמור')}
+      ${lane('lane-now', '🔥 לסגור היום', laneNow, 'לחצי על 🔥 בכרטיס כדי להעביר אותו לכאן')}
       ${lane('lane-goal', '🎯 בעבודה היום', laneGoal, 'עוד לא נקבעו יעדים להיום')}
       ${lane('lane-free', 'בלי יעד היום', laneFree, 'לכל הפרויקטים יש יעד', doneBlock)}
     </div>`;
