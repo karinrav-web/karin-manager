@@ -692,6 +692,13 @@
 .cp-split-legend b{color:var(--text);font-weight:600;}
 .cp-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-left:5px;vertical-align:middle;}
 .cp-dot-c{background:var(--accent);} .cp-dot-v{background:#c9a27a;}
+/* KARIN RAVENNA wordmark at the top-left of every page, like karinravenna.com (2026-11-17) */
+.brand-band{display:flex;justify-content:flex-end;padding:30px 32px 0;}
+.brand-band + .page, .brand-band ~ .page{padding-top:18px;}
+.brand-mark{direction:ltr;text-align:left;font-family:'Open Sans',sans-serif !important;font-stretch:75%;font-weight:300;font-size:30px;letter-spacing:.12em;line-height:1.05;color:var(--text);white-space:nowrap;}
+.brand-mark span{display:block;font-size:14px;letter-spacing:.01em;color:var(--text3);margin-top:4px;}
+html[data-skin="ravenna"] .brand-band{display:none;}
+@media (max-width: 768px){ .brand-band{display:none;} }
 .logo-word{display:none;}
 /* ===== "רבנה" skin (2026-11-17) — html[data-skin="ravenna"], modelled on karinravenna.com:
    white, black type, thin condensed Open Sans, letter-spaced KARIN RAVENNA wordmark,
@@ -921,6 +928,7 @@ html[data-skin="dark"] .goal-lane .goal-tile.is-done{--ln-tile:#222b20;--ln-edge
   </aside>
 
   <main class="main">
+    <div class="brand-band"><div class="brand-mark">KARIN RAVENNA<span>Architecture &amp; Interior Design Photographer</span></div></div>
     <header class="app-topbar">
       <div class="app-topbar-title" id="morning-greeting-bar">שלום קרין! 👋</div>
       <div style="display:flex;align-items:center;gap:12px;">
