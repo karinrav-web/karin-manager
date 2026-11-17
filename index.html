@@ -756,6 +756,21 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
 #page-morning.active { display:block !important; height:auto !important; overflow:visible !important; }
 #page-morning .morning-grid { flex:none; margin-top:4px; }
 #page-morning .morning-col { overflow:visible; }
+/* Today's goal rows: keep the controls right next to the project name instead
+   of at the far edge of a wide screen, and highlight the row on hover so it's
+   clear which controls belong to which project (2026-11-17). */
+#report-top .goal-row { justify-content:flex-start !important; gap:28px !important; padding-inline:8px; border-radius:8px; }
+#report-top .goal-row > div[style*="flex:1"] { flex:0 1 440px !important; }
+#report-top .goal-row:hover { background:var(--surface2); }
+/* On wide screens the tasks and deadline panels sit beside today's goals
+   instead of below them, so the goal list isn't stretched across the page. */
+@media (min-width: 1500px) {
+  .today-split { display:grid; grid-template-columns:minmax(0,1.6fr) minmax(320px,1fr); gap:16px; align-items:start; }
+  .today-split #report-top { margin-bottom:0 !important; }
+  .today-split .morning-grid { display:flex; flex-direction:column; gap:10px; margin-top:0; }
+  .today-split .morning-col { width:100% !important; flex:none !important; min-width:0 !important; }
+  .today-split .col-resizer { display:none; }
+}
 /* היום page / כספים business cards (2026-11-17) */
 .biz-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-bottom:18px;}
 .biz-cards .card{margin:0;}
@@ -833,6 +848,7 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
         <div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#e8f4ee;"><span class="material-symbols-outlined" style="color:#2D6A4F;">check_circle</span></div><div><div class="metric-val" id="m-edited-today">0</div><div class="metric-label" id="m-edited-label">סה״כ נערכו היום</div><div class="metric-sub" id="m-edited-sub"></div></div></div>
         <div class="metric-card metric-card-icon" style="border:2px dashed var(--border2);"><div class="metric-icon-circle" style="background:#fdf0ec;"><span class="material-symbols-outlined" style="color:var(--accent);">flag</span></div><div><div class="metric-val" id="m-goal-total">0</div><div class="metric-label">יעד יומי</div></div></div>
       </div>
+      <div class="today-split">
       <div id="report-top" style="margin-bottom:14px;"></div>
       <div class="morning-grid">
         <div class="morning-col" id="mcol-left"
@@ -880,6 +896,7 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
           </div>
         </div>
       </div>
+      </div><!-- /today-split -->
       <div id="report-bottom" style="margin-top:16px;"></div>
       <div class="page-title" style="margin:28px 0 12px;">תכנון</div>
       <div class="card" style="margin-bottom:16px;">
