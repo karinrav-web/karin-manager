@@ -29,6 +29,7 @@
     document.head.appendChild(l);
   });
 </script>
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wdth,wght@75..100,300..700&display=swap" rel="stylesheet" />
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Hebrew:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" rel="stylesheet" />
 <style>
@@ -691,6 +692,49 @@
 .cp-split-legend b{color:var(--text);font-weight:600;}
 .cp-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-left:5px;vertical-align:middle;}
 .cp-dot-c{background:var(--accent);} .cp-dot-v{background:#c9a27a;}
+.logo-word{display:none;}
+/* ===== "רבנה" skin (2026-11-17) — html[data-skin="ravenna"], modelled on karinravenna.com:
+   white, black type, thin condensed Open Sans, letter-spaced KARIN RAVENNA wordmark,
+   concrete greys and the sage of the hills as the only colours. ===== */
+html[data-skin="ravenna"]{
+  --bg:#ffffff; --surface:#ffffff; --surface2:#f5f4f2;
+  --border:#e8e6e2; --border2:#d4d1cb;
+  --text:#141414; --text2:#55524d; --text3:#8a867f;
+  --accent:#1c1c1c; --accent-light:#efeeec; --normal:#1c1c1c; --normal-light:#efeeec;
+  --radius:4px; --radius-sm:3px;
+  --rv-sage:#6f7d5c; --rv-sage-light:#eef0e9; --rv-concrete:#a29d94;
+}
+html[data-skin="ravenna"] *:not(.material-symbols-outlined){font-family:'Open Sans','Rubik',sans-serif !important;}
+html[data-skin="ravenna"] body{background:#fff;}
+html[data-skin="ravenna"] :is(.card,.metric-card,.urgency-card,.proj-card,.morning-panel,.pp-head,.pp-pane){box-shadow:none !important;border-color:var(--border);}
+html[data-skin="ravenna"] .sidebar{box-shadow:none;border-inline-start:1px solid var(--border);background:#fff;}
+html[data-skin="ravenna"] .logo{display:block;padding:8px 22px 26px;}
+html[data-skin="ravenna"] .logo :is(.logo-avatar,.logo-name,.logo-sub){display:none;}
+html[data-skin="ravenna"] .logo-word{display:block;direction:ltr;text-align:left;font-stretch:75%;font-weight:300;font-size:22px;letter-spacing:.12em;line-height:1.1;color:#111;white-space:nowrap;}
+html[data-skin="ravenna"] .logo-word span{display:block;font-size:11.5px;letter-spacing:.01em;color:#777;margin-top:6px;white-space:normal;}
+html[data-skin="ravenna"] .nav-item{border-radius:0;font-stretch:87%;font-size:15px;color:#555;background:none;}
+html[data-skin="ravenna"] .nav-item:hover{background:none;color:#111;}
+html[data-skin="ravenna"] .nav-item.active{background:none;color:#111;font-weight:600;box-shadow:inset -2px 0 0 #111;}
+html[data-skin="ravenna"] :is(.page-title,.today-title,#morning-greeting){font-stretch:75%;font-weight:300;letter-spacing:.02em;}
+html[data-skin="ravenna"] .card-title{font-stretch:87%;letter-spacing:.08em;color:#777;}
+html[data-skin="ravenna"] .metric-card{border-radius:0;border:none;border-top:1px solid #111;padding-inline:4px;}
+html[data-skin="ravenna"] .metric-val{font-stretch:75%;font-weight:300;}
+html[data-skin="ravenna"] .metric-label{letter-spacing:.06em;color:#777;}
+html[data-skin="ravenna"] :is(.btn-save,.add-btn,.customize-btn,.edit-btn,.df-btn,.df-timer,.df-set-goal,.panel-link-btn){border-radius:2px;}
+html[data-skin="ravenna"] .df-btn.plus{background:#f1f0ed;color:#111;}
+html[data-skin="ravenna"] .gt-in.goal span{color:#111;}
+html[data-skin="ravenna"] .gt-in.goal input{border-color:#111;background:#fff;color:#111;}
+html[data-skin="ravenna"] .goal-lane{--ln-tile:#fff !important;}
+html[data-skin="ravenna"] .goal-lane{border-radius:0;border-top-width:2px;}
+html[data-skin="ravenna"] .goal-lane.lane-now{--ln-bg:#ecebe8;--ln-edge:#1c1c1c;--ln-head:#111;}
+html[data-skin="ravenna"] .goal-lane.lane-goal{--ln-bg:var(--rv-sage-light);--ln-edge:var(--rv-sage);--ln-head:#4c5a3d;}
+html[data-skin="ravenna"] .goal-lane.lane-free{--ln-bg:#f7f6f4;--ln-edge:var(--rv-concrete);--ln-head:#6e6a63;}
+html[data-skin="ravenna"] .goal-lane .goal-tile{border-radius:2px;}
+html[data-skin="ravenna"] .goal-lane .goal-tile.is-done{--ln-tile:#fff;--ln-edge:var(--rv-sage);}
+html[data-skin="ravenna"] .goal-lane .gl-head.gl-done{color:#4c5a3d;}
+html[data-skin="ravenna"] .goal-lane .gl-head.gl-done .gl-count{background:var(--rv-sage);}
+html[data-skin="ravenna"] .gl-head{font-stretch:87%;letter-spacing:.03em;}
+html[data-skin="ravenna"] :is(.logo-avatar,.task-check.done,.btn-save,.df-timer.running){color:#fff;}
 /* ===== Dark rounded skin ("כהה") — html[data-skin="dark"], chosen in Settings → theme swatches ===== */
 html[data-skin="dark"] {
   color-scheme:dark;
@@ -851,6 +895,7 @@ html[data-skin="dark"] .goal-lane .goal-tile.is-done{--ln-tile:#222b20;--ln-edge
   <aside class="sidebar">
     <div class="logo">
       <div class="logo-avatar">KR</div>
+      <div class="logo-word">KARIN RAVENNA<span>Architecture &amp; Interior Design Photographer</span></div>
       <div class="logo-name">קרין רבנה</div>
       <div class="logo-sub">צלמת אדריכלות ועיצוב פנים</div>
     </div>
@@ -4616,6 +4661,7 @@ const THEMES = [
   {accent:'#8B4400', light:'#FEE8D6', name:'כתום'},
   {accent:'#4A4A4A', light:'#EBEBEB', name:'אפור'},
   {accent:'#e6b06a', light:'#33291a', name:'כהה', skin:'dark'},
+  {accent:'#1c1c1c', light:'#efeeec', name:'רבנה', skin:'ravenna'},
 ];
 
 function initThemeSwatches() {
@@ -4625,7 +4671,7 @@ function initThemeSwatches() {
     const s = document.createElement('div');
     s.className = 'theme-swatch';
     s.title = t.name;
-    s.style.background = t.skin === 'dark' ? 'linear-gradient(135deg,#141518 50%,#e6b06a 50%)' : t.accent;
+    s.style.background = t.skin === 'dark' ? 'linear-gradient(135deg,#141518 50%,#e6b06a 50%)' : t.skin === 'ravenna' ? 'linear-gradient(135deg,#fff 50%,#1c1c1c 50%)' : t.accent;
     s.dataset.accent = t.accent;
     s.dataset.light = t.light;
     s.onclick = () => applyTheme(t.accent, t.light, t.skin);
