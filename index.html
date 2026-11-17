@@ -817,14 +817,6 @@ html[data-skin="dark"] .goal-lane.lane-now{--ln-bg:#3b2620;--ln-tile:#2e211c;--l
 html[data-skin="dark"] .goal-lane.lane-goal{--ln-bg:#26302a;--ln-tile:#212924;--ln-edge:#7fa070;--ln-head:#a9c79b;}
 html[data-skin="dark"] .goal-lane.lane-free{--ln-bg:#2c2926;--ln-tile:#252220;--ln-edge:#8a7e73;--ln-head:#c4b8ad;}
 html[data-skin="dark"] .goal-lane .goal-tile.is-done{--ln-tile:#222b20;--ln-edge:#6fae63;}
-/* Bigger header for today's goals (Karin asked, 2026-11-17) */
-#report-top .today-title{font-size:28px;}
-#report-top .today-hint{font-size:17px;margin-top:6px;}
-#report-top .today-progress{font-size:17px;padding:12px 22px;gap:14px;}
-#report-top .today-progress .goal-bar{width:240px;height:10px;}
-#report-top .today-progress b{font-size:24px;}
-/* the four metric cards are folded into the lanes' header and the 'today so far' card */
-#page-morning .morning-metrics{display:none;}
 @media (max-width: 1000px){ .goal-lanes, #page-morning .morning-grid{grid-template-columns:minmax(0,1fr);} }
 /* היום page / כספים business cards (2026-11-17) */
 .biz-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-bottom:18px;}
@@ -3095,15 +3087,9 @@ function renderReport(opts = {}) {
       <div class="today-head">
         <div style="min-width:0;">
           <div class="today-title">יעדי עריכה להיום</div>
-          <div class="today-hint">${editProjects.length} פרויקטים בעריכה · ${editProjects.reduce((s,p)=>s+Math.max(0,(p.total||0)-(p.edited||0)),0)} תמונות לעריכה</div>
           ${focus.headline ? `<div class="today-hint"><strong>${focus.headline}</strong> · ${focus.explanation}</div>` : ''}
         </div>
-        <div class="today-progress">
-          <span>יעד יומי</span>
-          <div class="goal-bar"><span style="width:${gp.goal ? Math.min(100, Math.round(gp.inGoal / gp.goal * 100)) : 0}%;"></span></div>
-          <b>${gp.inGoal}/${gp.goal}</b>
-          ${new Date().getHours() >= 16 && goalLeftovers().length ? `<button class="panel-link-btn" onclick="carryGoalsToNextDay()" title="מוסיף את מה שלא נערך היום ללוח העבודה של יום העבודה הבא">להעביר את מה שנשאר למחר ←</button>` : ''}
-        </div>
+        <div>${new Date().getHours() >= 16 && goalLeftovers().length ? `<button class="panel-link-btn" onclick="carryGoalsToNextDay()" title="מוסיף את מה שלא נערך היום ללוח העבודה של יום העבודה הבא">להעביר את מה שנשאר למחר ←</button>` : ''}</div>
       </div>
       ${goalRows}`;
     const histEl = document.getElementById('report-history');
