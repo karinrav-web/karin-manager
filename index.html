@@ -343,6 +343,8 @@
   .rem-badge.rem-urgent { background:var(--urgent); color:#fff; }
   .rem-badge.rem-high   { background:var(--high);   color:#fff; }
   .rem-badge.rem-ok     { background:var(--accent);  color:#fff; }
+  .rem-badge.rem-calm   { background:var(--surface2); color:var(--text); border:1px solid var(--border2); }
+  .rem-badge.rem-calm .rem-label { color:var(--text2); }
   .rem-badge.rem-done   { background:var(--accent-light); color:var(--accent); }
   .rem-badge.rem-done .rem-num { font-size:14px; }
 
@@ -1615,9 +1617,11 @@ let stageFilter = null;
 let activeTimer = {projId:null,startTs:null,iv:null};
 let blockCloudLoad = false;
 
-function remBadgeHtml(rem) {
+// Badge colour = urgency (2026-11-17, Karin's choice), not photo count:
+// 'late' red = expected to finish after the deadline, 'soon' orange = deadline within 7 days, else neutral.
+function remBadgeHtml(rem, level) {
   if (rem <= 0) return `<span class="rem-badge rem-done"><span class="rem-num">✓</span><span class="rem-label">הושלם</span></span>`;
-  const cls = rem > 100 ? 'rem-urgent' : rem > 30 ? 'rem-high' : 'rem-ok';
+  const cls = level === 'late' ? 'rem-urgent' : level === 'soon' ? 'rem-high' : 'rem-calm';
   return `<span class="rem-badge ${cls}"><span class="rem-num">${rem}</span><span class="rem-label">נשאר לעריכה</span></span>`;
 }
 
@@ -5409,7 +5413,14 @@ function projectCardHtml(p, _allFinish, inPanel) {
             ${billingBadgeHtml(p)}
           </div>
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-            ${remBadgeHtml(rem)}
+            ${remBadgeHtml(rem, (() => {
+              if (!p.deadline) return '';
+              const dl = new Date(p.deadline); dl.setHours(0,0,0,0);
+              if (_finishDate) { const fin = new Date(_finishDate); fin.setHours(0,0,0,0); if (fin > dl) return 'late'; }
+              const t0 = new Date(); t0.setHours(0,0,0,0);
+              const days = Math.round((dl - t0) / 86400000);
+              return days < 0 ? 'late' : days <= 7 ? 'soon' : '';
+            })())}
             <div class="pc-stats">
               ${stageFilter === 'edit' ? '' : `<span class="pc-stage" style="background:var(--s-${p.stage}-b,var(--border));">${STAGES[p.stage] || p.stage}</span>`}
               <span>נערכו <b>${p.edited}/${p.total}</b></span>
