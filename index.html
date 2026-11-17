@@ -720,6 +720,36 @@ html[data-skin="ravenna"] .brand-band{display:none;}
 .pc-ok{color:#4f7a46;font-weight:600;}
 .pc-late{color:var(--urgent);font-weight:600;}
 .proj-card:not([data-panel]){border-top-width:3px !important;}
+/* Projects list as a grid of cards instead of full-width rows (2026-11-17) */
+#projects-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(400px,1fr));gap:12px;align-items:start;}
+#projects-list > *{min-width:0;}
+#projects-list > :not(.proj-card), #projects-list > .proj-card.pc-open{grid-column:1/-1;}
+#projects-list > .proj-card{margin-bottom:0;}
+#projects-list .proj-name{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+@media (max-width: 768px){ #projects-list{grid-template-columns:minmax(0,1fr);} }
+/* Projects board (2026-11-17) */
+.pv-toggle{display:inline-flex;border:1px solid var(--border2);border-radius:999px;overflow:hidden;}
+.pv-toggle button{border:none;background:var(--surface);color:var(--text2);font:500 13px 'Rubik',sans-serif;padding:6px 14px;cursor:pointer;}
+.pv-toggle button.on{background:var(--text);color:var(--bg);}
+#proj-stage-tabs.pv-board > button{opacity:.75;}
+.bd-wrap{overflow-x:auto;padding-bottom:6px;}
+.bd-board{display:grid;grid-template-columns:repeat(6,minmax(220px,1fr));gap:12px;align-items:start;min-width:1340px;}
+.bd-col{background:var(--surface2);border-radius:var(--radius);padding:10px;display:flex;flex-direction:column;gap:8px;min-height:120px;transition:background .15s;}
+.bd-col.over{background:var(--accent-light);outline:2px dashed var(--accent);}
+.bd-head{display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:600;color:var(--text);border-top:3px solid;padding:8px 4px 4px;margin:-10px -10px 0;border-radius:var(--radius) var(--radius) 0 0;padding-inline:14px;}
+.bd-count{font-size:12px;font-weight:500;color:var(--text3);}
+.bd-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px;display:flex;gap:10px;align-items:center;cursor:pointer;}
+.bd-card:hover{border-color:var(--border2);box-shadow:0 2px 8px rgba(0,0,0,.05);}
+.bd-card.dragging{opacity:.4;}
+.bd-card .rem-badge.rem-tile{width:52px;height:48px;}
+.bd-card .rem-badge.rem-tile .rem-num{font-size:20px;}
+.bd-name{font-size:14px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bd-title{font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.bd-meta{font-size:12px;color:var(--text3);margin-top:4px;}
+.bd-meta b{color:var(--text);font-weight:600;}
+.bd-empty{font-size:12px;color:var(--text3);text-align:center;padding:8px;}
+.bd-foot{display:flex;gap:14px;margin-top:12px;}
+@media (max-width: 768px){ .bd-board{grid-template-columns:minmax(0,1fr);min-width:0;} }
 .logo-word{display:none;}
 /* ===== "רבנה" skin (2026-11-17) — html[data-skin="ravenna"], modelled on karinravenna.com:
    white, black type, thin condensed Open Sans, letter-spaced KARIN RAVENNA wordmark,
@@ -1269,6 +1299,7 @@ html[data-skin="dark"] .goal-lane .goal-tile.is-done{--ln-tile:#222b20;--ln-edge
     <div id="page-projects" class="page">
       <div class="page-header">
         <div class="page-title" id="proj-page-title">פרויקטים</div>
+        <div class="pv-toggle" id="proj-view-toggle"></div>
         <button onclick="openQuoteModal()" style="padding:7px 16px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--accent);border-radius:var(--radius-sm);background:var(--accent-light);color:var(--accent);cursor:pointer;font-weight:500;">📄 הצעת מחיר</button>
         <button onclick="collapseAll()" style="padding:7px 16px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">▲ קפל הכל</button>
         <button id="sort-toggle-btn" onclick="toggleProjectSort()" style="padding:7px 16px;font-size:12px;font-family:'Rubik',sans-serif;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface2);color:var(--text2);cursor:pointer;">📅 לפי תאריך</button>
@@ -2608,11 +2639,12 @@ function showPageMobile(p, el) {
 }
 function filterStage(stage) {
   stageFilter = stage;
+  if (stage !== null) setProjView('list', true);
   showPage('projects', document.getElementById('nav-projects'));
   renderProjects();
 }
-function openProjectsDefault(el) { stageFilter = 'edit'; showPage('projects', el); }
-function openProjectsDefaultMobile(el) { stageFilter = 'edit'; showPageMobile('projects', el); }
+function openProjectsDefault(el) { stageFilter = projView === 'board' ? null : 'edit'; showPage('projects', el); }
+function openProjectsDefaultMobile(el) { stageFilter = projView === 'board' ? null : 'edit'; showPageMobile('projects', el); }
 function toggleEl(id) { document.getElementById(id).classList.toggle('hidden'); }
 
 function openProjectFromUrgency(projId) {
@@ -5200,6 +5232,83 @@ function legacyListHtml(list) {
   }).join('');
 }
 const LEGACY_NOTE = '<div style="font-size:12px;color:var(--text2);margin-bottom:12px;">פרויקטים מלפני האפליקציה (יובאו מהאקסל). הם מוצגים לקריאה בלבד; העיפרון פותח את רשומת ההכנסה.</div>';
+// ===== Projects board (2026-11-17, option ה׳): one column per stage, drag a card to change stage =====
+let projView = (() => { try { return localStorage.getItem('karin_projview') || 'board'; } catch (e) { return 'board'; } })();
+function setProjView(v, silent) {
+  projView = v;
+  try { localStorage.setItem('karin_projview', v); } catch (e) {}
+  if (v === 'board') stageFilter = null;
+  if (!silent) renderProjects();
+}
+function renderProjViewToggle() {
+  const el = document.getElementById('proj-view-toggle'); if (!el) return;
+  const b = (v, label) => `<button class="${projView === v ? 'on' : ''}" onclick="setProjView('${v}')">${label}</button>`;
+  el.innerHTML = b('board', '▦ לוח') + b('list', '☰ רשימה');
+  const sortBtns = document.querySelectorAll('#page-projects .page-header button[onclick*="Sort"], #page-projects .page-header button[onclick*="collapseAll"]');
+  sortBtns.forEach(x => x.style.display = projView === 'board' ? 'none' : '');
+  const tabs = document.getElementById('proj-stage-tabs'); if (tabs) tabs.classList.toggle('pv-board', projView === 'board');
+}
+const BOARD_STAGES = ['send', 'wait', 'edit', 'deliver', 'notes', 'billing'];
+function remLevel(p, finishDate) {
+  if (!p.deadline) return '';
+  const dl = new Date(p.deadline); dl.setHours(0,0,0,0);
+  if (finishDate) { const fin = new Date(finishDate); fin.setHours(0,0,0,0); if (fin > dl) return 'late'; }
+  const t0 = new Date(); t0.setHours(0,0,0,0);
+  const days = Math.round((dl - t0) / 86400000);
+  return days < 0 ? 'late' : days <= 7 ? 'soon' : '';
+}
+function boardCardHtml(p, fin) {
+  const ddmm = d => new Date(d).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' });
+  const rem = Math.max(0, (p.total || 0) - (p.edited || 0));
+  let side = '', meta = '';
+  if (p.stage === 'edit') {
+    side = remBadgeHtml(rem, remLevel(p, fin[p.id]));
+    const lvl = remLevel(p, fin[p.id]);
+    meta = `נערכו <b>${p.edited||0}/${p.total||0}</b>${p.deadline ? ` · דדליין <b>${ddmm(p.deadline)}</b>` : ''}${lvl === 'late' && rem > 0 ? ' · <span class="pc-late">⚠ באיחור</span>' : ''}`;
+  } else if (p.stage === 'send' || p.stage === 'wait') {
+    const since = p.stageAt ? Math.max(0, Math.round((new Date(todayStr() + 'T12:00:00') - new Date(p.stageAt + 'T12:00:00')) / 86400000)) : null;
+    meta = `${p.total ? `<b>${p.total}</b> תמונות` : ''}${since !== null ? `${p.total ? ' · ' : ''}${p.stage === 'wait' ? 'מחכה' : 'כאן'} <b>${since}</b> ימים` : ''}`;
+  } else if (p.stage === 'deliver' || p.stage === 'notes') {
+    meta = p.deadline ? `דדליין <b>${ddmm(p.deadline)}</b>` : '';
+  } else if (p.stage === 'billing') {
+    meta = billingBadgeHtml(p) || '';
+  }
+  return `<div class="bd-card" draggable="true" ondragstart="boardDragStart(event,${p.id})" ondragend="this.classList.remove('dragging')" onclick="openProjectPanel('${p.id}')">
+    ${side}
+    <div style="min-width:0;flex:1;">
+      <div class="bd-name">${p.client || 'ללא שם'}</div>
+      ${p.title ? `<div class="bd-title">${p.title}</div>` : ''}
+      ${meta ? `<div class="bd-meta">${meta}</div>` : ''}
+    </div>
+  </div>`;
+}
+function projectBoardHtml(list) {
+  const fin = computeAllFinishDates();
+  const order = (a, b) => {
+    if (a.stage === 'edit') { const r = l => ({ late: 0, soon: 1 })[remLevel(l, fin[l.id])] ?? 2; const d = r(a) - r(b); if (d) return d; }
+    return (a.deadline || '9999').localeCompare(b.deadline || '9999');
+  };
+  const cols = BOARD_STAGES.map(s => {
+    const items = list.filter(p => p.stage === s).sort(order);
+    return `<div class="bd-col" ondragover="event.preventDefault();this.classList.add('over')" ondragleave="this.classList.remove('over')" ondrop="boardDrop(event,'${s}');this.classList.remove('over')">
+      <div class="bd-head" style="border-top-color:var(--s-${s}-b);"><span>${STAGES[s]}</span><span class="bd-count">${items.length}</span></div>
+      ${items.map(p => boardCardHtml(p, fin)).join('') || '<div class="bd-empty">—</div>'}
+    </div>`;
+  }).join('');
+  const done = list.filter(p => p.stage === 'done').length;
+  return `<div class="bd-wrap"><div class="bd-board">${cols}</div></div>
+    <div class="bd-foot"><button class="panel-link-btn" onclick="filterStage('done')">✓ הסתיימו (${done})</button> <button class="panel-link-btn" onclick="filterStage('archive')">ארכיון</button></div>`;
+}
+let _boardDragId = null;
+function boardDragStart(e, id) { _boardDragId = id; e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', String(id)); } catch (x) {} e.currentTarget.classList.add('dragging'); }
+function boardDrop(e, stage) {
+  e.preventDefault();
+  const id = _boardDragId; _boardDragId = null;
+  if (id == null) return;
+  const p = state.projects.find(x => x.id === id);
+  if (p && p.stage !== stage) setStage(id, stage);
+}
+
 function renderProjects(searchVal) {
   const el = document.getElementById('projects-list'); if (!el) return;
   renderProjectPanel();
@@ -5268,6 +5377,15 @@ function renderProjects(searchVal) {
   if (titleEl) {
     const baseName = stageFilter ? STAGES[stageFilter] : 'פרויקטים';
     titleEl.textContent = (list.length + _leg.length) > 0 ? `${baseName} (${list.length + _leg.length})` : baseName;
+  }
+  renderProjViewToggle();
+  if (projView === 'board') {
+    const bl = state.projects
+      .filter(p => !projYearFilter || _projYear(p) === projYearFilter)
+      .filter(p => !searchQ || (p.client||'').toLowerCase().includes(searchQ) || (p.title||'').toLowerCase().includes(searchQ));
+    if (titleEl) titleEl.textContent = 'פרויקטים';
+    el.innerHTML = projectBoardHtml(bl);
+    return;
   }
   const _legBlock = _leg.length ? `<div style="font-size:15px;font-weight:600;margin:26px 2px 6px;">ארכיון (${_leg.length})</div>` + LEGACY_NOTE + legacyListHtml(_leg) : '';
   if (!list.length && _legBlock) { el.innerHTML = _legBlock; return; }
@@ -5426,7 +5544,7 @@ function projectCardHtml(p, _allFinish, inPanel) {
       <div class="pp-pane" data-ppane="client" ${_hid('client')}><!--pp-client--></div>
     </div>`;
     }
-    return `<div class="proj-card s-${p.stage || 'send'}" ${inPanel ? 'data-panel="1"' : `draggable="true" data-id="${p.id}"
+    return `<div class="proj-card s-${p.stage || 'send'}${isExpanded && !inPanel ? ' pc-open' : ''}" ${inPanel ? 'data-panel="1"' : `draggable="true" data-id="${p.id}"
         ondragstart="dragStart(event,${p.id})" ondragend="dragEnd(event)" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event,${p.id})"`}>
       <div class="proj-compact" style="display:flex;align-items:center;gap:14px;">
         ${inPanel ? '' : `<div class="drag-handle" title="גרור לסידור" onclick="event.stopPropagation()">⠿</div>`}
@@ -5632,6 +5750,7 @@ function setStage(id,s){
     const wasPreSend = p.stage==='edit' || p.stage==='deliver';
     const nowSent = s==='billing' || s==='notes';
     if(wasPreSend && nowSent && p.stage!==s) p.sentToClientDate = todayStr();
+    if (p.stage !== s) p.stageAt = todayStr();
     p.stage=s;
     save();
     renderProjects();
