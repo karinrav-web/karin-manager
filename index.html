@@ -797,6 +797,26 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
 .today-sofar .ts-nums div{display:flex;flex-direction:column;}
 .today-sofar .ts-nums b{font-size:20px;color:var(--text);}
 .today-sofar .ts-nums span{font-size:12px;color:var(--text3);}
+/* Lane colours (2026-11-17): each lane has its own tint so it's clear at a
+   glance which group a tile belongs to; tiles carry the lane colour too. */
+.goal-lanes{--ln-bg:#efe7e1;--ln-tile:#fff;--ln-edge:#cbbcb1;--ln-head:var(--text);}
+.goal-lane.lane-now{--ln-bg:#f6dccf;--ln-tile:#fdf1ea;--ln-edge:#c0562f;--ln-head:#9a3f1e;}
+.goal-lane.lane-goal{--ln-bg:#dfe7da;--ln-tile:#f3f7f0;--ln-edge:#5f7d55;--ln-head:#3f5a37;}
+.goal-lane.lane-free{--ln-bg:#ebe6e1;--ln-tile:#faf8f6;--ln-edge:#a39689;--ln-head:#6b5f55;}
+.goal-lane{background:var(--ln-bg);border-top:4px solid var(--ln-edge);}
+.goal-lane .gl-head{color:var(--ln-head);font-size:15px;}
+.goal-lane .gl-count{background:var(--ln-edge);color:#fff;border-radius:999px;padding:1px 9px;font-weight:600;}
+.goal-lane .goal-tile{background:var(--ln-tile);border:1px solid color-mix(in srgb, var(--ln-edge) 25%, transparent);border-inline-start:4px solid var(--ln-edge);}
+.goal-lane .goal-tile:hover{border-color:var(--ln-edge);}
+.goal-lane .goal-tile .goal-bar span{background:var(--ln-edge);}
+.goal-lane .goal-tile.is-done{--ln-tile:#eef5ea;--ln-edge:#4f8a46;}
+.goal-lane .gl-head.gl-done{color:#3f7a37;border-top:1px dashed var(--ln-edge);padding-top:10px;}
+.goal-lane .gl-head.gl-done .gl-count{background:#4f8a46;}
+html[data-skin="dark"] .goal-lanes{--ln-tile:#2a2522;}
+html[data-skin="dark"] .goal-lane.lane-now{--ln-bg:#3b2620;--ln-tile:#2e211c;--ln-edge:#d9734b;--ln-head:#f0a07f;}
+html[data-skin="dark"] .goal-lane.lane-goal{--ln-bg:#26302a;--ln-tile:#212924;--ln-edge:#7fa070;--ln-head:#a9c79b;}
+html[data-skin="dark"] .goal-lane.lane-free{--ln-bg:#2c2926;--ln-tile:#252220;--ln-edge:#8a7e73;--ln-head:#c4b8ad;}
+html[data-skin="dark"] .goal-lane .goal-tile.is-done{--ln-tile:#222b20;--ln-edge:#6fae63;}
 /* the four metric cards are folded into the lanes' header and the 'today so far' card */
 #page-morning .morning-metrics{display:none;}
 @media (max-width: 1000px){ .goal-lanes, #page-morning .morning-grid{grid-template-columns:minmax(0,1fr);} }
@@ -3032,16 +3052,16 @@ function renderReport(opts = {}) {
   const laneNow = activeGoalProjects.filter(isNow);
   const laneGoal = activeGoalProjects.filter(p => !isNow(p) && (p.goalDaily||0) > 0);
   const laneFree = activeGoalProjects.filter(p => !isNow(p) && !((p.goalDaily||0) > 0));
-  const lane = (title, list, empty, extra = '') => `<div class="goal-lane">
+  const lane = (cls, title, list, empty, extra = '') => `<div class="goal-lane ${cls}">
       <div class="gl-head"><span>${title}</span><span class="gl-count">${list.length}</span></div>
       ${list.length ? list.map(p => goalRow(p, true)).join('') : `<div class="gl-empty">${empty}</div>`}
       ${extra}
     </div>`;
-  const doneBlock = doneGoalProjects.length ? `<div class="gl-head" style="margin-top:8px;"><span>✓ הושלם היום</span><span class="gl-count">${doneGoalProjects.length}</span></div>${doneGoalProjects.map(p => goalRow(p, false)).join('')}` : '';
+  const doneBlock = doneGoalProjects.length ? `<div class="gl-head gl-done" style="margin-top:8px;"><span>✓ הושלם היום</span><span class="gl-count">${doneGoalProjects.length}</span></div>${doneGoalProjects.map(p => goalRow(p, false)).join('')}` : '';
   const goalRows = editProjects.length === 0 ? '<div class="report-empty">אין פרויקטים בעריכה כרגע</div>' : `<div class="goal-lanes">
-      ${lane('לסגור היום', laneNow, 'אין פרויקט דחוף או כמעט גמור')}
-      ${lane('בעבודה היום', laneGoal, 'עוד לא נקבעו יעדים להיום')}
-      ${lane('בלי יעד היום', laneFree, 'לכל הפרויקטים יש יעד', doneBlock)}
+      ${lane('lane-now', '🔥 לסגור היום', laneNow, 'אין פרויקט דחוף או כמעט גמור')}
+      ${lane('lane-goal', '🎯 בעבודה היום', laneGoal, 'עוד לא נקבעו יעדים להיום')}
+      ${lane('lane-free', 'בלי יעד היום', laneFree, 'לכל הפרויקטים יש יעד', doneBlock)}
     </div>`;
 
   // שורות פרויקטים
