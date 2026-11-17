@@ -700,6 +700,13 @@
 .brand-mark.brand-mark-sm{font-size:20px;letter-spacing:.1em;}
 html[data-skin="ravenna"] .brand-band{display:none;}
 @media (max-width: 768px){ .brand-band{display:none;} }
+/* Lighter project cards (2026-11-17): no progress bar, one short stats line, thin top edge */
+.pc-stats{display:flex;gap:14px;font-size:13px;color:var(--text3);align-items:center;flex-wrap:wrap;}
+.pc-stats b{color:var(--text);font-weight:600;}
+.pc-stage{color:#fff;padding:1px 8px;border-radius:20px;font-size:11px;}
+.pc-ok{color:#4f7a46;font-weight:600;}
+.pc-late{color:var(--urgent);font-weight:600;}
+.proj-card:not([data-panel]){border-top-width:2px !important;}
 .logo-word{display:none;}
 /* ===== "רבנה" skin (2026-11-17) — html[data-skin="ravenna"], modelled on karinravenna.com:
    white, black type, thin condensed Open Sans, letter-spaced KARIN RAVENNA wordmark,
@@ -5270,6 +5277,17 @@ function projectCardHtml(p, _allFinish, inPanel) {
       }
       return `<span style="color:${color};font-size:12px;font-weight:600;">צפי סיום: ${label}${deadlineNote}</span>`;
     })() : '';
+    // Compact card (2026-11-17): one short on-time / late note instead of the long finish-date sentence.
+    const _estShort = (() => {
+      if (!_finishDate || !p.deadline || rem <= 0) return '';
+      const dl = new Date(p.deadline); dl.setHours(0,0,0,0);
+      const fin = new Date(_finishDate); fin.setHours(0,0,0,0);
+      const diff = Math.round((fin - dl) / 86400000);
+      const fs = _finishDate.toLocaleDateString('he-IL',{day:'numeric',month:'numeric'});
+      return diff <= 0
+        ? `<span class="pc-ok" title="צפי סיום ${fs}">✓ בזמן</span>`
+        : `<span class="pc-late" title="צפי סיום ${fs}">⚠ ${diff} ימים אחרי הדדליין</span>`;
+    })();
     const _ppStages = `      <div class="stage-row" style="margin-top:10px;">${stages}</div>`;
     const _ppCtrl = `      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:10px;padding:7px 10px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);">
         <div style="display:flex;align-items:center;gap:4px;">
@@ -5392,14 +5410,12 @@ function projectCardHtml(p, _allFinish, inPanel) {
           </div>
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
             ${remBadgeHtml(rem)}
-            <div style="display:flex;gap:10px;font-size:12px;color:var(--text3);align-items:center;flex-wrap:wrap;">
-              <span style="background:var(--s-${p.stage}-b,var(--border));color:#fff;padding:1px 8px;border-radius:20px;font-size:11px;">${STAGES[p.stage] || p.stage}</span>
-              <span>נערכו ${p.edited}/${p.total}</span>
-              <span style="color:var(--accent)">היום: ${et}</span>
-              ${gt ? `<span style="color:${et >= gt ? 'var(--accent)' : 'var(--text3)'}">יעד: ${et}/${gt}</span>` : ''}
-              <span>${pct}%</span>
-              ${p.deadline ? `<span style="color:var(--urgent);font-weight:500;">דדליין: ${new Date(p.deadline).toLocaleDateString('he-IL',{day:'numeric',month:'numeric'})}</span>` : ''}
-              ${_estHtml}
+            <div class="pc-stats">
+              ${stageFilter === 'edit' ? '' : `<span class="pc-stage" style="background:var(--s-${p.stage}-b,var(--border));">${STAGES[p.stage] || p.stage}</span>`}
+              <span>נערכו <b>${p.edited}/${p.total}</b></span>
+              ${et ? `<span>היום <b>${et}</b>${gt ? `/${gt}` : ''}</span>` : gt ? `<span>יעד היום <b>${gt}</b></span>` : ''}
+              ${p.deadline ? `<span>דדליין <b>${new Date(p.deadline).toLocaleDateString('he-IL',{day:'numeric',month:'numeric'})}</b></span>` : (_finishDate && rem > 0 ? `<span>צפי סיום <b>${_finishDate.toLocaleDateString('he-IL',{day:'numeric',month:'numeric'})}</b></span>` : '')}
+              ${_estShort}
             </div>
           </div>
         </div>
@@ -5408,7 +5424,6 @@ function projectCardHtml(p, _allFinish, inPanel) {
           ${inPanel ? '' : `<span style="font-size:11px;color:var(--text3);padding:4px 8px;cursor:pointer;" onclick="toggleExpand(${p.id})" title="פתח כאן ברשימה">${isExpanded ? '▲' : '▼'}</span>`}
         </div>
       </div>
-      <div class="prog-bar" style="margin-top:6px;"><div class="prog-fill ${fillCls}" style="width:${pct}%"></div></div>
       ${isExpanded ? _ppStages+_ppCtrl+_ppTimerEdit+_ppSessions+_ppQuick+_ppGoalBar+_ppSummary+_ppNotes+renderBillingSection(p) : ''}
     </div>`;
 }
