@@ -750,6 +750,19 @@ html[data-skin="ravenna"] .brand-band{display:none;}
 .bd-empty{font-size:12px;color:var(--text3);text-align:center;padding:8px;}
 .bd-foot{display:flex;gap:14px;margin-top:12px;}
 @media (max-width: 768px){ .bd-board{grid-template-columns:minmax(0,1fr);min-width:0;} }
+.bd-top{display:flex;align-items:center;gap:6px;}
+.bd-top .bd-name{flex:1;min-width:0;}
+.bd-days{font-size:11px;color:var(--text3);background:var(--surface2);border-radius:999px;padding:1px 7px;white-space:nowrap;}
+.bd-days.long{color:#9a4422;background:#f8e6da;}
+.bd-flag{border:none;background:none;cursor:pointer;font-size:13px;padding:0 2px;opacity:0;filter:grayscale(1);transition:opacity .15s;}
+.bd-card:hover .bd-flag, .proj-card:hover .bd-flag{opacity:.5;}
+.bd-flag:hover{opacity:1 !important;filter:none;}
+.bd-flag.on{opacity:1 !important;filter:none;}
+.bd-card.bd-urgent{border:2px solid #c62828;background:#fdecea;box-shadow:0 0 0 3px rgba(198,40,40,.12);}
+.bd-card.bd-urgent .bd-name{color:#b71c1c;}
+.proj-card.pc-urgent{border:2px solid #c62828 !important;border-top-width:3px !important;background:#fdecea !important;}
+html[data-skin="dark"] .bd-card.bd-urgent, html[data-skin="dark"] .proj-card.pc-urgent{background:#3d1f1d !important;}
+@media (hover: none){ .bd-flag{opacity:.5;} }
 .logo-word{display:none;}
 /* ===== "רבנה" skin (2026-11-17) — html[data-skin="ravenna"], modelled on karinravenna.com:
    white, black type, thin condensed Open Sans, letter-spaced KARIN RAVENNA wordmark,
@@ -1692,6 +1705,8 @@ function normalizeProject(x) {
   return {
     ...x,
     stage: STAGEMAP[x.stage]||x.stage||'send',
+    // No record of when an older project entered its stage: start counting from the first load (shown as "N+ ימים").
+    ...(!x.stageAt && !x.stageSeen ? { stageSeen: todayStr() } : {}),
     goalDaily: Number(x.goalDaily)||0,
     goalDone: Number(x.goalDone)||0,
     total: Number(x.total)||0,
@@ -5257,6 +5272,19 @@ function remLevel(p, finishDate) {
   const days = Math.round((dl - t0) / 86400000);
   return days < 0 ? 'late' : days <= 7 ? 'soon' : '';
 }
+function daysInStage(p) {
+  const base = p.stageAt || (p.stage === 'send' && p.date) || ((p.stage === 'billing' || p.stage === 'notes') && p.sentToClientDate) || null;
+  const d = base || p.stageSeen; if (!d) return null;
+  const n = Math.max(0, Math.round((new Date(todayStr() + 'T12:00:00') - new Date(String(d).slice(0, 10) + 'T12:00:00')) / 86400000));
+  return { n, atLeast: !base };
+}
+// Karin's own red flag (2026-11-17): stays until she removes it.
+function toggleUrgentFlag(id, ev) {
+  if (ev) ev.stopPropagation();
+  const p = state.projects.find(x => x.id === id); if (!p) return;
+  p.flagUrgent = !p.flagUrgent;
+  save(); renderProjects();
+}
 function boardCardHtml(p, fin) {
   const ddmm = d => new Date(d).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' });
   const rem = Math.max(0, (p.total || 0) - (p.edited || 0));
@@ -5266,17 +5294,18 @@ function boardCardHtml(p, fin) {
     const lvl = remLevel(p, fin[p.id]);
     meta = `נערכו <b>${p.edited||0}/${p.total||0}</b>${p.deadline ? ` · דדליין <b>${ddmm(p.deadline)}</b>` : ''}${lvl === 'late' && rem > 0 ? ' · <span class="pc-late">⚠ באיחור</span>' : ''}`;
   } else if (p.stage === 'send' || p.stage === 'wait') {
-    const since = p.stageAt ? Math.max(0, Math.round((new Date(todayStr() + 'T12:00:00') - new Date(p.stageAt + 'T12:00:00')) / 86400000)) : null;
-    meta = `${p.total ? `<b>${p.total}</b> תמונות` : ''}${since !== null ? `${p.total ? ' · ' : ''}${p.stage === 'wait' ? 'מחכה' : 'כאן'} <b>${since}</b> ימים` : ''}`;
+    meta = p.total ? `<b>${p.total}</b> תמונות` : '';
   } else if (p.stage === 'deliver' || p.stage === 'notes') {
     meta = p.deadline ? `דדליין <b>${ddmm(p.deadline)}</b>` : '';
   } else if (p.stage === 'billing') {
     meta = billingBadgeHtml(p) || '';
   }
-  return `<div class="bd-card" draggable="true" ondragstart="boardDragStart(event,${p.id})" ondragend="this.classList.remove('dragging')" onclick="openProjectPanel('${p.id}')">
+  const dis = daysInStage(p);
+  const daysHtml = dis && !(dis.atLeast && dis.n === 0) ? `<span class="bd-days${dis.n >= 14 ? ' long' : ''}" title="${dis.atLeast ? 'נספר מהיום שהאפליקציה התחילה לעקוב, אז זה לפחות' : 'ימים בשלב הזה'}">${dis.n === 0 ? 'מהיום' : dis.n === 1 ? (dis.atLeast ? 'לפחות יום' : 'יום') : `${dis.atLeast ? 'לפחות ' : ''}${dis.n} ימים`}</span>` : '';
+  return `<div class="bd-card${p.flagUrgent ? ' bd-urgent' : ''}" draggable="true" ondragstart="boardDragStart(event,${p.id})" ondragend="this.classList.remove('dragging')" onclick="openProjectPanel('${p.id}')">
     ${side}
     <div style="min-width:0;flex:1;">
-      <div class="bd-name">${p.client || 'ללא שם'}</div>
+      <div class="bd-top"><div class="bd-name">${p.flagUrgent ? '🚩 ' : ''}${p.client || 'ללא שם'}</div>${daysHtml}<button class="bd-flag${p.flagUrgent ? ' on' : ''}" onclick="toggleUrgentFlag(${p.id},event)" title="${p.flagUrgent ? 'להסיר סימון דחוף' : 'לסמן כדחוף'}">🚩</button></div>
       ${p.title ? `<div class="bd-title">${p.title}</div>` : ''}
       ${meta ? `<div class="bd-meta">${meta}</div>` : ''}
     </div>
@@ -5285,6 +5314,7 @@ function boardCardHtml(p, fin) {
 function projectBoardHtml(list) {
   const fin = computeAllFinishDates();
   const order = (a, b) => {
+    if (!!a.flagUrgent !== !!b.flagUrgent) return a.flagUrgent ? -1 : 1;
     if (a.stage === 'edit') { const r = l => ({ late: 0, soon: 1 })[remLevel(l, fin[l.id])] ?? 2; const d = r(a) - r(b); if (d) return d; }
     return (a.deadline || '9999').localeCompare(b.deadline || '9999');
   };
@@ -5544,7 +5574,7 @@ function projectCardHtml(p, _allFinish, inPanel) {
       <div class="pp-pane" data-ppane="client" ${_hid('client')}><!--pp-client--></div>
     </div>`;
     }
-    return `<div class="proj-card s-${p.stage || 'send'}${isExpanded && !inPanel ? ' pc-open' : ''}" ${inPanel ? 'data-panel="1"' : `draggable="true" data-id="${p.id}"
+    return `<div class="proj-card s-${p.stage || 'send'}${isExpanded && !inPanel ? ' pc-open' : ''}${p.flagUrgent ? ' pc-urgent' : ''}" ${inPanel ? 'data-panel="1"' : `draggable="true" data-id="${p.id}"
         ondragstart="dragStart(event,${p.id})" ondragend="dragEnd(event)" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event,${p.id})"`}>
       <div class="proj-compact" style="display:flex;align-items:center;gap:14px;">
         ${inPanel ? '' : `<div class="drag-handle" title="גרור לסידור" onclick="event.stopPropagation()">⠿</div>`}
@@ -5558,7 +5588,8 @@ function projectCardHtml(p, _allFinish, inPanel) {
             })())}
         <div style="flex:1;min-width:0;cursor:pointer;" onclick="${inPanel ? '' : `openProjectPanel('${p.id}')`}">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
-            <span class="proj-name" style="font-size:14px;">${p.client} — ${p.title}</span>
+            <span class="proj-name" style="font-size:14px;">${p.flagUrgent ? '🚩 ' : ''}${p.client} — ${p.title}</span>
+            ${inPanel ? '' : `<button class="bd-flag${p.flagUrgent ? ' on' : ''}" onclick="toggleUrgentFlag(${p.id},event)" title="${p.flagUrgent ? 'להסיר סימון דחוף' : 'לסמן כדחוף'}">🚩</button>`}
             ${urgCnt ? `<span class="badge b-urgent">${urgCnt} דחוף</span>` : ''}
             ${billingBadgeHtml(p)}
           </div>
