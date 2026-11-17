@@ -797,6 +797,7 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
 .today-sofar .ts-nums div{display:flex;flex-direction:column;}
 .today-sofar .ts-nums b{font-size:20px;color:var(--text);}
 .today-sofar .ts-nums span{font-size:12px;color:var(--text3);}
+.goal-tile .gt-finish{width:auto;padding:0 10px;font-size:12px;font-weight:600;white-space:nowrap;}
 /* Lane colours (2026-11-17): each lane has its own tint so it's clear at a
    glance which group a tile belongs to; tiles carry the lane colour too. */
 .goal-lanes{--ln-bg:#efe7e1;--ln-tile:#fff;--ln-edge:#cbbcb1;--ln-head:var(--text);}
@@ -3027,6 +3028,7 @@ function renderReport(opts = {}) {
           <button class="df-btn plus" onclick="bumpEdited(${p.id},1)" aria-label="הוסף תמונה">+1</button>
           <button class="df-btn plus" onclick="bumpEdited(${p.id},5)" aria-label="הוסף 5 תמונות">+5</button>
           <button class="df-timer ${running ? 'running' : ''}" onclick="toggleTimer(${p.id})" title="${running ? 'עצירת טיימר' : 'הפעלת טיימר'}" aria-label="${running ? 'עצירת טיימר' : 'הפעלת טיימר'}">${running ? '⏹' : '▶'} <span data-timer="${p.id}">${running ? fmtTime(runSecs) : ''}</span></button>
+          ${rem > 0 && gt !== et + rem ? `<button class="df-btn gt-finish" onclick="updateGoalTarget(${p.id},${et + rem})" title="קובע את היעד של היום לכל מה שנשאר בפרויקט (${rem} תמונות)">לסיים היום</button>` : ''}
         </div>
         <div class="gt-inputs">
           ${goalCtrl}
