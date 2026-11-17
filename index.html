@@ -344,6 +344,18 @@
   .rem-badge.rem-high   { background:var(--high);   color:#fff; }
   .rem-badge.rem-ok     { background:var(--accent);  color:#fff; }
   .rem-badge.rem-calm   { background:#5f7d55; color:#fff; }
+  /* Option ג׳ (2026-11-17): soft square tile, light tint + dark text, traffic-light colours */
+  .rem-badge.rem-tile { flex-direction:column; justify-content:center; gap:3px; width:64px; height:58px; padding:0; border-radius:10px; flex-shrink:0; }
+  .rem-badge.rem-tile .rem-num { font-size:24px; font-weight:600; line-height:1; }
+  .rem-badge.rem-tile .rem-label { font-size:11px; font-weight:500; }
+  .rem-badge.rem-tile.rem-calm   { background:#e7eee3; color:#3d5a35; } .rem-tile.rem-calm .rem-label { color:#4f6e46; }
+  .rem-badge.rem-tile.rem-high   { background:#f8e6da; color:#9a4422; } .rem-tile.rem-high .rem-label { color:#b5542f; }
+  .rem-badge.rem-tile.rem-urgent { background:#f6dedc; color:#8f1f18; } .rem-tile.rem-urgent .rem-label { color:#b3261e; }
+  .rem-badge.rem-tile.rem-done   { background:#e7eee3; color:#3d5a35; }
+  html[data-skin="dark"] .rem-badge.rem-tile.rem-calm   { background:#26302a; color:#a9c79b; }
+  html[data-skin="dark"] .rem-badge.rem-tile.rem-high   { background:#3b2620; color:#f0a07f; }
+  html[data-skin="dark"] .rem-badge.rem-tile.rem-urgent { background:#3d1f1d; color:#f19a93; }
+  html[data-skin="dark"] .rem-tile .rem-label { color:inherit !important; opacity:.85; }
   .rem-badge.rem-done   { background:var(--accent-light); color:var(--accent); }
   .rem-badge.rem-done .rem-num { font-size:14px; }
 
@@ -1622,9 +1634,9 @@ let blockCloudLoad = false;
 // Badge colour = urgency (2026-11-17, Karin's choice), not photo count:
 // 'late' red = expected to finish after the deadline, 'soon' orange = deadline within 7 days, else neutral.
 function remBadgeHtml(rem, level) {
-  if (rem <= 0) return `<span class="rem-badge rem-done"><span class="rem-num">✓</span><span class="rem-label">הושלם</span></span>`;
+  if (rem <= 0) return `<span class="rem-badge rem-tile rem-done"><span class="rem-num">✓</span><span class="rem-label">הושלם</span></span>`;
   const cls = level === 'late' ? 'rem-urgent' : level === 'soon' ? 'rem-high' : 'rem-calm';
-  return `<span class="rem-badge ${cls}"><span class="rem-num">${rem}</span><span class="rem-label">נשאר לעריכה</span></span>`;
+  return `<span class="rem-badge rem-tile ${cls}" title="נשארו ${rem} תמונות לעריכה"><span class="rem-num">${rem}</span><span class="rem-label">לעריכה</span></span>`;
 }
 
 function fmtTime(s) {
@@ -5416,16 +5428,9 @@ function projectCardHtml(p, _allFinish, inPanel) {
     }
     return `<div class="proj-card s-${p.stage || 'send'}" ${inPanel ? 'data-panel="1"' : `draggable="true" data-id="${p.id}"
         ondragstart="dragStart(event,${p.id})" ondragend="dragEnd(event)" ondragover="dragOver(event)" ondragleave="dragLeave(event)" ondrop="dragDrop(event,${p.id})"`}>
-      <div class="proj-compact" style="display:flex;align-items:center;gap:10px;">
+      <div class="proj-compact" style="display:flex;align-items:center;gap:14px;">
         ${inPanel ? '' : `<div class="drag-handle" title="גרור לסידור" onclick="event.stopPropagation()">⠿</div>`}
-        <div style="flex:1;min-width:0;cursor:pointer;" onclick="${inPanel ? '' : `openProjectPanel('${p.id}')`}">
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
-            <span class="proj-name" style="font-size:14px;">${p.client} — ${p.title}</span>
-            ${urgCnt ? `<span class="badge b-urgent">${urgCnt} דחוף</span>` : ''}
-            ${billingBadgeHtml(p)}
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-            ${remBadgeHtml(rem, (() => {
+        ${remBadgeHtml(rem, (() => {
               if (!p.deadline) return '';
               const dl = new Date(p.deadline); dl.setHours(0,0,0,0);
               if (_finishDate) { const fin = new Date(_finishDate); fin.setHours(0,0,0,0); if (fin > dl) return 'late'; }
@@ -5433,6 +5438,13 @@ function projectCardHtml(p, _allFinish, inPanel) {
               const days = Math.round((dl - t0) / 86400000);
               return days < 0 ? 'late' : days <= 7 ? 'soon' : '';
             })())}
+        <div style="flex:1;min-width:0;cursor:pointer;" onclick="${inPanel ? '' : `openProjectPanel('${p.id}')`}">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+            <span class="proj-name" style="font-size:14px;">${p.client} — ${p.title}</span>
+            ${urgCnt ? `<span class="badge b-urgent">${urgCnt} דחוף</span>` : ''}
+            ${billingBadgeHtml(p)}
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
             <div class="pc-stats">
               ${stageFilter === 'edit' ? '' : `<span class="pc-stage" style="background:var(--s-${p.stage}-b,var(--border));">${STAGES[p.stage] || p.stage}</span>`}
               <span>נערכו <b>${p.edited}/${p.total}</b></span>
