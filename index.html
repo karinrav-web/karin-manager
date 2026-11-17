@@ -751,6 +751,15 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
 .goal-bar{height:4px;border-radius:4px;background:var(--border);margin-top:6px;overflow:hidden;max-width:220px;}
 .goal-bar span{display:block;height:100%;background:var(--accent);border-radius:4px;}
 .goal-unplanned{font-size:10px;font-weight:500;padding:1px 7px;border-radius:10px;background:var(--surface2);color:var(--text3);border:1px solid var(--border2);vertical-align:middle;}
+/* The היום page now scrolls (today + planning on one page), so it no longer
+   fills exactly one viewport: the morning grid sizes to its panels. */
+#page-morning.active { display:block !important; height:auto !important; overflow:visible !important; }
+#page-morning .morning-grid { flex:none; margin-top:4px; }
+#page-morning .morning-col { overflow:visible; }
+/* היום page / כספים business cards (2026-11-17) */
+.biz-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-bottom:18px;}
+.biz-cards .card{margin:0;}
+.biz-cards.btab-off{display:none!important;}
 </style>
 </head>
 <body>
@@ -782,10 +791,9 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
       <div class="logo-name">קרין רבנה</div>
       <div class="logo-sub">צלמת אדריכלות ועיצוב פנים</div>
     </div>
-    <div class="nav-item active" id="nav-morning" onclick="showPage('morning',this)"><span class="nav-icon"><span class="material-symbols-outlined">wb_sunny</span></span><span>בוקר טוב</span></div>
+    <div class="nav-item active" id="nav-morning" onclick="showPage('morning',this)"><span class="nav-icon"><span class="material-symbols-outlined">wb_sunny</span></span><span>היום</span></div>
     <div class="nav-item" id="nav-projects" onclick="openProjectsDefault(this)"><span class="nav-icon"><span class="material-symbols-outlined">camera_alt</span></span><span>פרויקטים</span></div>
     <div class="nav-item" id="nav-clients" onclick="showPage('clients',this)"><span class="nav-icon"><span class="material-symbols-outlined">group</span></span><span>לקוחות</span></div>
-    <div class="nav-item" id="nav-report" onclick="showPage('report',this)"><span class="nav-icon"><span class="material-symbols-outlined">bar_chart</span></span><span>לוח עבודה</span></div>
     <div class="nav-item" id="nav-billing" onclick="showPage('billing',this)"><span class="nav-icon"><span class="material-symbols-outlined">payments</span></span><span>כספים</span></div>
     <a class="nav-item" id="nav-scheduler" href="https://photo-scheduler-wine.vercel.app" target="_blank" rel="noopener" style="text-decoration:none"><span class="nav-icon"><span class="material-symbols-outlined">open_in_new</span></span><span>מתזמן צילומים</span></a>
     <div class="nav-item" id="nav-settings" onclick="showPage('settings',this)" style="margin-top:auto"><span class="nav-icon"><span class="material-symbols-outlined">settings</span></span><span>הגדרות</span></div>
@@ -825,7 +833,7 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
         <div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#e8f4ee;"><span class="material-symbols-outlined" style="color:#2D6A4F;">check_circle</span></div><div><div class="metric-val" id="m-edited-today">0</div><div class="metric-label" id="m-edited-label">סה״כ נערכו היום</div><div class="metric-sub" id="m-edited-sub"></div></div></div>
         <div class="metric-card metric-card-icon" style="border:2px dashed var(--border2);"><div class="metric-icon-circle" style="background:#fdf0ec;"><span class="material-symbols-outlined" style="color:var(--accent);">flag</span></div><div><div class="metric-val" id="m-goal-total">0</div><div class="metric-label">יעד יומי</div></div></div>
       </div>
-      <div id="daily-focus" style="margin-bottom:10px;"></div>
+      <div id="report-top" style="margin-bottom:14px;"></div>
       <div class="morning-grid">
         <div class="morning-col" id="mcol-left"
              ondragover="colDragOver(event,this)" ondrop="colDrop(event,this)" ondragleave="colDragLeave(event,this)">
@@ -870,40 +878,10 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
             <div id="urgency-list"><p style="font-size:13px;color:var(--text3)">אין פרויקטים עם דדליין</p></div>
             <div class="panel-resize-handle" onmousedown="startPanelResize(event,this)">— — —</div>
           </div>
-          <div class="urgency-card morning-panel" id="panel-billing" draggable="true"
-               ondragstart="panelDragStart(event,this)" ondragend="panelDragEnd()" style="min-height:80px">
-            <div class="panel-handle">⠿⠿⠿</div>
-            <div class="card-title">גביה פתוחה</div>
-            <div id="billing-summary-morning"><p style="font-size:13px;color:var(--text3)">אין חובות פתוחים</p></div>
-            <div class="panel-resize-handle" onmousedown="startPanelResize(event,this)">— — —</div>
-          </div>
-          <div class="urgency-card morning-panel" id="panel-shoot-stats" draggable="true"
-               ondragstart="panelDragStart(event,this)" ondragend="panelDragEnd()" style="min-height:80px">
-            <div class="panel-handle">⠿⠿⠿</div>
-            <div class="card-title">ימי צילום השנה</div>
-            <div id="shoot-year-morning"></div>
-            <div class="panel-resize-handle" onmousedown="startPanelResize(event,this)">— — —</div>
-          </div>
-          <div class="urgency-card morning-panel" id="panel-annual-goals" draggable="true"
-               ondragstart="panelDragStart(event,this)" ondragend="panelDragEnd()" style="min-height:80px">
-            <div class="panel-handle">⠿⠿⠿</div>
-            <div class="card-title">יעדים שנתיים</div>
-            <div id="annual-goals-morning"></div>
-            <div class="panel-resize-handle" onmousedown="startPanelResize(event,this)">— — —</div>
-          </div>
         </div>
       </div>
-    </div>
-
-    <!-- WORK BOARD (daily report metrics/goals + the monthly work plan + the edit/shoot-day calendar) -->
-    <div id="page-report" class="page">
-      <div class="page-header">
-        <div>
-          <div class="page-title">לוח עבודה</div>
-          <div class="page-date" id="report-date"></div>
-        </div>
-      </div>
-      <div id="report-top"></div>
+      <div id="report-bottom" style="margin-top:16px;"></div>
+      <div class="page-title" style="margin:28px 0 12px;">תכנון</div>
       <div class="card" style="margin-bottom:16px;">
         <div class="card-title">תכנון חודשי — כמה תמונות לערוך בכל פרויקט, בכל יום עבודה</div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
@@ -918,7 +896,7 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
           <div><span style="display:inline-block;width:12px;height:12px;background:var(--surface);border:2px solid var(--urgent);border-radius:3px;margin-left:4px;vertical-align:middle;"></span>
           התא של תאריך הדדליין של הפרויקט</div>
           <div><span style="display:inline-block;width:12px;height:12px;background:#7c3aed;border-radius:3px;margin-left:4px;vertical-align:middle;"></span>
-          יום צילום (מסונכרן מלוח הצילומים למטה)</div>
+          יום צילום (מסונכרן מהיומן)</div>
         </div>
       </div>
       <div class="card" style="margin-bottom:16px;">
@@ -938,12 +916,9 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
         </div>
         <div id="cal-summary" style="margin-top:12px;font-size:13px;color:var(--text2);"></div>
       </div>
-      <div class="card" style="margin-bottom:16px;">
-        <div class="card-title">ימי צילום השנה</div>
-        <div id="shoot-year-summary" style="font-size:13px;color:var(--text2);"></div>
-      </div>
-      <div id="report-bottom"></div>
+      <div id="report-history"></div>
     </div>
+
 
     <!-- EXPENSES -->
     <!-- SCHEDULER -->
@@ -1114,6 +1089,11 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
         <button class="billing-tab" data-tab="credits" onclick="setBillingTab('credits')">זיכויים</button>
       </div>
       <div class="billing-summary" id="billing-summary" data-btab="overview"></div>
+      <div class="biz-cards" data-btab="overview">
+        <div class="card"><div class="card-title">יעדים שנתיים</div><div id="annual-goals-morning"></div></div>
+        <div class="card"><div class="card-title">גביה פתוחה</div><div id="billing-summary-morning"><p style="font-size:13px;color:var(--text3)">אין חובות פתוחים</p></div></div>
+        <div class="card"><div class="card-title">ימי צילום השנה</div><div id="shoot-year-morning"></div></div>
+      </div>
       <div class="card" data-btab="credits" style="margin-bottom:18px;border-color:#c4b5fd;">
         <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
           <span>💜 זיכויים ללקוחות</span>
@@ -1192,9 +1172,8 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
 </aside>
 
 <nav class="mobile-nav">
-  <button class="mobile-nav-item active" id="mnav-morning" onclick="showPageMobile('morning',this)"><span class="mobile-nav-icon">☀</span>בוקר טוב</button>
+  <button class="mobile-nav-item active" id="mnav-morning" onclick="showPageMobile('morning',this)"><span class="mobile-nav-icon">☀</span>היום</button>
   <button class="mobile-nav-item" id="mnav-projects" onclick="openProjectsDefaultMobile(this)"><span class="mobile-nav-icon">📁</span>פרויקטים</button>
-  <button class="mobile-nav-item" id="mnav-report" onclick="showPageMobile('report',this)"><span class="mobile-nav-icon">📊</span>תכנון</button>
   <button class="mobile-nav-item" id="mnav-billing" onclick="showPageMobile('billing',this)"><span class="mobile-nav-icon">💰</span>כספים</button>
   <button class="mobile-nav-item" id="mnav-clients" onclick="showPageMobile('clients',this)"><span class="mobile-nav-icon">👥</span>לקוחות</button>
   <button class="mobile-nav-item" id="mnav-settings" onclick="showPageMobile('settings',this)"><span class="mobile-nav-icon">⚙</span>הגדרות</button>
@@ -1711,17 +1690,19 @@ function computeAllFinishDates() {
   return finishDates;
 }
 
-function renderDailyFocus() {
-  const el = document.getElementById('daily-focus'); if (!el) return;
+// Today's suggested allocation (moved out of the old morning "daily focus"
+// card, 2026-11-17): which projects to edit today and how many photos, plus a
+// headline. Shown inside the single "יעדי עריכה להיום" list on the היום page.
+function computeTodayFocus() {
   const workDays = state.settings.workDays || [0,1,2,3,4];
   const today = new Date(); today.setHours(0,0,0,0);
-  if (!workDays.includes(today.getDay())) { el.innerHTML = ''; return; }
-
   const dailyCap = state.settings.photosPerDay || 20;
+  const EMPTY = { byId: {}, headline: '', explanation: '', dailyCap };
+  if (!workDays.includes(today.getDay())) return EMPTY;
   const active = state.projects.filter(p =>
     p.stage === 'edit' && (p.total||0) > (p.edited||0)
   );
-  if (!active.length) { el.innerHTML = ''; return; }
+  if (!active.length) return EMPTY;
 
   const finishMap = computeAllFinishDates();
 
@@ -1792,53 +1773,16 @@ function renderDailyFocus() {
     explanation = `פזרי את ${dailyCap} התמונות היומיות בין ${active.length} הפרויקטים`;
   }
 
-  // Projects already worked on today (or with a running timer) stay on the list even if the allocation skipped them
-  const tdy = todayStr();
-  projs.forEach(p => {
-    if (alloc.find(a => a.p.id === p.id)) return;
-    const doneToday = p.editedTodayDate === tdy ? (p.editedToday||0) : 0;
-    if (doneToday > 0 || activeTimer.projId === p.id) alloc.push({p, photos: 0, tag: 'extra'});
-  });
+  const byId = {};
+  alloc.forEach(({p, photos, tag}) => { byId[p.id] = { photos, tag, daysLeft: p.daysLeft, rem: p.rem }; });
+  return { byId, headline, explanation, dailyCap };
+}
 
-  const rows = alloc.map(({p, photos, tag}) => {
-    const icon = tag==='critical' ? '🔥' : tag==='quick' ? '✨' : '·';
-    const color = tag==='critical' ? '#dc2626' : tag==='quick' ? '#0891b2' : 'var(--text)';
-    const note = tag==='critical' && p.daysLeft !== null
-      ? `<span style="font-size:11px;color:#dc2626;"> (דדליין ${p.daysLeft<0?'פג':'בעוד '+p.daysLeft+' י׳'})</span>`
-      : tag==='quick'
-      ? `<span style="font-size:11px;color:#0891b2;"> (נשארו ${p.rem} — אפשר לסיים!)</span>`
-      : '';
-    const doneToday = p.editedTodayDate === tdy ? (p.editedToday||0) : 0;
-    const goal = p.goalDaily || 0;
-    const running = activeTimer.projId === p.id;
-    const runSecs = running ? Math.floor((Date.now() - activeTimer.startTs) / 1000) : 0;
-    const goalHtml = goal
-      ? `<span class="df-goal ${doneToday >= goal ? 'done' : ''}">${doneToday}/${goal}${doneToday >= goal ? ' ✓' : ''}</span>`
-      : (photos > 0
-          ? `${doneToday ? `<span class="df-goal">${doneToday}</span>` : ''}<button class="df-set-goal" onclick="updateGoalTarget(${p.id},${photos});renderDailyFocus();" title="קבעי את ההמלצה כיעד היום">יעד ${photos}?</button>`
-          : `<span class="df-goal">${doneToday}</span>`);
-    const _pct = p.total ? Math.min(100, Math.round((p.edited||0) / p.total * 100)) : 0;
-    return `<div class="df-row">
-      <span class="df-name-wrap"><span class="df-ring" style="--p:${_pct}%" title="${p.edited||0} מתוך ${p.total||0} תמונות נערכו"><i>${_pct}%</i></span>
-      <span class="proj-link df-name" onclick="openProjectPanel('${p.id}')" style="color:${color};">${icon} ${p.client}${p.title?' — '+p.title:''}${note}</span></span>
-      <div class="df-actions">
-        ${goalHtml}
-        <button class="df-btn" onclick="bumpEdited(${p.id},-1)" aria-label="הפחת תמונה">−</button>
-        <button class="df-btn plus" onclick="bumpEdited(${p.id},1)" aria-label="הוסף תמונה">+1</button>
-        <button class="df-btn plus" onclick="bumpEdited(${p.id},5)" aria-label="הוסף 5 תמונות">+5</button>
-        <button class="df-timer ${running ? 'running' : ''}" onclick="toggleTimer(${p.id})" title="${running ? 'עצירת טיימר' : 'הפעלת טיימר'}">${running ? '⏹' : '▶'} <span data-timer="${p.id}">${running ? fmtTime(runSecs) : ''}</span></button>
-      </div>
-    </div>`;
-  }).join('');
-
-  el.innerHTML = `<div style="background:var(--surface);border:1.5px solid var(--border2);border-radius:var(--radius);padding:14px 16px;margin-bottom:2px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-      <div style="font-size:15px;font-weight:700;color:var(--text);">${headline}</div>
-      <span style="font-size:11px;color:var(--text3);">סה״כ ${dailyCap} תמ׳/יום</span>
-    </div>
-    <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">${explanation}</div>
-    ${rows}
-  </div>`;
+// The old morning card is gone; everything that used to refresh it now
+// refreshes the merged today list.
+function renderDailyFocus() {
+  const el = document.getElementById('daily-focus'); if (el) el.innerHTML = '';
+  renderReport();
 }
 
 function renderUrgency(){
@@ -2502,17 +2446,20 @@ function load() {
 }
 
 function showPage(p, el) {
+  // the work board ("לוח עבודה") is now part of the היום page (2026-11-17)
+  if (p === 'report') { p = 'morning'; el = document.getElementById('nav-morning') || el; }
   document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
   document.getElementById('page-'+p).classList.add('active');
   el.classList.add('active');
   document.querySelector('.main').classList.toggle('dashboard-mode', p==='morning');
-  if (p==='report') { renderReport(); renderWorkPlan(); renderCalendar(); }
+  if (p==='morning') { renderReport(); renderWorkPlan(); renderCalendar(); }
   if (p==='billing') renderBillingPage();
   if (p==='projects') renderProjects();
   if (p==='clients') renderClientCards();
 }
 function showPageMobile(p, el) {
+  if (p === 'report') { p = 'morning'; el = document.getElementById('mnav-morning') || el; }
   document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));
   document.querySelectorAll('.mobile-nav-item').forEach(e=>e.classList.remove('active'));
   document.getElementById('page-'+p).classList.add('active');
@@ -2520,7 +2467,7 @@ function showPageMobile(p, el) {
   document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
   const dn = document.getElementById('nav-'+p); if(dn) dn.classList.add('active');
   document.querySelector('.main').classList.toggle('dashboard-mode', p==='morning');
-  if (p==='report') { renderReport(); renderWorkPlan(); renderCalendar(); }
+  if (p==='morning') { renderReport(); renderWorkPlan(); renderCalendar(); }
   if (p==='billing') renderBillingPage();
   if (p==='projects') renderProjects();
   if (p==='clients') renderClientCards();
@@ -2625,7 +2572,7 @@ function restoreTimer() {
       const el = document.getElementById('ptv-'+projId);
       if (el) el.textContent = fmtTime(Math.floor((Date.now()-activeTimer.startTs)/1000));
       document.querySelectorAll('[data-timer="'+projId+'"]').forEach(x => x.textContent = fmtTime(Math.floor((Date.now()-activeTimer.startTs)/1000)));
-      if (document.getElementById('page-report')?.classList.contains('active')) renderReport();
+      if (document.getElementById('page-morning')?.classList.contains('active')) renderReport({bottomOnly:true});
     }, 1000);
     const btn = document.getElementById('ptb-'+projId);
     const val = document.getElementById('ptv-'+projId);
@@ -2934,7 +2881,7 @@ function goalDrop(e, targetId) {
   dragGoalId = null; save(); renderReport();
 }
 
-function renderReport() {
+function renderReport(opts = {}) {
   const today = todayStr();
   const topEl = document.getElementById('report-top');
   const bottomEl = document.getElementById('report-bottom');
@@ -2995,8 +2942,16 @@ function renderReport() {
       return (a.deadline||'9999-99-99').localeCompare(b.deadline||'9999-99-99');
     });
 
+  const focus = computeTodayFocus();
   const goalRow = (p, draggable) => {
     const rem = Math.max(0, (p.total||0) - (p.edited||0));
+    const fc = focus.byId[p.id];
+    const fIcon = fc ? (fc.tag==='critical' ? '🔥 ' : fc.tag==='quick' ? '✨ ' : '') : '';
+    const fNote = !fc ? '' : fc.tag==='critical' && fc.daysLeft !== null && fc.daysLeft !== undefined
+      ? ` <span style="font-size:11px;color:#dc2626;">(דדליין ${fc.daysLeft<0?'פג':'בעוד '+fc.daysLeft+' י׳'})</span>`
+      : fc.tag==='quick' ? ` <span style="font-size:11px;color:#0891b2;">(אפשר לסיים היום!)</span>` : '';
+    const running = activeTimer.projId === p.id;
+    const runSecs = running ? Math.floor((Date.now() - activeTimer.startTs) / 1000) : 0;
     const gt = p.goalDaily || 0;
     const et = p.editedToday || 0;
     const leftToGoal = gt > 0 ? Math.max(0, gt - et) : null;
@@ -3009,13 +2964,19 @@ function renderReport() {
     return `<div class="report-proj-row goal-row" ${dragAttrs} style="align-items:center;justify-content:space-between;gap:10px;">
       ${draggable ? `<div class="drag-handle" title="גרור לסידור עדיפויות">⠿</div>` : ''}
       <div style="min-width:0;flex:1;">
-        <div class="report-proj-name proj-link" onclick="openProjectPanel('${p.id}')">${p.client||'ללא שם'}${p.title?' — '+p.title:''}${unplanned ? ' <span class="goal-unplanned">לא מתוכנן</span>' : ''}</div>
+        <div class="report-proj-name proj-link" onclick="openProjectPanel('${p.id}')">${fIcon}${p.client||'ללא שם'}${p.title?' — '+p.title:''}${unplanned ? ' <span class="goal-unplanned">לא מתוכנן</span>' : ''}${fNote}</div>
         <div style="font-size:11px;color:var(--text3);margin-top:2px;">
           נשארו ${rem} בסה״כ${p.deadline?` · דדליין ${new Date(p.deadline).toLocaleDateString('he-IL')}`:''}
         </div>
         ${bar}
       </div>
-      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;">
+        <div class="df-actions" style="gap:4px;">
+          <button class="df-btn" onclick="bumpEdited(${p.id},-1)" aria-label="הפחת תמונה">−</button>
+          <button class="df-btn plus" onclick="bumpEdited(${p.id},1)" aria-label="הוסף תמונה">+1</button>
+          <button class="df-btn plus" onclick="bumpEdited(${p.id},5)" aria-label="הוסף 5 תמונות">+5</button>
+          <button class="df-timer ${running ? 'running' : ''}" onclick="toggleTimer(${p.id})" title="${running ? 'עצירת טיימר' : 'הפעלת טיימר'}">${running ? '⏹' : '▶'} <span data-timer="${p.id}">${running ? fmtTime(runSecs) : ''}</span></button>
+        </div>
         <div style="display:flex;align-items:center;gap:3px;">
           <span style="font-size:11px;color:var(--text3);">היום</span>
           <input type="number" value="${et}" min="0" onchange="updateEditedToday(${p.id},this.value)"
@@ -3023,6 +2984,7 @@ function renderReport() {
         </div>
         <div style="display:flex;align-items:center;gap:3px;">
           <span style="font-size:11px;color:var(--accent);">יעד</span>
+          ${gt === 0 && fc && fc.photos > 0 ? `<button class="df-set-goal" onclick="updateGoalTarget(${p.id},${fc.photos})" title="ההמלצה להיום לפי הדדליינים וכמה נשאר">${fc.photos}?</button>` : ''}
           <input type="number" value="${gt||''}" min="0" placeholder="—" onchange="updateGoalTarget(${p.id},this.value)"
             style="width:40px;border:1px solid var(--accent);border-radius:4px;background:var(--accent-light);font-size:13px;font-weight:600;color:var(--accent);font-family:'Rubik',sans-serif;text-align:center;padding:2px 4px;outline:none;" />
         </div>
@@ -3060,27 +3022,20 @@ function renderReport() {
   // re-renders every second; keeping the work-plan grid out of that path
   // matters more, but there's no reason to also re-render the goal inputs
   // here on every tick either
-  topEl.innerHTML = `
-    <div class="report-metrics">
-      <div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#fdf0ec;"><span class="material-symbols-outlined" style="color:var(--accent);">camera_alt</span></div><div><div class="metric-val">${mProjects}</div><div class="metric-label">פרויקטים פעילים</div></div></div>
-      <div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#fdf0ec;"><span class="material-symbols-outlined" style="color:var(--accent);">photo_library</span></div><div><div class="metric-val">${mRemaining}</div><div class="metric-label">תמונות לעריכה</div></div></div>
-      <div class="metric-card metric-card-icon"><div class="metric-icon-circle" style="background:#e8f4ee;"><span class="material-symbols-outlined" style="color:#2D6A4F;">check_circle</span></div><div><div class="metric-val">${mGoalMetric.edited}</div><div class="metric-label">סה״כ נערכו היום</div>${mGoalMetric.editedSub ? `<div class="metric-sub">${mGoalMetric.editedSub}</div>` : ''}</div></div>
-      <div class="metric-card metric-card-icon" style="border:2px dashed var(--border2);"><div class="metric-icon-circle" style="background:#fdf0ec;"><span class="material-symbols-outlined" style="color:var(--accent);">flag</span></div><div><div class="metric-val">${mGoalMetric.goal}</div><div class="metric-label">יעד יומי</div></div></div>
-    </div>
-    ${editHistoryHtml()}
-    <div class="report-2col">
+  if (!opts.bottomOnly) {
+    topEl.innerHTML = `
       <div class="card">
         <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
           <span>🎯 יעדי עריכה להיום</span>
+          ${focus.headline ? `<span style="font-size:11px;color:var(--text3);font-weight:400;">${focus.dailyCap} תמ׳ ליום</span>` : ''}
           ${new Date().getHours() >= 16 && goalLeftovers().length ? `<button class="panel-link-btn" onclick="carryGoalsToNextDay()" title="מוסיף את מה שלא נערך היום ללוח העבודה של יום העבודה הבא">להעביר את מה שנשאר למחר ←</button>` : ''}
         </div>
+        ${focus.headline ? `<div style="font-size:13px;margin:-2px 0 10px;"><strong>${focus.headline}</strong> <span style="color:var(--text2);">· ${focus.explanation}</span></div>` : ''}
         ${goalRows}
-      </div>
-      <div class="card">
-        <div class="card-title">משימות פתוחות</div>
-        ${buildTasksHtml()}
-      </div>
-    </div>`;
+      </div>`;
+    const histEl = document.getElementById('report-history');
+    if (histEl) histEl.innerHTML = editHistoryHtml();
+  }
 
   bottomEl.innerHTML = `
     <div class="report-grid">
@@ -4926,7 +4881,7 @@ function toggleTimer(id) {
     if (el) el.textContent = fmtTime(Math.floor((Date.now()-activeTimer.startTs)/1000));
     document.querySelectorAll('[data-timer="'+id+'"]').forEach(x => x.textContent = fmtTime(Math.floor((Date.now()-activeTimer.startTs)/1000)));
     // עדכן דוח יומי בזמן אמת אם הדף פתוח
-    if (document.getElementById('page-report')?.classList.contains('active')) renderReport();
+    if (document.getElementById('page-morning')?.classList.contains('active')) renderReport({bottomOnly:true});
   },1000);
   const btn=document.getElementById('ptb-'+id); const val=document.getElementById('ptv-'+id);
   if(btn){btn.textContent='⏹ עצור';btn.classList.add('running');}
