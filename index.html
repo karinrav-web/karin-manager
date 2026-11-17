@@ -752,17 +752,19 @@ html[data-skin="ravenna"] .brand-band{display:none;}
 @media (max-width: 768px){ .bd-board{grid-template-columns:minmax(0,1fr);min-width:0;} }
 .bd-top{display:flex;align-items:center;gap:6px;}
 .bd-top .bd-name{flex:1;min-width:0;}
+.bd-bottom{display:flex;flex-direction:column;align-items:flex-start;gap:6px;margin-top:4px;}
+.bd-bottom .bd-meta{margin-top:0;}
+.bd-bottom .bd-flag{align-self:flex-end;}
 .bd-days{font-size:11px;color:var(--text3);background:var(--surface2);border-radius:999px;padding:1px 7px;white-space:nowrap;}
 .bd-days.long{color:#9a4422;background:#f8e6da;}
-.bd-flag{border:none;background:none;cursor:pointer;font-size:13px;padding:0 2px;opacity:0;filter:grayscale(1);transition:opacity .15s;}
-.bd-card:hover .bd-flag, .proj-card:hover .bd-flag{opacity:.5;}
-.bd-flag:hover{opacity:1 !important;filter:none;}
-.bd-flag.on{opacity:1 !important;filter:none;}
+.bd-flag{border:1px solid var(--border2);background:var(--surface);color:var(--text3);border-radius:999px;font:500 11px 'Rubik',sans-serif;padding:2px 8px;cursor:pointer;white-space:nowrap;flex-shrink:0;}
+.bd-flag:hover{border-color:#c62828;color:#c62828;}
+.bd-flag.on{background:#c62828;border-color:#c62828;color:#fff;font-weight:600;}
 .bd-card.bd-urgent{border:2px solid #c62828;background:#fdecea;box-shadow:0 0 0 3px rgba(198,40,40,.12);}
 .bd-card.bd-urgent .bd-name{color:#b71c1c;}
 .proj-card.pc-urgent{border:2px solid #c62828 !important;border-top-width:3px !important;background:#fdecea !important;}
 html[data-skin="dark"] .bd-card.bd-urgent, html[data-skin="dark"] .proj-card.pc-urgent{background:#3d1f1d !important;}
-@media (hover: none){ .bd-flag{opacity:.5;} }
+
 .logo-word{display:none;}
 /* ===== "רבנה" skin (2026-11-17) — html[data-skin="ravenna"], modelled on karinravenna.com:
    white, black type, thin condensed Open Sans, letter-spaced KARIN RAVENNA wordmark,
@@ -5305,9 +5307,9 @@ function boardCardHtml(p, fin) {
   return `<div class="bd-card${p.flagUrgent ? ' bd-urgent' : ''}" draggable="true" ondragstart="boardDragStart(event,${p.id})" ondragend="this.classList.remove('dragging')" onclick="openProjectPanel('${p.id}')">
     ${side}
     <div style="min-width:0;flex:1;">
-      <div class="bd-top"><div class="bd-name">${p.flagUrgent ? '🚩 ' : ''}${p.client || 'ללא שם'}</div>${daysHtml}<button class="bd-flag${p.flagUrgent ? ' on' : ''}" onclick="toggleUrgentFlag(${p.id},event)" title="${p.flagUrgent ? 'להסיר סימון דחוף' : 'לסמן כדחוף'}">🚩</button></div>
+      <div class="bd-top"><div class="bd-name">${p.client || 'ללא שם'}</div>${daysHtml}</div>
       ${p.title ? `<div class="bd-title">${p.title}</div>` : ''}
-      ${meta ? `<div class="bd-meta">${meta}</div>` : ''}
+      <div class="bd-bottom">${meta ? `<div class="bd-meta">${meta}</div>` : '<span></span>'}<button class="bd-flag${p.flagUrgent ? ' on' : ''}" onclick="toggleUrgentFlag(${p.id},event)" title="${p.flagUrgent ? 'להסיר את הסימון הדחוף' : 'לסמן את הפרויקט כדחוף — הכרטיס ייצבע באדום ויעלה לראש העמודה'}">${p.flagUrgent ? 'דחוף ✕' : 'סמני דחוף'}</button></div>
     </div>
   </div>`;
 }
@@ -5588,8 +5590,8 @@ function projectCardHtml(p, _allFinish, inPanel) {
             })())}
         <div style="flex:1;min-width:0;cursor:pointer;" onclick="${inPanel ? '' : `openProjectPanel('${p.id}')`}">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
-            <span class="proj-name" style="font-size:14px;">${p.flagUrgent ? '🚩 ' : ''}${p.client} — ${p.title}</span>
-            ${inPanel ? '' : `<button class="bd-flag${p.flagUrgent ? ' on' : ''}" onclick="toggleUrgentFlag(${p.id},event)" title="${p.flagUrgent ? 'להסיר סימון דחוף' : 'לסמן כדחוף'}">🚩</button>`}
+            <span class="proj-name" style="font-size:14px;">${p.client} — ${p.title}</span>
+            ${inPanel ? '' : `<button class="bd-flag${p.flagUrgent ? ' on' : ''}" onclick="toggleUrgentFlag(${p.id},event)" title="${p.flagUrgent ? 'להסיר את הסימון הדחוף' : 'לסמן את הפרויקט כדחוף — הכרטיס ייצבע באדום ויעלה לראש העמודה'}">${p.flagUrgent ? 'דחוף ✕' : 'סמני דחוף'}</button>`}
             ${urgCnt ? `<span class="badge b-urgent">${urgCnt} דחוף</span>` : ''}
             ${billingBadgeHtml(p)}
           </div>
