@@ -817,6 +817,12 @@ html[data-skin="dark"] .goal-lane.lane-now{--ln-bg:#3b2620;--ln-tile:#2e211c;--l
 html[data-skin="dark"] .goal-lane.lane-goal{--ln-bg:#26302a;--ln-tile:#212924;--ln-edge:#7fa070;--ln-head:#a9c79b;}
 html[data-skin="dark"] .goal-lane.lane-free{--ln-bg:#2c2926;--ln-tile:#252220;--ln-edge:#8a7e73;--ln-head:#c4b8ad;}
 html[data-skin="dark"] .goal-lane .goal-tile.is-done{--ln-tile:#222b20;--ln-edge:#6fae63;}
+/* Bigger header for today's goals (Karin asked, 2026-11-17) */
+#report-top .today-title{font-size:28px;}
+#report-top .today-hint{font-size:17px;margin-top:6px;}
+#report-top .today-progress{font-size:17px;padding:12px 22px;gap:14px;}
+#report-top .today-progress .goal-bar{width:240px;height:10px;}
+#report-top .today-progress b{font-size:24px;}
 /* the four metric cards are folded into the lanes' header and the 'today so far' card */
 #page-morning .morning-metrics{display:none;}
 @media (max-width: 1000px){ .goal-lanes, #page-morning .morning-grid{grid-template-columns:minmax(0,1fr);} }
