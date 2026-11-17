@@ -697,6 +697,7 @@
 .brand-band + .page, .brand-band ~ .page{padding-top:18px;}
 .brand-mark{direction:ltr;text-align:left;font-family:'Open Sans',sans-serif !important;font-stretch:75%;font-weight:300;font-size:30px;letter-spacing:.12em;line-height:1.05;color:var(--text);white-space:nowrap;}
 .brand-mark span{display:block;font-size:14px;letter-spacing:.01em;color:var(--text3);margin-top:4px;}
+.brand-mark.brand-mark-sm{font-size:20px;letter-spacing:.1em;}
 html[data-skin="ravenna"] .brand-band{display:none;}
 @media (max-width: 768px){ .brand-band{display:none;} }
 .logo-word{display:none;}
@@ -930,7 +931,7 @@ html[data-skin="dark"] .goal-lane .goal-tile.is-done{--ln-tile:#222b20;--ln-edge
   <main class="main">
     <div class="brand-band"><div class="brand-mark">KARIN RAVENNA<span>Architecture &amp; Interior Design Photographer</span></div></div>
     <header class="app-topbar">
-      <div class="app-topbar-title" id="morning-greeting-bar">שלום קרין! 👋</div>
+      <div class="app-topbar-title brand-mark brand-mark-sm" id="morning-greeting-bar">KARIN RAVENNA</div>
       <div style="display:flex;align-items:center;gap:12px;">
         <span class="material-symbols-outlined" style="color:var(--text3);cursor:pointer;">notifications</span>
         <div class="logo-avatar" style="width:36px;height:36px;font-size:13px;">KR</div>
@@ -940,8 +941,7 @@ html[data-skin="dark"] .goal-lane .goal-tile.is-done{--ln-tile:#222b20;--ln-edge
     <div id="page-morning" class="page active">
       <div class="page-header" style="margin-bottom:10px">
         <div>
-          <div class="page-title" id="morning-greeting">שלום קרין! 👋</div>
-          <div class="page-date" id="today-date"></div>
+          <div class="page-date" id="today-date" style="font-size:15px;"></div>
         </div>
         <div style="display:flex;gap:8px;align-items:center">
           <button class="customize-btn" onclick="toggleEl('dash-customize-bar')" title="התאמה אישית">⚙ התאמה אישית</button>
@@ -2603,7 +2603,7 @@ function openProjectFromUrgency(projId) {
 }
 function setGreeting() {
   const h = new Date().getHours();
-  document.getElementById('morning-greeting').textContent = 'שלום קרין! 👋';
+
   const d = new Date(), days=['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
   document.getElementById('today-date').textContent = 'יום '+days[d.getDay()]+', '+d.toLocaleDateString('he-IL');
 }
