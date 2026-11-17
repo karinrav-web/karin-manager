@@ -756,21 +756,50 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
 #page-morning.active { display:block !important; height:auto !important; overflow:visible !important; }
 #page-morning .morning-grid { flex:none; margin-top:4px; }
 #page-morning .morning-col { overflow:visible; }
-/* Today's goal rows: keep the controls right next to the project name instead
-   of at the far edge of a wide screen, and highlight the row on hover so it's
-   clear which controls belong to which project (2026-11-17). */
-#report-top .goal-row { justify-content:flex-start !important; gap:28px !important; padding-inline:8px; border-radius:8px; }
-#report-top .goal-row > div[style*="flex:1"] { flex:0 1 440px !important; }
-#report-top .goal-row:hover { background:var(--surface2); }
-/* On wide screens the tasks and deadline panels sit beside today's goals
-   instead of below them, so the goal list isn't stretched across the page. */
-@media (min-width: 1500px) {
-  .today-split { display:grid; grid-template-columns:minmax(0,1.6fr) minmax(320px,1fr); gap:16px; align-items:start; }
-  .today-split #report-top { margin-bottom:0 !important; }
-  .today-split .morning-grid { display:flex; flex-direction:column; gap:10px; margin-top:0; }
-  .today-split .morning-col { width:100% !important; flex:none !important; min-width:0 !important; }
-  .today-split .col-resizer { display:none; }
-}
+/* היום page, option ב׳ (2026-11-17): today's goals as three lanes of tiles,
+   then one row of three cards: tasks, deadlines, today so far. */
+.today-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px 24px;flex-wrap:wrap;margin:6px 0 14px;}
+.today-title{font-size:20px;font-weight:700;color:var(--text);}
+.today-hint{font-size:13px;color:var(--text2);margin-top:4px;}
+.today-progress{display:flex;align-items:center;gap:10px;background:var(--surface);border-radius:999px;padding:8px 16px;font-size:13px;color:var(--text2);flex-wrap:wrap;}
+.today-progress .goal-bar{width:160px;margin:0;}
+.today-progress b{color:var(--text);font-size:15px;}
+.goal-lanes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:start;}
+.goal-lane{background:var(--surface2);border-radius:var(--radius);padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0;}
+.gl-head{display:flex;justify-content:space-between;align-items:baseline;padding:2px 4px;font-size:14px;font-weight:600;color:var(--text);}
+.gl-count{font-size:12px;font-weight:500;color:var(--text3);}
+.gl-empty{font-size:12px;color:var(--text3);padding:6px 4px 10px;}
+.goal-tile{background:var(--surface);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;border:1px solid transparent;}
+.goal-tile:hover{border-color:var(--border2);}
+.goal-tile.is-done{opacity:.8;}
+.goal-tile.drag-over{border-color:var(--accent);}
+.gt-top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;}
+.gt-name{font-weight:600;font-size:14px;min-width:0;}
+.gt-num{font-size:13px;color:var(--text2);white-space:nowrap;font-variant-numeric:tabular-nums;}
+.gt-num b{font-size:17px;color:var(--text);}
+.gt-sub{font-size:12px;color:var(--text3);margin-top:-4px;}
+.goal-tile .goal-bar{max-width:none;margin:0;}
+.goal-tile .goal-bar.gt-total span{opacity:.45;}
+.gt-ctrl{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;}
+.gt-ctrl .df-actions{gap:4px;}
+.gt-inputs{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.gt-in{display:flex;align-items:center;gap:3px;font-size:11px;color:var(--text3);}
+.gt-in input{width:40px;border:1px solid var(--border2);border-radius:6px;background:var(--surface);font:600 13px 'Rubik',sans-serif;color:var(--text);text-align:center;padding:3px 2px;outline:none;}
+.gt-in.goal span{color:var(--accent);}
+.gt-in.goal input{border-color:var(--accent);background:var(--accent-light);color:var(--accent);}
+.gt-foot{font-size:12px;font-weight:600;}
+.gt-status.ok{color:var(--accent);}
+#page-morning .morning-grid{display:grid !important;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:16px;}
+#page-morning .morning-col{width:auto !important;min-width:0 !important;flex:none !important;}
+#page-morning .col-resizer{display:none;}
+#mcol-left{order:1;} #mcol-right{order:2;} #mcol-today{order:3;}
+.today-sofar .ts-nums{display:flex;gap:24px;margin-bottom:10px;flex-wrap:wrap;}
+.today-sofar .ts-nums div{display:flex;flex-direction:column;}
+.today-sofar .ts-nums b{font-size:20px;color:var(--text);}
+.today-sofar .ts-nums span{font-size:12px;color:var(--text3);}
+/* the four metric cards are folded into the lanes' header and the 'today so far' card */
+#page-morning .morning-metrics{display:none;}
+@media (max-width: 1000px){ .goal-lanes, #page-morning .morning-grid{grid-template-columns:minmax(0,1fr);} }
 /* היום page / כספים business cards (2026-11-17) */
 .biz-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-bottom:18px;}
 .biz-cards .card{margin:0;}
@@ -885,6 +914,7 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
           </div>
         </div>
         <div class="col-resizer" onmousedown="startColResize(event)" title="גרור לשינוי רוחב"><span class="col-resizer-bar"></span></div>
+        <div class="morning-col" id="mcol-today"><div id="report-bottom"></div></div>
         <div class="morning-col" id="mcol-right"
              ondragover="colDragOver(event,this)" ondrop="colDrop(event,this)" ondragleave="colDragLeave(event,this)">
           <div class="urgency-card morning-panel" id="panel-urgency" draggable="true"
@@ -897,7 +927,6 @@ html[data-skin="dark"] :is([style*="color:#1a1a2e" i],[style*="color:#666" i],[s
         </div>
       </div>
       </div><!-- /today-split -->
-      <div id="report-bottom" style="margin-top:16px;"></div>
       <div class="page-title" style="margin:28px 0 12px;">תכנון</div>
       <div class="card" style="margin-bottom:16px;">
         <div class="card-title">תכנון חודשי — כמה תמונות לערוך בכל פרויקט, בכל יום עבודה</div>
@@ -2961,35 +2990,33 @@ function renderReport(opts = {}) {
     const unplanned = gt === 0 && et > 0;
     const bar = gt > 0 ? `<div class="goal-bar"><span style="width:${Math.min(100, Math.round(et / gt * 100))}%;${leftToGoal === 0 || carried ? '' : late ? 'background:var(--urgent);' : ''}"></span></div>` : '';
     const dragAttrs = draggable ? `draggable="true" data-id="${p.id}" ondragstart="goalDragStart(event,${p.id})" ondragend="goalDragEnd(event)" ondragover="goalDragOver(event)" ondragleave="goalDragLeave(event)" ondrop="goalDrop(event,${p.id})"` : '';
-    return `<div class="report-proj-row goal-row" ${dragAttrs} style="align-items:center;justify-content:space-between;gap:10px;">
-      ${draggable ? `<div class="drag-handle" title="גרור לסידור עדיפויות">⠿</div>` : ''}
-      <div style="min-width:0;flex:1;">
-        <div class="report-proj-name proj-link" onclick="openProjectPanel('${p.id}')">${fIcon}${p.client||'ללא שם'}${p.title?' — '+p.title:''}${unplanned ? ' <span class="goal-unplanned">לא מתוכנן</span>' : ''}${fNote}</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px;">
-          נשארו ${rem} בסה״כ${p.deadline?` · דדליין ${new Date(p.deadline).toLocaleDateString('he-IL')}`:''}
-        </div>
-        ${bar}
+    const goalCtrl = gt === 0 && fc && fc.photos > 0
+      ? `<button class="df-set-goal" onclick="updateGoalTarget(${p.id},${fc.photos})" title="ההמלצה להיום לפי הדדליינים וכמה נשאר">יעד ${fc.photos}?</button>`
+      : '';
+    const status = leftToGoal === null ? '' : leftToGoal === 0 ? '<span class="gt-status ok">✓ הושלם</span>'
+      : carried ? `<span class="gt-status">${carried.n} הועברו ל-${carried.to.slice(8,10)}/${carried.to.slice(5,7)}</span> <button class="panel-link-btn" style="font-size:11px;" onclick="undoCarry(${p.id})" title="מחזיר את התמונות להיום ומוריד אותן מיום העבודה הבא">ביטול</button>`
+      : `<span class="gt-status" style="color:${leftColor};">נותרו ${leftToGoal}</span>`;
+    return `<div class="goal-row goal-tile${leftToGoal === 0 ? ' is-done' : ''}" ${dragAttrs}>
+      <div class="gt-top">
+        <span class="gt-name proj-link" onclick="openProjectPanel('${p.id}')">${fIcon}${p.client||'ללא שם'}</span>
+        <span class="gt-num"><b>${et}</b> / ${gt || '—'}</span>
       </div>
-      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;">
-        <div class="df-actions" style="gap:4px;">
+      <div class="gt-sub">${p.title ? p.title + ' · ' : ''}נשארו ${rem}${p.deadline ? ` · דדליין ${new Date(p.deadline).toLocaleDateString('he-IL',{day:'numeric',month:'numeric'})}` : ''}${unplanned ? ' <span class="goal-unplanned">לא מתוכנן</span>' : ''}${fNote}</div>
+      ${bar || `<div class="goal-bar gt-total" title="${p.edited||0} מתוך ${p.total||0} נערכו"><span style="width:${p.total ? Math.min(100, Math.round((p.edited||0) / p.total * 100)) : 0}%;"></span></div>`}
+      <div class="gt-ctrl">
+        <div class="df-actions">
           <button class="df-btn" onclick="bumpEdited(${p.id},-1)" aria-label="הפחת תמונה">−</button>
           <button class="df-btn plus" onclick="bumpEdited(${p.id},1)" aria-label="הוסף תמונה">+1</button>
           <button class="df-btn plus" onclick="bumpEdited(${p.id},5)" aria-label="הוסף 5 תמונות">+5</button>
-          <button class="df-timer ${running ? 'running' : ''}" onclick="toggleTimer(${p.id})" title="${running ? 'עצירת טיימר' : 'הפעלת טיימר'}">${running ? '⏹' : '▶'} <span data-timer="${p.id}">${running ? fmtTime(runSecs) : ''}</span></button>
+          <button class="df-timer ${running ? 'running' : ''}" onclick="toggleTimer(${p.id})" title="${running ? 'עצירת טיימר' : 'הפעלת טיימר'}" aria-label="${running ? 'עצירת טיימר' : 'הפעלת טיימר'}">${running ? '⏹' : '▶'} <span data-timer="${p.id}">${running ? fmtTime(runSecs) : ''}</span></button>
         </div>
-        <div style="display:flex;align-items:center;gap:3px;">
-          <span style="font-size:11px;color:var(--text3);">היום</span>
-          <input type="number" value="${et}" min="0" onchange="updateEditedToday(${p.id},this.value)"
-            style="width:44px;border:1px solid var(--border2);border-radius:4px;background:var(--surface);font-size:13px;font-weight:600;color:var(--text);font-family:'Rubik',sans-serif;text-align:center;padding:2px 4px;outline:none;" />
+        <div class="gt-inputs">
+          ${goalCtrl}
+          <label class="gt-in"><span>היום</span><input type="number" value="${et}" min="0" onchange="updateEditedToday(${p.id},this.value)"></label>
+          <label class="gt-in goal"><span>יעד</span><input type="number" value="${gt||''}" min="0" placeholder="—" onchange="updateGoalTarget(${p.id},this.value)"></label>
         </div>
-        <div style="display:flex;align-items:center;gap:3px;">
-          <span style="font-size:11px;color:var(--accent);">יעד</span>
-          ${gt === 0 && fc && fc.photos > 0 ? `<button class="df-set-goal" onclick="updateGoalTarget(${p.id},${fc.photos})" title="ההמלצה להיום לפי הדדליינים וכמה נשאר">${fc.photos}?</button>` : ''}
-          <input type="number" value="${gt||''}" min="0" placeholder="—" onchange="updateGoalTarget(${p.id},this.value)"
-            style="width:40px;border:1px solid var(--accent);border-radius:4px;background:var(--accent-light);font-size:13px;font-weight:600;color:var(--accent);font-family:'Rubik',sans-serif;text-align:center;padding:2px 4px;outline:none;" />
-        </div>
-        ${leftToGoal !== null ? `<span style="font-size:12px;font-weight:600;color:${leftColor};white-space:nowrap;">${leftToGoal===0?'✓ הושלם':carried?`${carried.n} הועברו ל-${carried.to.slice(8,10)}/${carried.to.slice(5,7)}`:'נותרו '+leftToGoal}</span>${carried ? `<button class="panel-link-btn" style="font-size:11px;" onclick="undoCarry(${p.id})" title="מחזיר את התמונות להיום ומוריד אותן מיום העבודה הבא">ביטול</button>` : ''}` : ''}
       </div>
+      ${status ? `<div class="gt-foot">${status}</div>` : ''}
     </div>`;
   };
 
@@ -2998,10 +3025,24 @@ function renderReport(opts = {}) {
   const activeGoalProjects = editProjects.filter(p => !goalDoneToday(p));
   const doneGoalProjects = editProjects.filter(goalDoneToday);
 
-  const goalRows = (activeGoalProjects.length > 0 ? activeGoalProjects.map(p=>goalRow(p,true)).join('') : '<div class="report-empty">אין פרויקטים בעריכה כרגע</div>')
-    + (doneGoalProjects.length > 0 ? `
-      <div style="font-size:15px;font-weight:700;color:var(--accent);padding:12px 0 6px 2px;border-top:1px solid var(--border);margin-top:8px;">✓ הושלם היום (${doneGoalProjects.length})</div>
-      ${doneGoalProjects.map(p=>goalRow(p,false)).join('')}` : '');
+  // Three lanes (2026-11-17, option ב׳): projects to close today (urgent or
+  // nearly done, per computeTodayFocus), the rest with a goal, and those with
+  // no goal yet; finished-today goals sit at the bottom of the third lane.
+  const isNow = p => { const f = focus.byId[p.id]; return f && (f.tag === 'critical' || f.tag === 'quick'); };
+  const laneNow = activeGoalProjects.filter(isNow);
+  const laneGoal = activeGoalProjects.filter(p => !isNow(p) && (p.goalDaily||0) > 0);
+  const laneFree = activeGoalProjects.filter(p => !isNow(p) && !((p.goalDaily||0) > 0));
+  const lane = (title, list, empty, extra = '') => `<div class="goal-lane">
+      <div class="gl-head"><span>${title}</span><span class="gl-count">${list.length}</span></div>
+      ${list.length ? list.map(p => goalRow(p, true)).join('') : `<div class="gl-empty">${empty}</div>`}
+      ${extra}
+    </div>`;
+  const doneBlock = doneGoalProjects.length ? `<div class="gl-head" style="margin-top:8px;"><span>✓ הושלם היום</span><span class="gl-count">${doneGoalProjects.length}</span></div>${doneGoalProjects.map(p => goalRow(p, false)).join('')}` : '';
+  const goalRows = editProjects.length === 0 ? '<div class="report-empty">אין פרויקטים בעריכה כרגע</div>' : `<div class="goal-lanes">
+      ${lane('לסגור היום', laneNow, 'אין פרויקט דחוף או כמעט גמור')}
+      ${lane('בעבודה היום', laneGoal, 'עוד לא נקבעו יעדים להיום')}
+      ${lane('בלי יעד היום', laneFree, 'לכל הפרויקטים יש יעד', doneBlock)}
+    </div>`;
 
   // שורות פרויקטים
   const projRows = workedOn.length > 0
@@ -3023,41 +3064,34 @@ function renderReport(opts = {}) {
   // matters more, but there's no reason to also re-render the goal inputs
   // here on every tick either
   if (!opts.bottomOnly) {
+    const gp = goalProgressToday();
     topEl.innerHTML = `
-      <div class="card">
-        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
-          <span>🎯 יעדי עריכה להיום</span>
-          ${focus.headline ? `<span style="font-size:11px;color:var(--text3);font-weight:400;">${focus.dailyCap} תמ׳ ליום</span>` : ''}
+      <div class="today-head">
+        <div style="min-width:0;">
+          <div class="today-title">יעדי עריכה להיום</div>
+          <div class="today-hint">${editProjects.length} פרויקטים בעריכה · ${editProjects.reduce((s,p)=>s+Math.max(0,(p.total||0)-(p.edited||0)),0)} תמונות לעריכה</div>
+          ${focus.headline ? `<div class="today-hint"><strong>${focus.headline}</strong> · ${focus.explanation}</div>` : ''}
+        </div>
+        <div class="today-progress">
+          <span>יעד יומי</span>
+          <div class="goal-bar"><span style="width:${gp.goal ? Math.min(100, Math.round(gp.inGoal / gp.goal * 100)) : 0}%;"></span></div>
+          <b>${gp.inGoal}/${gp.goal}</b>
           ${new Date().getHours() >= 16 && goalLeftovers().length ? `<button class="panel-link-btn" onclick="carryGoalsToNextDay()" title="מוסיף את מה שלא נערך היום ללוח העבודה של יום העבודה הבא">להעביר את מה שנשאר למחר ←</button>` : ''}
         </div>
-        ${focus.headline ? `<div style="font-size:13px;margin:-2px 0 10px;"><strong>${focus.headline}</strong> <span style="color:var(--text2);">· ${focus.explanation}</span></div>` : ''}
-        ${goalRows}
-      </div>`;
+      </div>
+      ${goalRows}`;
     const histEl = document.getElementById('report-history');
     if (histEl) histEl.innerHTML = editHistoryHtml();
   }
 
   bottomEl.innerHTML = `
-    <div class="report-grid">
-      <div class="report-stat">
-        <div class="report-stat-val">${fmtDuration(totalSecsToday)}</div>
-        <div class="report-stat-label">זמן עבודה היום</div>
+    <div class="card today-sofar">
+      <div class="card-title">היום עד עכשיו</div>
+      <div class="ts-nums">
+        <div><b>${fmtDuration(totalSecsToday)}</b><span>זמן עבודה</span></div>
+        <div><b>${totalPhotosToday}</b><span>תמונות</span></div>
+        <div><b>${sentToClientToday}</b><span>נשלחו ללקוח</span></div>
       </div>
-      <div class="report-stat">
-        <div class="report-stat-val">${totalPhotosToday}</div>
-        <div class="report-stat-label">תמונות ערכת היום</div>
-      </div>
-      <div class="report-stat">
-        <div class="report-stat-val">${workedOn.length}</div>
-        <div class="report-stat-label">פרויקטים פעילים היום</div>
-      </div>
-      <div class="report-stat">
-        <div class="report-stat-val">${sentToClientToday}</div>
-        <div class="report-stat-label">נשלחו ללקוח היום</div>
-      </div>
-    </div>
-    <div class="card" style="margin-bottom:16px;">
-      <div class="card-title">פרויקטים שעבדת עליהם היום</div>
       ${projRows}
     </div>`;
 }
