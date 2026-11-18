@@ -946,9 +946,15 @@ html[data-skin="dark"] .goal-lane.lane-goal{--ln-bg:#26302a;--ln-tile:#212924;--
 html[data-skin="dark"] .goal-lane.lane-free{--ln-bg:#2c2926;--ln-tile:#252220;--ln-edge:#8a7e73;--ln-head:#c4b8ad;}
 html[data-skin="dark"] .goal-lane .goal-tile.is-done{--ln-tile:#222b20;--ln-edge:#6fae63;}
 /* Reels column on the היום page (2026-11-18) */
-#page-morning .morning-grid{grid-template-columns:repeat(4,minmax(0,1fr));}
-#mcol-reels{order:4;}
-@media (max-width: 1400px){ #page-morning .morning-grid{grid-template-columns:repeat(2,minmax(0,1fr));} }
+/* (moved up the same day: a band right under the metrics, above the goal lanes) */
+#reels-band{margin:0 0 14px;padding:12px 16px;}
+#reels-band .reels-head{margin-bottom:8px;}
+.reels-open{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;}
+.reels-open .reel-row{margin-bottom:0;}
+.reels-foot{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin-top:10px;}
+.reels-foot .reels-sec{margin:0;}
+.reels-foot .reel-add{margin-top:0;flex:0 1 320px;}
+.reels-foot .reel-done{margin-top:0;border-top:none;padding-top:0;margin-inline-start:auto;}
 .reels-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
 .reels-count{font-size:12px;color:var(--text3);}
 .reels-sec{font-size:12px;font-weight:600;color:var(--text3);margin:12px 0 6px;}
@@ -1050,6 +1056,10 @@ html[data-skin="dark"] .goal-lane .goal-tile.is-done{--ln-tile:#222b20;--ln-edge
         <div class="metric-card metric-card-icon" style="border:2px dashed var(--border2);"><div class="metric-icon-circle" style="background:#fdf0ec;"><span class="material-symbols-outlined" style="color:var(--accent);">flag</span></div><div><div class="metric-val" id="m-goal-total">0</div><div class="metric-label">יעד יומי</div></div></div>
       </div>
       <div class="today-split">
+      <div class="card reels-card" id="reels-band">
+        <div class="reels-head"><div class="card-title" style="margin-bottom:0;">🎬 רילסים</div><span class="reels-count" id="reels-count"></span></div>
+        <div id="reels-list"></div>
+      </div>
       <div id="report-top" style="margin-bottom:14px;"></div>
       <div class="morning-grid">
         <div class="morning-col" id="mcol-left"
@@ -1095,12 +1105,6 @@ html[data-skin="dark"] .goal-lane .goal-tile.is-done{--ln-tile:#222b20;--ln-edge
             <div class="card-title">תעדוף לפי דדליין</div>
             <div id="urgency-list"><p style="font-size:13px;color:var(--text3)">אין פרויקטים עם דדליין</p></div>
             <div class="panel-resize-handle" onmousedown="startPanelResize(event,this)">— — —</div>
-          </div>
-        </div>
-        <div class="morning-col" id="mcol-reels">
-          <div class="card reels-card">
-            <div class="reels-head"><div class="card-title" style="margin-bottom:0;">🎬 רילסים</div><span class="reels-count" id="reels-count"></span></div>
-            <div id="reels-list"></div>
           </div>
         </div>
       </div>
@@ -2049,14 +2053,16 @@ function renderReels() {
     </div>`;
   };
   let h = '';
-  h += active.length ? active.map(row).join('') : '<p style="font-size:13px;color:var(--text3);margin:0;">אין רילסים פתוחים</p>';
-  if (sugg.length) h += `<div class="reels-sec">צילומים אחרונים — לעשות להם רילס?</div><div class="reel-sugg">${sugg.map(p => `<button class="reel-chip" onclick="setReelStatus('${jsq(p.id)}','todo')" title="להוסיף לרשימת הרילסים">+ ${name(p)}</button>`).join('')}</div>`;
+  h += active.length ? `<div class="reels-open">${active.map(row).join('')}</div>` : '<p style="font-size:13px;color:var(--text3);margin:0;">אין רילסים פתוחים</p>';
+  h += '<div class="reels-foot">';
+  if (sugg.length) h += `<div class="reels-sec">צילומים אחרונים — רילס?</div><div class="reel-sugg">${sugg.map(p => `<button class="reel-chip" onclick="setReelStatus('${jsq(p.id)}','todo')" title="להוסיף לרשימת הרילסים">+ ${name(p)}</button>`).join('')}</div>`;
   h += `<div class="reel-add"><select id="reel-add-sel"><option value="">הוספת פרויקט…</option>${addable.map(p => `<option value="${String(p.id).replace(/"/g, '&quot;')}">${name(p).replace(/</g, '&lt;')}</option>`).join('')}</select><button class="reel-btn" onclick="addReelFromSelect()">הוסף</button></div>`;
   if (done.length) {
     const ym = today.slice(0, 7);
     const month = done.filter(p => String(p.reel.doneAt || '').slice(0, 7) === ym).length;
     h += `<div class="reel-done">פורסמו: <b>${done.length}</b>${month ? ` (${month} החודש)` : ''} · אחרונים: <span>${done.slice(0, 3).map(name).join(' · ')}</span></div>`;
   }
+  h += '</div>';
   el.innerHTML = h;
   if (cnt) cnt.textContent = active.length ? `${active.length} פתוחים` : '';
 }
