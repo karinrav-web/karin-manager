@@ -949,7 +949,7 @@ html[data-skin="dark"] .goal-lane .goal-tile.is-done{--ln-tile:#222b20;--ln-edge
 /* (moved up the same day: a band right under the metrics, above the goal lanes) */
 #reels-band{margin:0 0 14px;padding:12px 16px;}
 #reels-band .reels-head{margin-bottom:8px;}
-.reels-open{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;}
+.reels-open{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:8px;}
 .reels-open .reel-row{margin-bottom:0;}
 .reels-foot{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;margin-top:10px;}
 .reels-foot .reels-sec{margin:0;}
@@ -959,8 +959,19 @@ html[data-skin="dark"] .goal-lane .goal-tile.is-done{--ln-tile:#222b20;--ln-edge
 .reels-count{font-size:12px;color:var(--text3);}
 .reels-sec{font-size:12px;font-weight:600;color:var(--text3);margin:12px 0 6px;}
 .reel-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-inline-start:4px solid var(--border2);border-radius:8px;margin-bottom:6px;background:var(--surface);}
+.reel-row{flex-direction:column;align-items:stretch;gap:6px;}
+.reel-top{display:flex;align-items:center;gap:8px;}
 .reel-row.st-todo{border-inline-start-color:#c0562f;}
+.reel-row.st-select{border-inline-start-color:#c99a3f;}
 .reel-row.st-edit{border-inline-start-color:#5f7d55;}
+.reel-row.st-ready{border-inline-start-color:#3f6f8a;}
+.reel-steps{display:flex;gap:3px;}
+.rs-step{flex:1;min-width:0;border:none;background:none;padding:0;cursor:pointer;font:500 10px inherit;font-family:inherit;color:var(--text3);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.rs-step span{display:block;height:5px;border-radius:3px;background:var(--border);margin-bottom:3px;}
+.rs-step.past span{background:var(--text3);}
+.rs-step.cur span{background:var(--text);}
+.rs-step.cur{color:var(--text);font-weight:700;}
+.rs-step:hover span{background:var(--text2);}
 .reel-row.stale{background:color-mix(in srgb,#e8a33d 12%,var(--surface));}
 .reel-info{flex:1;min-width:0;cursor:pointer;}
 .reel-name{font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -2010,7 +2021,12 @@ function renderDailyFocus() {
 
 // Reels (2026-11-18): per-project reel status p.reel = {status:'todo'|'edit'|'done'|'none', at, doneAt?}.
 // 'none' = removed / not needed (kept, not deleted, so the newer-`at` merge in mergeCloudState wins).
-const REEL_NEXT = { todo: 'edit', edit: 'done' };
+// Stages (Karin, 2026-11-18: two steps weren't enough — "התחלתי" jumped straight to a "פורסם" button).
+const REEL_STAGES = [
+  { k: 'todo', l: 'לעשות', s: 'לעשות' }, { k: 'select', l: 'בחירת קטעים', s: 'קטעים' }, { k: 'edit', l: 'בעריכה', s: 'עריכה' },
+  { k: 'ready', l: 'מוכן לפרסום', s: 'מוכן' }, { k: 'done', l: 'פורסם', s: 'פורסם' }];
+const REEL_OPEN = ['todo', 'select', 'edit', 'ready'];
+const reelIdx = st => REEL_STAGES.findIndex(x => x.k === st);
 function setReelStatus(id, status, ev) {
   if (ev) ev.stopPropagation();
   const p = state.projects.find(x => String(x.id) === String(id)); if (!p) return;
@@ -2029,8 +2045,8 @@ function renderReels() {
   const name = p => `${p.client||''}${p.title ? ' — ' + p.title : ''}`;
   const daysSince = ms => Math.max(0, Math.floor((Date.now() - (ms || Date.now())) / 86400000));
   const ps = state.projects || [];
-  const active = ps.filter(p => p.reel && (p.reel.status === 'todo' || p.reel.status === 'edit'))
-    .sort((a, b) => (a.reel.status === b.reel.status ? 0 : a.reel.status === 'edit' ? -1 : 1) || (a.reel.at || 0) - (b.reel.at || 0));
+  const active = ps.filter(p => p.reel && REEL_OPEN.includes(p.reel.status))
+    .sort((a, b) => reelIdx(b.reel.status) - reelIdx(a.reel.status) || (a.reel.at || 0) - (b.reel.at || 0));
   const done = ps.filter(p => p.reel && p.reel.status === 'done')
     .sort((a, b) => String(b.reel.doneAt || '').localeCompare(String(a.reel.doneAt || '')));
   const byDate = (a, b) => String(b.date || '').localeCompare(String(a.date || ''));
@@ -2040,16 +2056,21 @@ function renderReels() {
   const sugg = ps.filter(p => !p.reel && p.date && p.date >= since && p.date <= today).sort(byDate).slice(0, 4);
   const addable = ps.filter(p => !p.reel || p.reel.status === 'none').sort(byDate).slice(0, 40);
   const row = p => {
-    const st = p.reel.status, d = daysSince(p.reel.at);
-    const stale = st === 'todo' && d >= 14;
-    const label = st === 'todo' ? 'לעשות' : 'בעריכה';
+    const st = p.reel.status, i = reelIdx(st), d = daysSince(p.reel.at);
+    const stale = d >= 14;
+    const next = REEL_STAGES[i + 1];
+    const pid = jsq(p.id);
+    const steps = REEL_STAGES.map((x, j) => `<button class="rs-step${j < i ? ' past' : j === i ? ' cur' : ''}" title="${x.l}" onclick="setReelStatus('${pid}','${x.k}',event)"><span></span>${x.s}</button>`).join('');
     return `<div class="reel-row st-${st}${stale ? ' stale' : ''}">
-      <div class="reel-info" onclick="openProjectPanel('${jsq(p.id)}')" title="לפתיחת הפרויקט">
-        <div class="reel-name">${name(p)}</div>
-        <div class="reel-sub">${label} · ${d === 0 ? 'מהיום' : d === 1 ? 'מאתמול' : d + ' ימים'}</div>
+      <div class="reel-top">
+        <div class="reel-info" onclick="openProjectPanel('${pid}')" title="לפתיחת הפרויקט">
+          <div class="reel-name">${name(p)}</div>
+          <div class="reel-sub"><b>${REEL_STAGES[i].l}</b> · ${d === 0 ? 'מהיום' : d === 1 ? 'מאתמול' : d + ' ימים'}</div>
+        </div>
+        <button class="reel-btn${next && next.k === 'done' ? ' go' : ''}" onclick="setReelStatus('${pid}','${next.k}',event)">${next.k === 'done' ? 'פורסם ✓' : 'הבא: ' + next.l}</button>
+        <button class="reel-x" title="להוריד מהרשימה" onclick="setReelStatus('${pid}','none',event)">✕</button>
       </div>
-      <button class="reel-btn${st === 'edit' ? ' go' : ''}" onclick="setReelStatus('${jsq(p.id)}','${REEL_NEXT[st]}',event)">${st === 'todo' ? 'התחלתי' : 'פורסם ✓'}</button>
-      <button class="reel-x" title="להוריד מהרשימה" onclick="setReelStatus('${jsq(p.id)}','none',event)">✕</button>
+      <div class="reel-steps">${steps}</div>
     </div>`;
   };
   let h = '';
