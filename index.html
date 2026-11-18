@@ -1856,17 +1856,24 @@ function computeAllFinishDates() {
     const todo = active.filter(p => rem[p.id] > 0);
     if (!todo.length) break;
 
-    // Give each project a daily slot; cap total at dailyCap
-    // Projects sorted by deadline get priority: earlier deadlines fill first
+    // Each project gets an even share of the day's capacity; whatever is left
+    // (a project needed less than its share) goes to the earliest deadlines.
+    // Fixed 2026-11-18: this used to take p.goalDaily — today's goal — as the
+    // rate for every future day, so a small goal today (e.g. 2) made a big
+    // project look weeks late.
     let capLeft = dailyCap;
     const share = Math.max(1, Math.floor(dailyCap / todo.length));
     for (const p of todo) {
-      const alloc = Math.min(capLeft, Math.min(rem[p.id], p.goalDaily || share));
-      rem[p.id] = Math.max(0, rem[p.id] - alloc);
-      capLeft -= alloc;
-      if (rem[p.id] <= 0) finishDates[p.id] = new Date(d);
-      if (capLeft <= 0) break; // daily capacity exhausted
+      const alloc = Math.min(capLeft, rem[p.id], share);
+      rem[p.id] -= alloc; capLeft -= alloc;
+      if (capLeft <= 0) break;
     }
+    for (const p of todo) {
+      if (capLeft <= 0) break;
+      const alloc = Math.min(capLeft, rem[p.id]);
+      rem[p.id] -= alloc; capLeft -= alloc;
+    }
+    for (const p of todo) if (rem[p.id] <= 0 && !finishDates[p.id]) finishDates[p.id] = new Date(d);
   }
   return finishDates;
 }
