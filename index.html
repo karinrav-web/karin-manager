@@ -986,7 +986,10 @@ html[data-skin="dark"] .goal-lane .goal-tile.is-done{--ln-tile:#222b20;--ln-edge
 .reel-add{display:flex;gap:6px;margin-top:12px;}
 .reel-add select{flex:1;min-width:0;font-family:inherit;font-size:12px;border:1px solid var(--border2);border-radius:6px;background:var(--surface);color:var(--text);padding:4px;}
 .reel-done{font-size:12px;color:var(--text3);margin-top:12px;border-top:1px dashed var(--border);padding-top:8px;}
-.reel-done span{color:var(--text2);}
+.reel-done{display:flex;flex-wrap:wrap;align-items:center;gap:6px;}
+.reel-pub{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--border);border-radius:999px;padding:2px 4px 2px 10px;color:var(--text2);background:var(--surface);}
+.reel-pub button{border:none;background:none;cursor:pointer;font:500 11px inherit;font-family:inherit;color:var(--text3);padding:1px 4px;border-radius:999px;}
+.reel-pub button:hover{background:var(--surface2);color:var(--text);}
 @media (max-width: 1000px){ .goal-lanes, #page-morning .morning-grid{grid-template-columns:minmax(0,1fr);} }
 /* היום page / כספים business cards (2026-11-17) */
 .biz-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-bottom:18px;}
@@ -2081,7 +2084,9 @@ function renderReels() {
   if (done.length) {
     const ym = today.slice(0, 7);
     const month = done.filter(p => String(p.reel.doneAt || '').slice(0, 7) === ym).length;
-    h += `<div class="reel-done">פורסמו: <b>${done.length}</b>${month ? ` (${month} החודש)` : ''} · אחרונים: <span>${done.slice(0, 3).map(name).join(' · ')}</span></div>`;
+    // posted reels stay editable: back to editing, or off the list (2026-11-18)
+    const chip = p => `<span class="reel-pub">${name(p)}<button title="להחזיר לעריכה" onclick="setReelStatus('${jsq(p.id)}','edit',event)">↩ לעריכה</button><button title="להוריד מהרשימה" onclick="setReelStatus('${jsq(p.id)}','none',event)">✕</button></span>`;
+    h += `<div class="reel-done">פורסמו: <b>${done.length}</b>${month ? ` (${month} החודש)` : ''} · אחרונים: ${done.slice(0, 4).map(chip).join('')}</div>`;
   }
   h += '</div>';
   el.innerHTML = h;
